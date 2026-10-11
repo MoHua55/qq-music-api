@@ -96,7 +96,7 @@ describe('services/getComments', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -105,7 +105,7 @@ describe('services/getComments', () => {
         service: 'getComments',
         error: {
           name: 'Error',
-          message: 'comments failed',
+          message: 'Service request failed',
         },
       }),
     );

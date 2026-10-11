@@ -147,7 +147,7 @@ describe('controllers logging', () => {
 
     expect(ctx.status).toBe(500);
     expect(ctx.body).toEqual({
-      error: 'u common failed',
+      error: 'Service request failed',
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
       'request.failed',

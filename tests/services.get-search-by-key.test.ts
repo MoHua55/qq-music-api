@@ -141,7 +141,7 @@ describe('services/getSearchByKey', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -150,7 +150,7 @@ describe('services/getSearchByKey', () => {
         service: 'getSearchByKey',
         error: {
           name: 'Error',
-          message: 'network failed',
+          message: 'Service request failed',
         },
       }),
     );

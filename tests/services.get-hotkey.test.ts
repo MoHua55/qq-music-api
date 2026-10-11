@@ -82,7 +82,7 @@ describe('services/getHotKey', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('services/getHotKey', () => {
         service: 'getHotKey',
         error: {
           name: 'Error',
-          message: 'hotkey failed',
+          message: 'Service request failed',
         },
       }),
     );

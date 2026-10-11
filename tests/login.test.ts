@@ -300,7 +300,7 @@ describe('QQ login controllers', () => {
       .query({ cookie: 'qqmusic_session=opaque-token' });
 
     expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: 'upstream exploded' });
+    expect(response.body).toEqual({ error: 'Service request failed' });
   });
 
   it('should keep /login/status at 200 with an empty payload when the credential was rejected', async () => {

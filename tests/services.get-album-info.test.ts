@@ -124,7 +124,7 @@ describe('services/getAlbumInfo', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -133,7 +133,7 @@ describe('services/getAlbumInfo', () => {
         service: 'getAlbumInfo',
         error: {
           name: 'Error',
-          message: 'album info failed',
+          message: 'Service request failed',
         },
       }),
     );
