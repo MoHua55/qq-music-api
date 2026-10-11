@@ -91,9 +91,13 @@ const pagedFavorites =
   };
 
 describe('/user/playlist 收藏歌单的完整性', () => {
-  const read = async (upstream: Upstream) => {
+  const read = async (upstream: Upstream, favoriteOffset?: number) => {
     const harness = createHarness(upstream);
-    const data = await harness.service.getUserPlaylists(TOKEN);
+    const data = await harness.service.getUserPlaylists(
+      TOKEN,
+      undefined,
+      favoriteOffset === undefined ? undefined : { favoriteOffset },
+    );
     const offsets = harness.callsOf('CgiGetPlaylistFavInfo').map((call) => call.param.offset);
     return { data, offsets, playlists: (data?.v_playlist as unknown[]) ?? [] };
   };
@@ -104,6 +108,7 @@ describe('/user/playlist 收藏歌单的完整性', () => {
     expect(offsets).toEqual([0, 100]);
     expect(playlists).toHaveLength(1 + 130);
     expect(data).toMatchObject({ total: 131, bFinish: true });
+    expect(data).not.toHaveProperty('nextFavoriteOffset');
   });
 
   it('上游说还有更多也是用布尔值时同样认得', async () => {
@@ -129,7 +134,26 @@ describe('/user/playlist 收藏歌单的完整性', () => {
     // 上限不变：仍然最多读 10 页、1000 条
     expect(offsets).toEqual([0, 100, 200, 300, 400, 500, 600, 700, 800, 900]);
     expect(playlists).toHaveLength(1 + 1000);
-    expect(data).toMatchObject({ total: 1001, bFinish: false });
+    // total 是真实总数：自建 1 张 + 上游报的收藏 1500 张；可以从 1000 接着读
+    expect(data).toMatchObject({ total: 1501, bFinish: false, nextFavoriteOffset: 1000 });
+  });
+
+  it('从 nextFavoriteOffset 接着读时只回收藏歌单，total 不变', async () => {
+    const { data, offsets, playlists } = await read({ favorites: pagedFavorites(1500) }, 1000);
+
+    expect(offsets).toEqual([1000, 1100, 1200, 1300, 1400]);
+    expect(playlists).toHaveLength(500);
+    expect(playlists[0]).toMatchObject({ tid: 101000 });
+    expect(data).toMatchObject({ total: 1501, bFinish: true });
+    expect(data).not.toHaveProperty('nextFavoriteOffset');
+  });
+
+  it('接着读的那一轮同样有上限，并给出下一个 offset', async () => {
+    const { data, offsets } = await read({ favorites: pagedFavorites(2500) }, 1000);
+
+    expect(offsets).toHaveLength(10);
+    expect(offsets[0]).toBe(1000);
+    expect(data).toMatchObject({ total: 2501, bFinish: false, nextFavoriteOffset: 2000 });
   });
 
   it('上游一直说还有更多、每页只给几条时，同样停在上限并标成没读完', async () => {
@@ -139,7 +163,8 @@ describe('/user/playlist 收藏歌单的完整性', () => {
 
     expect(offsets).toHaveLength(20);
     expect(offsets.at(-1)).toBe(950);
-    expect(data).toMatchObject({ total: 1001, bFinish: false });
+    // 上游没给总数时，total 是已经知道的数量
+    expect(data).toMatchObject({ total: 1001, bFinish: false, nextFavoriteOffset: 1000 });
   });
 
   it('上游说还有、但这一页是空的：停下，不算读完', async () => {
@@ -149,7 +174,9 @@ describe('/user/playlist 收藏歌单的完整性', () => {
 
     expect(offsets).toEqual([0, 100]);
     expect(playlists).toHaveLength(1 + 100);
-    expect(data).toMatchObject({ bFinish: false });
+    // 没读完，但接着读也只会再拿到空页，所以不给 nextFavoriteOffset
+    expect(data).toMatchObject({ total: 101, bFinish: false });
+    expect(data).not.toHaveProperty('nextFavoriteOffset');
   });
 
   it('上游不理 offset、一直回同一页：第二页没有新条目就停，不算读完', async () => {
@@ -159,7 +186,9 @@ describe('/user/playlist 收藏歌单的完整性', () => {
 
     expect(offsets).toEqual([0, 100]);
     expect(playlists).toHaveLength(1 + 100);
+    // 上游不理 offset，接着读只会重复，所以不给 nextFavoriteOffset
     expect(data).toMatchObject({ total: 101, bFinish: false });
+    expect(data).not.toHaveProperty('nextFavoriteOffset');
   });
 
   it('凭证里没有 encryptUin 时不读收藏，回应形状与以前相同', async () => {
@@ -269,6 +298,22 @@ describe('带凭据读官方歌单的完整性', () => {
 });
 
 describe('改写成 /getSongListDetail 的形状后，已有的数量字段仍然如实', () => {
+  it.each([
+    [1, 1],
+    [true, 1],
+    [0, 0],
+    [undefined, 0],
+  ])('把读取结论 hasmore=%p 写成 cdlist[0].hasmore=%p', (hasmore, expected) => {
+    const converted = toSongListDetailResponse({
+      dirinfo: { id: 7, title: '分页歌单' },
+      songlist: [{ mid: 'song-0' }],
+      total_song_num: 1,
+      hasmore,
+    });
+
+    expect(converted?.cdlist[0].hasmore).toBe(expected);
+  });
+
   it('没读完时 cur_song_num 小于 total_song_num', () => {
     const converted = toSongListDetailResponse({
       dirinfo: { id: 7, title: '分页歌单' },
