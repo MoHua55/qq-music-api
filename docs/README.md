@@ -421,7 +421,7 @@ const userInfo = {
 
 调用例子: `/getSongListDetail?disstid=7011264340`
 
-QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等，即 `/user/playlist` 收藏项目中 `dirType: 3` 的歌单）在这条匿名接口上只返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。重新读取时每页 1000 首，最多读 10 页；读到上限或遇到空页时会停下，这时 `cdlist[0].hasmore` 是 `1`，读完时是 `0`；也可以比较 `cur_song_num` 和 `total_song_num`。匿名接口的原始响应不带 `hasmore`。上游不理分页、反复给同一页时，重复的歌不会被接上去。
+QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等，即 `/user/playlist` 收藏项目中 `dirType: 3` 的歌单）在这条匿名接口上只返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。重新读取时每页 1000 首，最多读 10 页；读到上限或遇到空页时会停下，这时 `cdlist[0].hasmore` 是 `1`，读完时是 `0`；也可以比较 `cur_song_num` 和 `total_song_num`。匿名接口的原始响应不带 `hasmore`。重新读取的 `cdlist[0]` 另外带上游给的 `listennum`（播放数）、`uin` 和 `encrypt_uin`（建立者）；上游没给就不出现。`listennum` 和匿名接口的 `visitnum` 是不是同一个统计还没核对，所以字段名照上游原样。上游不理分页、反复给同一页时，重复的歌不会被接上去。
 
 其他歌单仍走匿名接口，响应不变。重新读取失败时返回原来的 `code: 10`，状态码仍为 `200`，不会返回 `401`。Serverless 部署未设置 `QQ_SESSION_SECRET` 时不会重新读取。
 
@@ -1270,6 +1270,77 @@ songs: [
 
 ![获取票务信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getTicketInfo.png)
 
+### 猜你喜欢与推荐歌单
+
+这两条是新接口。出错时的响应和旧接口不一样：状态码直接说明结果，响应里带固定的 `errorKey`，前端照它判断就行（见本节最后）。
+
+#### 猜你喜欢
+
+`GET /user/guess-you-like`，需要登录（cookie 或 `X-QQ-Session`）。每次从 QQ 音乐的「猜你喜欢」电台拿几首歌，目前一般是 5 首，多叫几次就能一直听下去。
+
+```json
+{
+  "code": 200,
+  "songs": [{ "mid": "...", "id": 123, "name": "...", "singer": [], "album": {}, "file": {} }],
+  "extras": [{ "reason": "..." }]
+}
+```
+
+- `songs` 里每首歌保持上游原来的格式，和 `/user/liked-songs` 的歌曲一样。
+- `extras` 是上游给的推荐理由等附加信息，原样转交；上游没给时没有这个字段。
+- 没登录回 `401`（`errorKey: auth.required`），不会拿未登录的结果冒充个人推荐。
+- 上游说成功但一首歌都没给，回 `422`（`errorKey: resource.not-found`）。
+- Serverless 部署没设 `QQ_SESSION_SECRET` 时回 `501`，和其他要登录的接口一样。
+
+#### 推荐歌单
+
+`GET /recommend/playlists`，可选 `limit`（默认 25，最多 60）。有登录会话就带着凭证去读，没有就匿名读；Serverless 没设 `QQ_SESSION_SECRET` 也能匿名读。
+
+```json
+{
+  "code": 200,
+  "playlists": [
+    {
+      "tid": 123,
+      "title": "...",
+      "desc": "...",
+      "picurl": "https://...",
+      "songnum": 30,
+      "play_cnt": 4321,
+      "creator": { "uin": "...", "encrypt_uin": "...", "nick": "...", "avatar": "https://..." }
+    }
+  ],
+  "more": true
+}
+```
+
+- 字段名和歌单列表常用的一样，拿 `tid` 调 `/getSongListDetail` 就能读歌。
+- 上游没给的数字（`songnum`、`play_cnt`）就不出现，不会补成 0。
+- `more` 只是转述上游的提示。实测这个推荐更像一条推荐流，不是固定长度的列表，所以没有提供「接着读」的参数。
+- 会话过期或解不开时当作没登录、匿名读；会话还在但凭证被 QQ 拒绝时回 `401`，前端应清掉这个会话。
+- 一张能用的歌单都没有时回 `422`。
+
+#### 出错时的响应
+
+```json
+{
+  "code": 429,
+  "kind": "rate-limited",
+  "errorKey": "upstream.rate-limited",
+  "message": "Too many requests",
+  "retryable": false
+}
+```
+
+| 状态码 | 什么情况 | 常见的 `errorKey` |
+| --- | --- | --- |
+| `401` | 没登录，或凭证被 QQ 拒绝 | `auth.required`、`auth.credential-invalid` |
+| `422` | 上游成功但没有数据 | `resource.not-found` |
+| `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
+| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`network.*` |
+
+`message` 是固定的英文说明，不会带上游的原始内容或凭证。
+
 ### 查询登录通道与后端能力
 
 先调用 `GET /login/channels`，就能知道当前部署支持哪些登录通道和后端功能。这个接口不需要登录，也不访问 QQ 上游。
@@ -1291,7 +1362,7 @@ songs: [
 | `playback` | `getSongDetail`、`getAudioSource` | `getReplacement` |
 | `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
-| `recommendations` | — | `getPersonalFm`、`getDailySongs`、`getRecommendedCollections`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
 | `playbackReports` | — | `reportPlayback` |
 
@@ -1308,7 +1379,7 @@ songs: [
     "configured": true,
     "features": {
       "library": { "getLikedSongs": true },
-      "recommendations": { "getPersonalFm": false },
+      "recommendations": { "getDailySongs": false },
       "mutations": { "likeSong": false }
     }
   }
@@ -1332,6 +1403,7 @@ songs: [
 | `/user/liked-songs` | 可选 `offset`、`limit`（最大 100）、cookie | 内建「我喜欢」歌曲分页 |
 | `/user/playlist-detail` | `tid`（建议必传）、可选 `dirid`，可选 `offset`、`limit`（最大 100）、cookie | 自己歌单的歌曲分页，不受歌单可见性限制 |
 | `/user/albums` | 可选 `offset`、`limit`（最大 100，默认 20）、cookie | 收藏的专辑分页 |
+| `/user/guess-you-like` | cookie | 猜你喜欢的几首歌（见「猜你喜欢与推荐歌单」） |
 | `/getMusicPlay/:songmid` | `quality`、cookie | 使用当前扫码登录态取得播放链接 |
 | `/logout` | cookie | 清除当前登录态，并同步删除注入仓库中的记录 |
 

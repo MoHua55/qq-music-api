@@ -2,8 +2,10 @@
 
 ### 新功能
 
-- Node 增加 `/login/channels`，可在登录前查询支持的登录通道、会话模式与后端功能。Node 和 serverless 的响应都新增 `data.features`，按接口分组，用布尔值说明已经实现的方法；推荐、写入等尚未实现的方法保持 `false`。原有通道、会话模式和 `configured` 的含义不变。
+- Node 增加 `/login/channels`，可在登录前查询支持的登录通道、会话模式与后端功能。Node 和 serverless 的响应都新增 `data.features`，按接口分组，用布尔值说明已经实现的方法；写入等尚未实现的方法保持 `false`。原有通道、会话模式和 `configured` 的含义不变。
 - `/user/playlist` 的收藏歌单超过 1000 张时可以接着读：响应带 `nextFavoriteOffset`，把它当成 `favoriteOffset` 再请求一次，那一轮只返回收藏歌单。不带参数时请求和响应都和以前一样。
+- 新增 `/user/guess-you-like`（猜你喜欢，要登录，每次拿几首歌）和 `/recommend/playlists`（推荐歌单，有登录就带凭证，没有就匿名读），Node 和 serverless 都能用。出错时用状态码加固定的 `errorKey` 说明原因：没登录或凭证被拒是 `401`、上游没给数据是 `422`、限流是 `429`、上游失败是 `502`。`/login/channels` 里的 `getPersonalFm`、`getRecommendedCollections` 改成 `true`。
+- `/getSongListDetail` 带凭证重读官方歌单时，`cdlist[0]` 多了 `listennum`（播放数）、`uin` 和 `encrypt_uin`（建立者），字段名沿用上游。
 
 ### 改进
 

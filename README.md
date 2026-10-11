@@ -95,6 +95,8 @@ qqMusic.configureAuthSessionRepository({
 | `/user/playlist` | 读取自建和收藏歌单 |
 | `/user/liked-songs?offset=0&limit=100` | 分页读取内建「我喜欢」歌曲 |
 | `/user/albums?offset=0&limit=20` | 分页读取收藏专辑 |
+| `/user/guess-you-like` | 猜你喜欢，每次拿几首歌 |
+| `/recommend/playlists?limit=25` | 推荐歌单；有登录就带凭证，没有就匿名 |
 | `/getMusicPlay/:songmid?quality=flac&mediaId=<media_mid>` | 使用当前登录态取得播放链接 |
 | `/logout` | 清除当前登录态 |
 
