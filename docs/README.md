@@ -1337,7 +1337,7 @@ songs: [
 
 `qr/check` 成功时会设置 HttpOnly `qqmusic_session`，并在响应的 `cookie` 字段返回同一个 opaque session 值，供跨来源 transport 保存。该值不包含 QQ 音乐凭证；`musickey`、MQTT token 和 Android 装置上下文不会写入一般日志或响应。用户资料中的账号 ID 只会作为 profile 字段返回。
 
-`/user/playlist` 分别读取自建项目与收藏歌单后合并去重。收藏歌单每页读 100 条，一次最多读 1000 条。
+`/user/playlist` 分别读取自建项目与收藏歌单后合并去重。`uid` 只能是登录账号自己的 id（不传就是本人）；传别人的 uid 会回 `400`（`{ code: 400, message: 'uid must be the logged-in account' }`），不会去读别人的歌单。以前这样传会把对方的自建歌单和自己的收藏混在一起。收藏歌单每页读 100 条，一次最多读 1000 条。
 
 - 一次就读完时，`more` 是 `false`，`total` 就是 `playlist` 的条数，和以前一样。
 - 读到 1000 条还没读完时，`more` 是 `true`，`total` 是真实总数（自建数加上上游报的收藏总数），响应另外带 `nextFavoriteOffset`。把它当成 `favoriteOffset` 再请求一次就能接着读；接着读的那一轮只返回收藏歌单，每轮同样最多 1000 条，读完时不再带 `nextFavoriteOffset`。

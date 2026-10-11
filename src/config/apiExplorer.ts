@@ -313,7 +313,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       {
         key: 'uid',
         label: 'User ID',
-        description: 'Defaults to the authenticated QQ Music account.',
+        description:
+          'Defaults to the authenticated QQ Music account. Only that account is supported; another account answers 400.',
       },
       {
         key: 'favoriteOffset',
