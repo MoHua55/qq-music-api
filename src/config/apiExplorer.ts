@@ -86,6 +86,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'qrCheck', method: 'GET', routePath: '/login/qr/check', category: 'Login' },
   { name: 'qrCancel', method: 'GET', routePath: '/login/qr/cancel', category: 'Login' },
   { name: 'loginStatus', method: 'GET', routePath: '/login/status', category: 'Login' },
+  { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
@@ -258,6 +259,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         description: 'qq (scan with mobile QQ, default) or wechat (scan with WeChat).',
       },
     ],
+  },
+  loginChannels: {
+    description:
+      'List login channels, session mode, configuration status and supported backend methods. No login or upstream request is needed. Feature flags describe implementation; check configured and login status separately.',
   },
   qrCreate: {
     description: 'Create the PNG QR image for an existing login session.',

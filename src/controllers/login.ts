@@ -1,11 +1,13 @@
 import type { Context } from 'koa';
 import {
   DEFAULT_LOGIN_CHANNEL,
+  NODE_RUNTIME_CAPABILITIES,
   normalizeLoginChannel,
   QrLoginServiceError,
   SUPPORTED_LOGIN_CHANNELS,
 } from '../services/auth/qrLogin';
 import qrLoginService from '../services/auth/qrLogin.node';
+import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import { getTypedQuery } from '../types/core/request';
 
 export const AUTH_COOKIE_NAME = 'qqmusic_session';
@@ -20,6 +22,14 @@ export const AUTH_COOKIE_NAME = 'qqmusic_session';
  * place when sealed arrives, and so both modes share one code path.
  */
 export const AUTH_HEADER_NAME = 'x-qq-session';
+
+export const loginChannels = async (ctx: Context): Promise<void> => {
+  ctx.status = 200;
+  ctx.body = {
+    code: 200,
+    data: describeRuntimeCapabilities('node', NODE_RUNTIME_CAPABILITIES, true),
+  };
+};
 
 interface LoginQuery {
   key?: string;

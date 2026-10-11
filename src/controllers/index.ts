@@ -36,7 +36,16 @@ import getTopLists from './getTopLists';
 import getUserAlbums from './getUserAlbums';
 import getUserLikedSongs from './getUserLikedSongs';
 import getUserPlaylist from './getUserPlaylist';
-import { loginStatus, logout, qrCancel, qrCheck, qrCreate, qrKey, userDetail } from './login';
+import {
+  loginChannels,
+  loginStatus,
+  logout,
+  qrCancel,
+  qrCheck,
+  qrCreate,
+  qrKey,
+  userDetail,
+} from './login';
 
 const { get: getCookie, set: setCookie } = cookies;
 
@@ -80,6 +89,7 @@ export default {
   qrCheck: withControllerLogging('qrCheck', qrCheck),
   qrCancel: withControllerLogging('qrCancel', qrCancel),
   loginStatus: withControllerLogging('loginStatus', loginStatus),
+  loginChannels: withControllerLogging('loginChannels', loginChannels),
   logout: withControllerLogging('logout', logout),
   userDetail: withControllerLogging('userDetail', userDetail),
   getUserAlbums: withControllerLogging('getUserAlbums', getUserAlbums),

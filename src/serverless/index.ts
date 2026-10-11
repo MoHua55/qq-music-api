@@ -16,6 +16,7 @@ import {
   type RuntimeCapabilities,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
 import { AuthCredentialRejectedError } from '../util/authError';
@@ -699,11 +700,7 @@ export const handleRequest = async (
     const capabilities = capabilitiesFor(options);
     return json({
       code: 200,
-      data: {
-        channels: capabilities.channels,
-        sessionMode: capabilities.sessionMode,
-        configured,
-      },
+      data: describeRuntimeCapabilities('serverless', capabilities, configured),
     });
   }
 

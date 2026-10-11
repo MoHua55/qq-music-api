@@ -14,6 +14,7 @@ router.get('/login/qr/create', context.qrCreate);
 router.get('/login/qr/check', context.qrCheck);
 router.get('/login/qr/cancel', context.qrCancel);
 router.get('/login/status', context.loginStatus);
+router.get('/login/channels', context.loginChannels);
 router.get('/logout', context.logout);
 router.get('/user/detail', context.userDetail);
 router.get('/user/playlist', context.getUserPlaylist);

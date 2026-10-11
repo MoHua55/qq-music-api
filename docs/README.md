@@ -1270,6 +1270,53 @@ songs: [
 
 ![获取票务信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getTicketInfo.png)
 
+### 查询登录通道与后端能力
+
+先调用 `GET /login/channels`，就能知道当前部署支持哪些登录通道和后端功能。这个接口不需要登录，也不访问 QQ 上游。
+
+| 字段 | 怎么读 |
+| --- | --- |
+| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`；serverless 默认只有 `wechat`，注入 QQ 中继后才有 `qq`。`qq` 是手机 QQ 扫码 |
+| `data.sessionMode` | Node 为 `stored`，serverless 为 `sealed` |
+| `data.configured` | Node 可直接使用内存会话，始终为 `true`；serverless 保持按 `QQ_SESSION_SECRET` 是否存在判断，只有旧密钥时仍为 `false` |
+| `data.features` | 按共用接口分组的方法布尔值，说明后端是否已实现相应能力。它与当前用户是否登录、上游是否接受凭证分开；需要登录的功能还要检查 `configured` 和 `/login/status` |
+
+`features` 的分组与方法名：
+
+| 分组 | 已实现的方法 | 尚未实现的方法 |
+| --- | --- | --- |
+| `auth` | `getLoginStatus`、`logout`、`getQrKey`、`createQr`、`checkQr`、`cancelQr` | — |
+| `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs` | `getCloudCollection` |
+| `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums` | `getPlaylistDetail`、`getCloudTracks`、`getSubscriptionStatus` |
+| `playback` | `getSongDetail`、`getAudioSource` | `getReplacement` |
+| `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
+| `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
+| `recommendations` | — | `getPersonalFm`、`getDailySongs`、`getRecommendedCollections`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
+| `playbackReports` | — | `reportPlayback` |
+
+已有的 `/getSongListDetail` 继续返回原来的歌单数据；`catalog.getPlaylistDetail: false` 指的是尚未提供单独的歌单 metadata 能力。纯前端的可用性判断与本地诊断不属于这里的后端方法声明。
+
+响应示例（只展示部分 `features`）：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "channels": ["qq", "wechat"],
+    "sessionMode": "stored",
+    "configured": true,
+    "features": {
+      "library": { "getLikedSongs": true },
+      "recommendations": { "getPersonalFm": false },
+      "mutations": { "likeSong": false }
+    }
+  }
+}
+```
+
+新增方法时会在对应分组里加布尔字段。遇到自己不认识的字段可以忽略，查询尚未声明的方法时按不支持处理。
+
 ### QQ 音乐原生扫码登录
 
 扫码登录支持手机 QQ 与微信两条通道，直接返回上游 QR 图片，不需要服务器生成二维码。手机 QQ 通道目前为 PNG，微信通道目前为 JPEG，调用方必须使用 data URL 自带的 MIME type。
