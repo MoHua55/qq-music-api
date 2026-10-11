@@ -20,6 +20,7 @@ jest.mock('../src/services/auth/qrLogin', () => ({
 import request from 'supertest';
 import app from '../src/app';
 import { handleRequest } from '../src/serverless';
+import { RequestRejectedError } from '../src/util/requestError';
 
 const server = app.callback();
 const TOKEN = 'fixture-session-token';
@@ -102,6 +103,19 @@ describe.each(['node', 'serverless'] as const)('GET /user/playlist (%s)', (runti
     await call(runtime, query);
 
     expect(lastCall()).toEqual([TOKEN, undefined, undefined]);
+  });
+
+  it("answers 400 when the service rejects another account's uid", async () => {
+    mockGetUserPlaylists.mockRejectedValue(
+      new RequestRejectedError('uid must be the logged-in account'),
+    );
+
+    const result = await call(runtime, '&uid=99');
+
+    expect(result).toEqual({
+      status: 400,
+      body: { code: 400, message: 'uid must be the logged-in account' },
+    });
   });
 
   it('still answers 401 without a usable session', async () => {
