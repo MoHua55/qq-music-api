@@ -1895,6 +1895,18 @@ const authSessionExpiryAt = (credential: QqCredential, now: number): number => {
   return now + ttl;
 };
 
+/** 收藏歌单最多读这么多条：上游一直说还有更多时，不能无限读下去。 */
+const FAVORITE_PLAYLIST_LIMIT = 1000;
+const FAVORITE_PLAYLIST_PAGE_SIZE = 100;
+
+const hasMoreOf = (page: Dictionary): boolean =>
+  page.hasmore === true || numberOf(page.hasmore) === 1;
+
+const playlistIdOf = (value: unknown): string => {
+  const item = dictionaryOf(value);
+  return identifierOf(item.tid ?? item.dissid ?? item.id ?? item.dirId ?? item.dirid);
+};
+
 const getPlaylists = async (
   http: AuthHttpClient,
   auth: AuthSession,
@@ -1913,34 +1925,40 @@ const getPlaylists = async (
   const favoritePlaylists: unknown[] = [];
   const encryptedUin = stringOf(auth.credential.encryptUin);
 
+  // 只有上游最后一页说“没有更多了”才算读完。读到上限、遇到空页、或整页都是读过的条目（上游不理
+  // offset）时会提前停下，这时回 `bFinish: false`，控制器据此回 `more: true`，不把截断的列表说成完整的。
+  let favoritesComplete = true;
   if (encryptedUin) {
-    const pageSize = 100;
+    const seenFavorites = new Set<string>();
     let offset = 0;
-    while (offset < 1000) {
+    while (offset < FAVORITE_PLAYLIST_LIMIT) {
       const favoritePage = await callMusicu(
         http,
         auth.device,
         'get-user-favorite-playlists',
         'music.musicasset.PlaylistFavRead',
         'CgiGetPlaylistFavInfo',
-        { uin: encryptedUin, offset, size: pageSize },
+        { uin: encryptedUin, offset, size: FAVORITE_PLAYLIST_PAGE_SIZE },
         auth.credential,
       );
       const pageItems = Array.isArray(favoritePage.v_list) ? favoritePage.v_list : [];
+      favoritesComplete = !hasMoreOf(favoritePage);
+      let fresh = 0;
+      for (const item of pageItems) {
+        const id = playlistIdOf(item);
+        if (id && seenFavorites.has(id)) continue;
+        if (id) seenFavorites.add(id);
+        fresh += 1;
+      }
       favoritePlaylists.push(...pageItems.map(withOriginalCover));
       offset += pageItems.length;
-      if (
-        pageItems.length === 0 ||
-        (favoritePage.hasmore !== true && numberOf(favoritePage.hasmore) !== 1)
-      )
-        break;
+      if (favoritesComplete || fresh === 0) break;
     }
   }
 
   const seen = new Set<string>();
   const playlists = [...createdPlaylists, ...favoritePlaylists].filter((value) => {
-    const item = dictionaryOf(value);
-    const id = identifierOf(item.tid ?? item.dissid ?? item.id ?? item.dirId ?? item.dirid);
+    const id = playlistIdOf(value);
     if (!id) return true;
     if (seen.has(id)) return false;
     seen.add(id);
@@ -1952,7 +1970,7 @@ const getPlaylists = async (
       ...created,
       v_playlist: await withOfficialPlaylistCovers(http, auth, playlists),
       total: playlists.length,
-      bFinish: true,
+      bFinish: favoritesComplete,
     }),
   );
 };
@@ -2040,6 +2058,11 @@ const AUTHENTICATED_SONG_LIST_MAX_PAGES = 10;
 const songsOf = (data: Dictionary): unknown[] =>
   Array.isArray(data.songlist) ? data.songlist : [];
 
+const songIdOf = (value: unknown): string => {
+  const song = dictionaryOf(value);
+  return identifierOf(song.mid ?? song.songmid ?? song.id ?? song.songid);
+};
+
 /**
  * 带凭据读一张歌单。与 `getOwnedPlaylistSongs` 的 `CgiGetDiss` 不同，这里走 QQ 音乐客户端读算法歌单
  * 用的 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo`：百万收藏这类按账号生成的歌单，匿名 CGI
@@ -2085,16 +2108,30 @@ const getAuthenticatedSongListDetail = async (
 
   const first = await readPage(0, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
   const songs = [...songsOf(first)];
+  const seen = new Set(songs.map(songIdOf).filter(Boolean));
   const total = numberOf(first.total_song_num);
+  const readAll = () => total !== undefined && songs.length >= total;
   let last = first;
   for (let page = 1; page < AUTHENTICATED_SONG_LIST_MAX_PAGES; page += 1) {
-    const hasMore = last.hasmore === true || numberOf(last.hasmore) === 1;
-    if (!hasMore || songsOf(last).length === 0) break;
-    if (total !== undefined && songs.length >= total) break;
+    if (!hasMoreOf(last) || songsOf(last).length === 0 || readAll()) break;
     last = await readPage(songs.length, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
-    songs.push(...songsOf(last));
+    const pageSongs = songsOf(last);
+    // 上游不理 song_begin、整页都是读过的歌：不接上去，也不再往下读。
+    // 认不出身份的歌一律当成新的，不拿来判断重复。
+    const repeated = pageSongs.every((song) => {
+      const id = songIdOf(song);
+      return id !== '' && seen.has(id);
+    });
+    if (pageSongs.length > 0 && repeated) break;
+    for (const song of pageSongs) {
+      const id = songIdOf(song);
+      if (id) seen.add(id);
+    }
+    songs.push(...pageSongs);
   }
-  return { ...first, songlist: songs, hasmore: last.hasmore };
+  // 回传的 hasmore 说的是这次读取的结果：读满总数或上游说没有更多才算读完；停在上限、空页或重复页
+  // 时如实标成没读完，而不是照搬最后一页的原值。
+  return { ...first, songlist: songs, hasmore: readAll() || !hasMoreOf(last) ? 0 : 1 };
 };
 
 const FAVORITE_ASSET_URL = 'https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg';
