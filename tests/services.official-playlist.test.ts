@@ -1,5 +1,7 @@
 import {
   albumCoverUrlOf,
+  albumMidOfCoverUrl,
+  albumPicCoverUrlOf,
   firstSongAlbumCoverUrl,
   isOfficialPlaylistEntry,
   OFFICIAL_PLAYLIST_DIR_TYPES,
@@ -61,6 +63,61 @@ describe('albumCoverUrlOf', () => {
     for (const mid of ['', '   ', undefined, null, 12345, '001vZ/../x', '001vZ?x=1', 'a b']) {
       expect(albumCoverUrlOf(mid)).toBeUndefined();
     }
+  });
+});
+
+describe('albumMidOfCoverUrl', () => {
+  it('从专辑图地址里取出专辑 mid，不管尺寸、协议，也不管后面带不带参数', () => {
+    for (const url of [
+      'http://y.gtimg.cn/music/photo_new/T002R300x300M000000FixAlbum001.jpg',
+      'https://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum001.jpg?max_age=2592000',
+      '  https://y.gtimg.cn/music/photo_new/T002R800x800M000000FixAlbum001.png  ',
+    ]) {
+      expect(albumMidOfCoverUrl(url)).toBe('000FixAlbum001');
+    }
+  });
+
+  it('不是专辑图、缺 mid 或带非法字符时认不出来', () => {
+    for (const url of [
+      'http://y.qq.com/m/resource/calendar/1009_300.jpg',
+      'https://y.gtimg.cn/music/photo_new/T011R213x213M000000FixLayer002.png',
+      'https://y.gtimg.cn/music/photo_new/T002R300x300M000.jpg',
+      'https://y.gtimg.cn/music/photo_new/T002R300x300M000000Fix%20Album.jpg',
+      'https://y.gtimg.cn/music/photo_new/T002R300x300M000000FixAlbum001.gif',
+      '',
+      '   ',
+      undefined,
+      null,
+      12345,
+    ]) {
+      expect(albumMidOfCoverUrl(url)).toBeUndefined();
+    }
+  });
+});
+
+describe('albumPicCoverUrlOf', () => {
+  it('官方歌单条目的 albumPicUrl 拼出的封面，与第一首歌的专辑封面是同一种写法', () => {
+    const [daily, roaming, million] = favoritePlaylists.v_list;
+
+    expect(albumPicCoverUrlOf(roaming)).toBe(COVER_211192);
+    expect(albumPicCoverUrlOf(daily)).toBe(
+      'https://y.gtimg.cn/music/photo_new/T002R300x300M000000FixAlbum007.jpg?max_age=2592000',
+    );
+    expect(albumPicCoverUrlOf(million)).toBe(
+      'https://y.gtimg.cn/music/photo_new/T002R300x300M000000FixAlbum004.jpg?max_age=2592000',
+    );
+  });
+
+  it('不看 logo：没有 albumPicUrl（或它不是专辑图）就不给封面，哪怕 logo 是一张专辑图', () => {
+    const logo = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000000FixAlbum001.jpg';
+
+    expect(albumPicCoverUrlOf({ logo })).toBeUndefined();
+    expect(albumPicCoverUrlOf({ logo, albumPicUrl: '' })).toBeUndefined();
+    expect(albumPicCoverUrlOf({ logo, albumPicUrl: 'http://y.qq.com/calendar/1009_300.jpg' })).toBe(
+      undefined,
+    );
+    expect(albumPicCoverUrlOf(null)).toBeUndefined();
+    expect(albumPicCoverUrlOf('albumPicUrl')).toBeUndefined();
   });
 });
 
