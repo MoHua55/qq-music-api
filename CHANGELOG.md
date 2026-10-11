@@ -3,20 +3,22 @@
 ### 新功能
 
 - Node 增加 `/login/channels`，可在登录前查询支持的登录通道、会话模式与后端功能。Node 和 serverless 的响应都新增 `data.features`，按接口分组，用布尔值说明已经实现的方法；推荐、写入等尚未实现的方法保持 `false`。原有通道、会话模式和 `configured` 的含义不变。
+- `/user/playlist` 的收藏歌单超过 1000 张时可以接着读：响应带 `nextFavoriteOffset`，把它当成 `favoriteOffset` 再请求一次，那一轮只返回收藏歌单。不带参数时请求和响应都和以前一样。
 
 ### 改进
 
 - 旧接口出错返回 `500` 时，不再把原始异常原样带回去。以前响应里可能夹着上游请求地址、请求头、调用栈这类内部信息；现在 `error` 只留固定的说明文字，再加上可以公开的错误码（例如 `ECONNRESET`）和上游 HTTP 状态码。状态码和 `error` 字段都没变。日志也只记录同样的摘要，账号和设备相关的参数值会被遮掉。
-- `/user/playlist` 的收藏歌单读到 1000 条的安全上限、或者上游一直说还有更多时，`more` 改为 `true`，不再把截断的列表说成完整的。上限本身不变；上游不理分页、反复给同一页时会提早停下，少发几次请求。
-- `/getSongListDetail` 带凭证重读官方歌单时，上游反复给同一页不再把重复的歌接上去。
+- `/user/playlist` 的收藏歌单没读完时（读到 1000 条上限、上游给了空页或反复给同一页），`more` 改为 `true`，`total` 改为真实总数，不再把截断的列表说成完整的。上限本身不变；上游不理分页时会提早停下，少发几次请求。
+- `/getSongListDetail` 带凭证重读官方歌单时，上游反复给同一页不再把重复的歌接上去；`cdlist[0]` 多了 `hasmore`（`1` 表示没读完）。
 
 ### 内部改进
 
 - 为后续接口增加共用请求核心，支持批次请求、限流、只读重试和整体超时。现有接口仍使用原来的请求流程。新增离线测试同时验证 Node 原生 fetch 和 Web Response 的行为。
+- 开发日志更好排查：程序自己的固定错误说明会作为 `reason` 记进日志，对外响应仍是一般化的文字；分页没读完就停下时会记一条 `qq-auth.paging-stopped`，说明原因和读到的数量，不记账号或歌单 id。
 
 ### 仓库维护
 
-- 默认测试里不再有只看状态码的旧路由测试。Folia 会调用的歌曲信息、歌手专辑、歌手热门歌曲改成模拟上游的严格测试，Node 和 Serverless 各跑一遍；其余旧路由测试移到 `tests/legacy-routes/`，用 `npm run test:legacy-routes`（不连外网）或 `npm run probe:legacy-routes`（连真实接口）单独跑。
+- 默认测试里不再有只看状态码的旧路由测试。Folia 会调用的歌曲信息、歌手专辑、歌手热门歌曲改成模拟上游的严格测试，Node 和 Serverless 各跑一遍；其余旧路由测试移到 `tests/legacy-routes/`，用 `npm run test:legacy-routes`（不连外网）或 `npm run probe:legacy-routes`（连真实接口）单独跑。专辑信息也补上了同样的成功案例。
 
 ## [3.1.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.4...v3.1.5) (2026-10-11)
 
