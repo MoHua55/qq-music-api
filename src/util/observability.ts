@@ -1,6 +1,7 @@
 import type { Context, Next } from 'koa';
 import { AuthCredentialRejectedError } from './authError';
 import { logger } from './logger';
+import { RequestRejectedError } from './requestError';
 import { summarizeError, toLegacyErrorMessage } from './safeError';
 
 type SummaryValue = Record<string, unknown>;
@@ -169,8 +170,10 @@ const handleControllerError = (
   startedAt: number,
 ): void => {
   // 上游明确拒绝凭证是客户端可以自己处理的情况（清掉会话重新登录），不是服务端故障。之前它和其余
-  // 异常一样落到 500，客户端只能判成网络错误，于是失效的会话永远清不掉。其余异常行为不变。
-  const rejected = error instanceof AuthCredentialRejectedError;
+  // 异常一样落到 500，客户端只能判成网络错误，于是失效的会话永远清不掉。请求本身不被接受（400）
+  // 同理。其余异常行为不变。
+  const rejected =
+    error instanceof AuthCredentialRejectedError || error instanceof RequestRejectedError;
   const status = rejected ? error.httpStatus : 500;
   const meta = {
     ...baseMeta,

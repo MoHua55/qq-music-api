@@ -1,5 +1,6 @@
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
+import { RequestRejectedError } from '../../util/requestError';
 import type { UpstreamPhase } from '../../util/safeError';
 import {
   albumPicCoverUrlOf,
@@ -1931,6 +1932,14 @@ const logPagingStopped = (
   });
 };
 
+/** 登录账号自己的 id：解析后的账号 id，或凭证里原样的两个字段（微信凭证的 `musicid` 是占位的 0）。 */
+const isOwnAccountId = (credential: QqCredential, uid: string): boolean =>
+  [
+    credentialMusicId(credential),
+    identifierOf(credential.musicid),
+    identifierOf(credential.str_musicid),
+  ].includes(uid.trim());
+
 const playlistIdOf = (value: unknown): string => {
   const item = dictionaryOf(value);
   return identifierOf(item.tid ?? item.dissid ?? item.id ?? item.dirId ?? item.dirid);
@@ -1945,7 +1954,6 @@ const playlistIdOf = (value: unknown): string => {
 const getPlaylists = async (
   http: AuthHttpClient,
   auth: AuthSession,
-  uin?: string,
   favoriteOffset = 0,
 ): Promise<Dictionary> => {
   const created = await callMusicu(
@@ -1954,7 +1962,7 @@ const getPlaylists = async (
     'get-user-playlists',
     'music.musicasset.PlaylistBaseRead',
     'GetPlaylistByUin',
-    { uin: uin || credentialMusicId(auth.credential) },
+    { uin: credentialMusicId(auth.credential) },
     auth.credential,
   );
   const createdPlaylists = Array.isArray(created.v_playlist) ? created.v_playlist : [];
@@ -2957,11 +2965,13 @@ class QrLoginServiceImpl implements QrLoginService {
     options: UserPlaylistOptions = {},
   ): Promise<Dictionary | null> {
     const auth = await this.authFor(token);
-    return auth
-      ? withCredentialRejectionMapped(() =>
-          getPlaylists(this.http, auth, uin, options.favoriteOffset ?? 0),
-        )
-      : null;
+    if (!auth) return null;
+    // 只支持登录账号本身：别人的 uid 以前会让自建歌单读对方、收藏歌单读自己，两边混在一起。
+    if (uin !== undefined && uin.trim() !== '' && !isOwnAccountId(auth.credential, uin))
+      throw new RequestRejectedError('uid must be the logged-in account');
+    return withCredentialRejectionMapped(() =>
+      getPlaylists(this.http, auth, options.favoriteOffset ?? 0),
+    );
   }
 
   public async getUserAlbums(

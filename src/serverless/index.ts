@@ -21,6 +21,7 @@ import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
 import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
 import { AuthCredentialRejectedError } from '../util/authError';
+import { RequestRejectedError } from '../util/requestError';
 import { toLegacyErrorMessage } from '../util/safeError';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
@@ -750,7 +751,7 @@ export const handleRequest = async (
   } catch (error) {
     // Same split the Koa error middleware applies: an upstream credential rejection is a 401 the
     // client can act on, everything else is a 500.
-    if (error instanceof AuthCredentialRejectedError)
+    if (error instanceof AuthCredentialRejectedError || error instanceof RequestRejectedError)
       return json({ code: error.httpStatus, message: error.message }, error.httpStatus);
     return json({ error: toLegacyErrorMessage(error) }, 500);
   }

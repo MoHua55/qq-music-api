@@ -150,7 +150,7 @@ describe('specific reasons stay in developer logs only', () => {
 describe('reason whitelist stays in step with the source', () => {
   const SRC = path.join(__dirname, '..', 'src');
   const ERROR_CLASSES =
-    'Error|TypeError|WechatQrError|SealedSessionError|SessionCryptoError|QrLoginServiceError';
+    'Error|TypeError|WechatQrError|SealedSessionError|SessionCryptoError|QrLoginServiceError|RequestRejectedError';
   // The new error core and transport build their own safe errors and are not part of this list.
   const SKIPPED_DIRS = [path.join(SRC, 'protocol'), path.join(SRC, 'transport')];
 
