@@ -166,6 +166,7 @@ describe('toSongListDetailResponse', () => {
           cur_song_num: 3,
           songnum: 50,
           total_song_num: 50,
+          hasmore: 0,
           songlist: data.songlist,
         },
       ],

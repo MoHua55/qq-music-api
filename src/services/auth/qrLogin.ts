@@ -6,6 +6,7 @@ import {
   firstSongAlbumCoverUrl,
   isOfficialPlaylistEntry,
 } from '../songLists/officialPlaylist';
+import type { UserPlaylistOptions } from '../user/userPlaylistResponse';
 import {
   type AndroidDevice,
   buildAndroidComm,
@@ -356,7 +357,11 @@ export interface QrLoginService {
   cancelSession(key: string): void;
   getLoginStatus(token?: string): Promise<Dictionary | null>;
   getUserDetail(token?: string): Promise<Dictionary | null>;
-  getUserPlaylists(token?: string, uin?: string): Promise<Dictionary | null>;
+  getUserPlaylists(
+    token?: string,
+    uin?: string,
+    options?: UserPlaylistOptions,
+  ): Promise<Dictionary | null>;
   getUserAlbums(token?: string, offset?: number, limit?: number): Promise<Dictionary | null>;
   getUserLikedSongs(token?: string, offset?: number, limit?: number): Promise<Dictionary | null>;
   getOwnedPlaylistSongs(
@@ -1931,10 +1936,17 @@ const playlistIdOf = (value: unknown): string => {
   return identifierOf(item.tid ?? item.dissid ?? item.id ?? item.dirId ?? item.dirid);
 };
 
+/**
+ * 第一轮（`favoriteOffset` 为 0）回自建＋收藏；从 `favoriteOffset` 接着读的那几轮只回收藏。
+ * 每一轮最多读 1000 条收藏。读到上限时给 `nextFavoriteOffset`；空页或重复页停下时不给，
+ * 因为接着读也只会重复同一件事。`total` 是真实总数：一轮就读完时是实际条目数；否则是自建数加上
+ * 已知的收藏总数（上游报的总数与已经读到的数量取大者）。
+ */
 const getPlaylists = async (
   http: AuthHttpClient,
   auth: AuthSession,
   uin?: string,
+  favoriteOffset = 0,
 ): Promise<Dictionary> => {
   const created = await callMusicu(
     http,
@@ -1952,14 +1964,16 @@ const getPlaylists = async (
   // 只有上游最后一页说“没有更多了”才算读完。读到上限、遇到空页、或整页都是读过的条目（上游不理
   // offset）时会提前停下，这时回 `bFinish: false`，控制器据此回 `more: true`，不把截断的列表说成完整的。
   let favoritesComplete = true;
+  let favoritesKnown = 0;
+  let nextFavoriteOffset: number | undefined;
   if (encryptedUin) {
     const seenFavorites = new Set<string>();
-    let offset = 0;
+    let offset = favoriteOffset;
     let pages = 0;
     let unique = 0;
     let upstreamTotal: number | undefined;
     let stopReason: PagingStopReason | undefined;
-    while (offset < FAVORITE_PLAYLIST_LIMIT) {
+    while (offset < favoriteOffset + FAVORITE_PLAYLIST_LIMIT) {
       const favoritePage = await callMusicu(
         http,
         auth.device,
@@ -1990,12 +2004,19 @@ const getPlaylists = async (
         break;
       }
     }
-    if (!favoritesComplete)
+    if (!favoritesComplete) {
       logPagingStopped('favorite-playlists', stopReason ?? 'limit', pages, unique, upstreamTotal);
+      if (stopReason === undefined) nextFavoriteOffset = offset;
+    }
+    const reported =
+      upstreamTotal !== undefined && Number.isSafeInteger(upstreamTotal) ? upstreamTotal : 0;
+    favoritesKnown = Math.max(reported, favoriteOffset + unique);
   }
 
   const seen = new Set<string>();
-  const playlists = [...createdPlaylists, ...favoritePlaylists].filter((value) => {
+  const firstRound = favoriteOffset === 0;
+  const listed = firstRound ? [...createdPlaylists, ...favoritePlaylists] : favoritePlaylists;
+  const playlists = listed.filter((value) => {
     const id = playlistIdOf(value);
     if (!id) return true;
     if (seen.has(id)) return false;
@@ -2007,8 +2028,12 @@ const getPlaylists = async (
     sanitizePublicValue({
       ...created,
       v_playlist: await withOfficialPlaylistCovers(http, auth, playlists),
-      total: playlists.length,
+      total:
+        firstRound && favoritesComplete
+          ? playlists.length
+          : createdPlaylists.length + favoritesKnown,
       bFinish: favoritesComplete,
+      ...(nextFavoriteOffset === undefined ? {} : { nextFavoriteOffset }),
     }),
   );
 };
@@ -2926,9 +2951,17 @@ class QrLoginServiceImpl implements QrLoginService {
     return auth ? withCredentialRejectionMapped(() => getLoginProfile(this.http, auth)) : null;
   }
 
-  public async getUserPlaylists(token?: string, uin?: string): Promise<Dictionary | null> {
+  public async getUserPlaylists(
+    token?: string,
+    uin?: string,
+    options: UserPlaylistOptions = {},
+  ): Promise<Dictionary | null> {
     const auth = await this.authFor(token);
-    return auth ? withCredentialRejectionMapped(() => getPlaylists(this.http, auth, uin)) : null;
+    return auth
+      ? withCredentialRejectionMapped(() =>
+          getPlaylists(this.http, auth, uin, options.favoriteOffset ?? 0),
+        )
+      : null;
   }
 
   public async getUserAlbums(

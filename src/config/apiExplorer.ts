@@ -315,6 +315,12 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         label: 'User ID',
         description: 'Defaults to the authenticated QQ Music account.',
       },
+      {
+        key: 'favoriteOffset',
+        label: 'Favourite offset',
+        description:
+          'Continue reading collected playlists from this position. Use the nextFavoriteOffset of the previous answer; that round returns collected playlists only.',
+      },
     ],
   },
   getUserAlbums: {

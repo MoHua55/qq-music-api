@@ -113,6 +113,8 @@ export const toSongListDetailResponse = (data: unknown): SongListDetailResponse 
         cur_song_num: songlist.length,
         songnum: total,
         total_song_num: total,
+        // 这次读取的结论：1 表示停在安全上限、空页或重复页，歌单还没读完。匿名 CGI 的回应不带这个字段。
+        hasmore: data.hasmore === true || numberOf(data.hasmore) === 1 ? 1 : 0,
         songlist,
       },
     ],

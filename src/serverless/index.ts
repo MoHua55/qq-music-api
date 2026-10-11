@@ -19,6 +19,7 @@ import { setLegacyHttpTransport } from '../services/httpTransport';
 import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
+import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
 import { AuthCredentialRejectedError } from '../util/authError';
 import { toLegacyErrorMessage } from '../util/safeError';
 import { deriveAndroidDevice } from './derivedDevice';
@@ -451,15 +452,10 @@ const routes: Record<string, RouteHandler> = {
     const data = await (await getService()).getUserPlaylists(
       token,
       url.searchParams.get('uid') ?? undefined,
+      userPlaylistOptionsOf(url.searchParams.get('favoriteOffset')),
     );
     if (!data) return json(LOGIN_REQUIRED, 401);
-    const playlist = Array.isArray(data.v_playlist) ? data.v_playlist : [];
-    return json({
-      code: 200,
-      playlist,
-      total: typeof data.total === 'number' ? data.total : playlist.length,
-      more: data.bFinish === false,
-    });
+    return json(toUserPlaylistBody(data));
   },
 
   '/user/albums': async ({ url, service: getService, token }) => {
