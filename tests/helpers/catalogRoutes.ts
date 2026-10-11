@@ -26,19 +26,41 @@ export interface UpstreamCall {
   endpoint: string;
   format?: unknown;
   singermid?: unknown;
-  payload: unknown;
+  /** musicu 请求里 `data` 解析后的内容。 */
+  payload?: unknown;
+  /** 其他 CGI 请求的查询参数，值统一成字符串（两种宿主送出时都会变成字符串）。 */
+  params?: Record<string, string>;
 }
 
 type Reply = { body: unknown } | { error: unknown };
 
 const MUSICU_URL = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
+const CGI_BASE = { c: 'https://c.y.qq.com', y: 'https://y.qq.com' };
 
-const toCall = (endpoint: string, params: Record<string, unknown>): UpstreamCall => ({
-  endpoint,
-  ...(params.format === undefined ? {} : { format: params.format }),
-  ...(params.singermid === undefined ? {} : { singermid: params.singermid }),
-  payload: typeof params.data === 'string' ? JSON.parse(params.data) : undefined,
-});
+/** Node 的 transport 收到的是相对路径和 target，换成与 fetch 相同的完整地址。 */
+const nodeEndpoint = (url: string, target?: string): string => {
+  if (target === 'u') return MUSICU_URL;
+  if (/^https?:\/\//.test(url)) return url;
+  return `${target === 'y' ? CGI_BASE.y : CGI_BASE.c}${url}`;
+};
+
+const toCall = (endpoint: string, params: Record<string, unknown>): UpstreamCall => {
+  if (endpoint !== MUSICU_URL)
+    return {
+      endpoint,
+      params: Object.fromEntries(
+        Object.entries(params)
+          .filter(([, value]) => value !== undefined && value !== null)
+          .map(([key, value]) => [key, String(value)]),
+      ),
+    };
+  return {
+    endpoint,
+    ...(params.format === undefined ? {} : { format: params.format }),
+    ...(params.singermid === undefined ? {} : { singermid: params.singermid }),
+    payload: typeof params.data === 'string' ? JSON.parse(params.data) : undefined,
+  };
+};
 
 /** Call from inside a `describe`; it installs and removes the stub around every test. */
 export const useCatalogUpstream = (runtime: CatalogRuntimeName) => {
@@ -64,7 +86,7 @@ export const useCatalogUpstream = (runtime: CatalogRuntimeName) => {
           options: { params?: Record<string, unknown> } = {},
           target?: string,
         ) => {
-          calls.push(toCall(target === 'u' ? MUSICU_URL : url, options.params ?? {}));
+          calls.push(toCall(nodeEndpoint(url, target), options.params ?? {}));
           if ('error' in reply) throw reply.error;
           return { data: reply.body as T, status: 200, statusText: 'OK', headers: {}, config: {} };
         },
