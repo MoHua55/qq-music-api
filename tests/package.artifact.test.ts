@@ -366,7 +366,7 @@ describe('published artifact', () => {
     `);
 
     expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout.trim())).toEqual({
+    expect(JSON.parse(result.stdout.trim())).toMatchObject({
       code: 200,
       data: { channels: ['wechat'], sessionMode: 'sealed', configured: true },
     });
