@@ -4,6 +4,10 @@
 
 - Node 增加 `/login/channels`，可在登录前查询支持的登录通道、会话模式与后端功能。Node 和 serverless 的响应都新增 `data.features`，按接口分组，用布尔值说明已经实现的方法；推荐、写入等尚未实现的方法保持 `false`。原有通道、会话模式和 `configured` 的含义不变。
 
+### 内部改进
+
+- 为后续接口增加共用请求核心，支持批次请求、限流、只读重试和整体超时。现有接口仍使用原来的请求流程。新增离线测试同时验证 Node 原生 fetch 和 Web Response 的行为。
+
 ## [3.1.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.4...v3.1.5) (2026-10-11)
 
 ### 改进
