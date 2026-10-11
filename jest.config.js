@@ -9,6 +9,7 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
+    'src/protocol/**/*.ts',
     'src/controllers/**/*.ts',
     'src/services/**/*.ts',
     'src/util/lyricParse.ts',
