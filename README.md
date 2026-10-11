@@ -8,19 +8,19 @@
   <a href="./LICENSE"><img alt="License" src="https://img.shields.io/github/license/yakult-green-tea/qq-music-api?style=flat-square"></a>
 </p>
 
-这个项目基于 `Koa2 + TypeScript`，通过 Web 接口访问 QQ 音乐数据。除了搜索、歌单、歌词和播放链接等常用能力，这个 fork 还加入了 QQ 音乐 App / 微信扫码登录、登录态播放、npm 嵌入和 Serverless 入口。
+这个项目基于 `Koa2 + TypeScript`，通过 Web 接口访问 QQ 音乐数据。除了搜索、歌单、歌词和播放链接等常用能力，这个 fork 还加入了手机 QQ / 微信扫码登录、登录态播放、npm 嵌入和 Serverless 入口。
 
 > [!IMPORTANT]
 > 本项目由社区维护，与腾讯或 QQ 音乐不存在隶属、授权或合作关系，仅用于技术研究、学习与兼容性开发。使用者应自行遵守所在地法律、平台条款和内容授权要求。
 
 ## 这个 fork 增加了什么
 
-- **原生扫码登录**：支持 QQ 音乐 App（MQTT over WSS）与微信两条通道。
+- **原生扫码登录**：支持手机 QQ（MQTT over WSS）与微信两条通道。
 - **更完整的登录态能力**：可读取用户信息、自建／收藏歌单、「我喜欢」歌曲和收藏专辑。
 - **登录态播放**：使用扫码取得的服务端凭证请求播放链接。
 - **可嵌入 npm 包**：Docker、Electron 和可信 Node.js 宿主可以直接使用编译产物。
 - **可注入会话仓库**：默认只保存在进程内存；宿主可以接入自己的加密持久化实现。
-- **Serverless 入口**：提供 Web 标准 `handleRequest()`，并额外导出 QQ App 扫码所需的 MQTT 能力。
+- **Serverless 入口**：提供 Web 标准 `handleRequest()`，并额外导出手机 QQ 扫码所需的 MQTT 能力。
 - **请求隔离**：包内使用私有 Axios 实例，不会修改宿主进程的 `axios.defaults`。
 
 上游来源、维护者与许可证保留说明见 [ATTRIBUTION.md](./ATTRIBUTION.md)。
@@ -84,7 +84,7 @@ qqMusic.configureAuthSessionRepository({
 
 | 接口 | 说明 |
 | --- | --- |
-| `/login/qr/key?channel=qq\|wechat` | 创建 QR 会话并取得 `data.unikey`；未指定时使用 QQ 音乐 App |
+| `/login/qr/key?channel=qq\|wechat` | 创建 QR 会话并取得 `data.unikey`；未指定时使用手机 QQ |
 | `/login/qr/create?key=<unikey>` | 取得上游 QR 图片 `data.qrimg` |
 | `/login/qr/check?key=<unikey>` | 查询 `801` 等待、`802` 已扫描、`803` 成功或 `800` 失败／过期 |
 | `/login/qr/cancel?key=<unikey>` | 关闭界面时主动取消 QR 会话 |
@@ -126,9 +126,9 @@ npm start
 | --- | --- | --- |
 | `@yakult-green-tea/qq-music-api` | Node.js、Docker、Electron | 完整 Koa 服务与可注入登录态仓库 |
 | `@yakult-green-tea/qq-music-api/serverless` | Vercel Functions、Cloudflare Workers | Web 标准 `handleRequest(request, env, options)`；没有中继时仅提供微信扫码 |
-| `@yakult-green-tea/qq-music-api/mqtt` | 能维持 WebSocket 长连接的可信宿主 | QQ 音乐 App 扫码所需的 MQTT 编解码与监听器 |
+| `@yakult-green-tea/qq-music-api/mqtt` | 能维持 WebSocket 长连接的可信宿主 | 手机 QQ 扫码所需的 MQTT 编解码与监听器 |
 
-QQ App 扫码依赖持续的 MQTT over WSS 连接。Cloudflare 应由 Durable Object 持有连接，并向 `handleRequest` 注入 `qqRelay`；Vercel Functions 无法可靠维持这条长连接，因此只应公布微信通道。
+手机 QQ 扫码依赖持续的 MQTT over WSS 连接。Cloudflare 应由 Durable Object 持有连接，并向 `handleRequest` 注入 `qqRelay`；Vercel Functions 无法可靠维持这条长连接，因此只应公布微信通道。
 
 Serverless 部署必须自行生成 `QQ_SESSION_SECRET` 并保存在平台密钥中。轮换时可以暂时提供 `QQ_SESSION_SECRET_PREVIOUS`，确认旧会话自然失效后再删除。
 

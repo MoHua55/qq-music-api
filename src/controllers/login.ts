@@ -67,7 +67,7 @@ const setServiceError = (ctx: Context, error: unknown): void => {
 };
 
 export const qrKey = async (ctx: Context): Promise<void> => {
-  // Optional and backward compatible: no `channel` means the QQ Music App QR, which is what
+  // Optional and backward compatible: no `channel` means the mobile QQ QR, which is what
   // every existing caller gets today. The response shape is unchanged either way. The legacy
   // alias `mobile` is normalized to `qq` here so callers that predate the rename keep working,
   // while the advertised set stays the two canonical channels.

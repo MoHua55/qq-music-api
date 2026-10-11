@@ -255,7 +255,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       {
         key: 'channel',
         label: 'Login Channel',
-        description: 'qq (QQ Music App QR, default) or wechat (WeChat QR).',
+        description: 'qq (scan with mobile QQ, default) or wechat (scan with WeChat).',
       },
     ],
   },
