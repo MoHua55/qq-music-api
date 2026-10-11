@@ -7,6 +7,7 @@ import {
   type SessionResolver,
 } from '../src/services/auth/qrLogin';
 import { toSongListDetailResponse } from '../src/services/songLists/officialPlaylist';
+import { logger } from '../src/util/logger';
 
 // 分页读取的安全上限要保留，但读到上限、空页、重复页时，不能再把结果说成“已经读完”。
 // 上游回应全是合成数据。
@@ -293,5 +294,89 @@ describe('改写成 /getSongListDetail 的形状后，已有的数量字段仍�
     });
 
     expect(converted?.cdlist[0]).toMatchObject({ cur_song_num: 10, total_song_num: 10 });
+  });
+});
+
+// “还不能确认完整”和“停止继续读”是两件事：没读完时这一轮照样停下，不无限读，
+// 但留下一条诊断日志，说明停下的原因和读到的数量。日志只记数量，不记账号或歌单 id。
+describe('提前停下时留下诊断日志', () => {
+  const stops = () =>
+    jest
+      .mocked(logger.warn)
+      .mock.calls.filter(([event]) => event === 'qq-auth.paging-stopped')
+      .map(([, meta]) => meta);
+
+  beforeEach(() => {
+    jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const readFavorites = (favorites: Upstream['favorites']) =>
+    createHarness({ favorites }).service.getUserPlaylists(TOKEN);
+
+  const readSongs = (diss: Upstream['diss']) =>
+    createHarness({ diss }).service.getAuthenticatedSongListDetail(TOKEN, 7);
+
+  it('收藏歌单读完时不留诊断', async () => {
+    await readFavorites(pagedFavorites(130));
+
+    expect(stops()).toEqual([]);
+  });
+
+  it.each([
+    ['limit', pagedFavorites(1500), { pages: 10, items: 1000, upstreamTotal: 1500 }],
+    [
+      'empty-page',
+      pagedFavorites(100, { hasmore: () => 1 }),
+      { pages: 2, items: 100, upstreamTotal: 100 },
+    ],
+    [
+      'repeated-page',
+      () => ({ v_list: favoriteItems(0, 100), hasmore: 1 }),
+      { pages: 2, items: 100 },
+    ],
+  ] as const)('收藏歌单因为 %s 停下时留下一条诊断', async (reason, favorites, counts) => {
+    await readFavorites(favorites);
+
+    expect(stops()).toEqual([{ source: 'favorite-playlists', reason, ...counts }]);
+  });
+
+  it.each([
+    ['读完整张', pagedDiss(2500, 1000)],
+    ['读满 total_song_num', pagedDiss(4, 2, { hasmore: () => 1 })],
+  ])('官方歌单%s时不留诊断', async (_label, diss) => {
+    await readSongs(diss);
+
+    expect(stops()).toEqual([]);
+  });
+
+  it.each([
+    [
+      'limit',
+      pagedDiss(1_000_000, 1000, { hasmore: () => 1 }),
+      { pages: 10, items: 10_000, upstreamTotal: 1_000_000 },
+    ],
+    [
+      'empty-page',
+      pagedDiss(1000, 1000, { hasmore: () => 1, reportedTotal: 1500 }),
+      { pages: 2, items: 1000, upstreamTotal: 1500 },
+    ],
+    [
+      'repeated-page',
+      () => ({
+        dirinfo: { id: 7, title: '分页歌单' },
+        songlist: Array.from({ length: 1000 }, (_, i) => ({ mid: `song-${i}` })),
+        total_song_num: 5000,
+        hasmore: 1,
+      }),
+      { pages: 2, items: 1000, upstreamTotal: 5000 },
+    ],
+  ] as const)('官方歌单因为 %s 停下时留下一条诊断', async (reason, diss, counts) => {
+    await readSongs(diss);
+
+    expect(stops()).toEqual([{ source: 'song-list-detail', reason, ...counts }]);
   });
 });
