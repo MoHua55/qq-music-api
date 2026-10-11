@@ -4,7 +4,13 @@ module.exports = {
   setupFiles: ['<rootDir>/tests/setup.ts'],
   // The default suite may use its local HTTP hosts, but never a real upstream endpoint.
   setupFilesAfterEnv: ['<rootDir>/tests/helpers/offlineNetwork.cjs'],
-  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.worktrees/', '<rootDir>/dist/'],
+  // Status-set-only legacy route tests run through their own commands; see jest.legacy-routes.config.js.
+  testPathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/.worktrees/',
+    '<rootDir>/dist/',
+    '<rootDir>/tests/legacy-routes/',
+  ],
   modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
@@ -16,7 +22,7 @@ module.exports = {
     'src/util/lyricParse.ts',
     '!src/**/*.d.ts',
     '!src/app.ts',
-    '!src/routes/**'
+    '!src/routes/**',
   ],
   coverageThreshold: {
     global: {
