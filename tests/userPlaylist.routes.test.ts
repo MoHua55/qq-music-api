@@ -36,6 +36,12 @@ const call = async (runtime: 'node' | 'serverless', query: string) => {
   return { status: response.status, body: await response.json() };
 };
 
+/** 两种宿主传参的个数可能不同，只比对有意义的三个位置。 */
+const lastCall = () => {
+  const [token, uin, options] = mockGetUserPlaylists.mock.calls.at(-1) ?? [];
+  return [token, uin, options];
+};
+
 const playlists = [
   { tid: 1, dirName: '自建' },
   { tid: 2, name: '收藏' },
@@ -55,7 +61,7 @@ describe.each(['node', 'serverless'] as const)('GET /user/playlist (%s)', (runti
       status: 200,
       body: { code: 200, playlist: playlists, total: 2, more: false },
     });
-    expect(mockGetUserPlaylists).toHaveBeenCalledWith(TOKEN, undefined, undefined);
+    expect(lastCall()).toEqual([TOKEN, undefined, undefined]);
   });
 
   it('reports the real total and where to continue when the list was cut at the limit', async () => {
@@ -83,7 +89,7 @@ describe.each(['node', 'serverless'] as const)('GET /user/playlist (%s)', (runti
     const result = await call(runtime, '&favoriteOffset=1000');
 
     expect(result.status).toBe(200);
-    expect(mockGetUserPlaylists).toHaveBeenCalledWith(TOKEN, undefined, { favoriteOffset: 1000 });
+    expect(lastCall()).toEqual([TOKEN, undefined, { favoriteOffset: 1000 }]);
   });
 
   it.each([
@@ -95,7 +101,7 @@ describe.each(['node', 'serverless'] as const)('GET /user/playlist (%s)', (runti
 
     await call(runtime, query);
 
-    expect(mockGetUserPlaylists).toHaveBeenCalledWith(TOKEN, undefined, undefined);
+    expect(lastCall()).toEqual([TOKEN, undefined, undefined]);
   });
 
   it('still answers 401 without a usable session', async () => {

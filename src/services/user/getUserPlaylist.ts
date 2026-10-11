@@ -7,5 +7,8 @@ export interface UserPlaylistParams {
   options?: UserPlaylistOptions;
 }
 
+// 没有续读参数时照旧只传两个参数，与以前的调用完全相同。
 export default async ({ token, uin, options }: UserPlaylistParams) =>
-  qrLoginService.getUserPlaylists(token, uin, options);
+  options
+    ? qrLoginService.getUserPlaylists(token, uin, options)
+    : qrLoginService.getUserPlaylists(token, uin);
