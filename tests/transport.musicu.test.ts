@@ -166,7 +166,7 @@ describe('musicu request and response contracts', () => {
 
   it('uses optional data validation and sanitizes thrown decoder errors', async () => {
     expect(
-      await client(async () => response({ value: 3 })).execute(
+      await client(async () => response(envelope({ value: 3 }))).execute(
         descriptor({ decode: (data: unknown) => (data as { value: number }).value }),
       ),
     ).toBe(3);
@@ -270,7 +270,7 @@ describe('transport scheduling, deadlines and retries', () => {
     const http = jest
       .fn<ReturnType<HttpTransport>, [HttpRequest]>()
       .mockResolvedValueOnce(response({}, 500))
-      .mockResolvedValueOnce(response({ value: true }));
+      .mockResolvedValueOnce(response(envelope({ value: true })));
     const task = client(http, { random: () => 0 }).execute(descriptor());
     await jest.advanceTimersByTimeAsync(200);
     expect(await task).toEqual({ value: true });
