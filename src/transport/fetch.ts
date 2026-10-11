@@ -48,7 +48,8 @@ const observedFailure = (raw: unknown, reading: boolean, signal: AbortSignal) =>
   ];
   const connect =
     !reading &&
-    ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'UND_ERR_CONNECT_TIMEOUT'].includes(String(code));
+    typeof code === 'string' &&
+    ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'UND_ERR_CONNECT_TIMEOUT'].includes(code);
   const safeCode =
     code === 'UND_ERR_CONNECT_TIMEOUT' || name === 'TimeoutError'
       ? 'ETIMEDOUT'
@@ -69,10 +70,16 @@ const retryDelay = (value: string | null | undefined): number | undefined => {
 
 /** Native fetch works in Node and Web hosts; inject a host executor for testing or embedding. */
 export const createFetchTransport = (fetcher: FetchExecutor = globalThis.fetch): HttpTransport => {
-  const jar = new Map<string, string>();
+  const jars = new Map<string, Map<string, string>>();
   // This instance must belong to one session context; never share it across accounts.
   return async (request) => {
     checkAbort(request.signal);
+    const origin = new URL(request.url).origin;
+    let jar = jars.get(origin);
+    if (!jar) {
+      jar = new Map<string, string>();
+      jars.set(origin, jar);
+    }
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     let explicitCookie = '';
     for (const [key, value] of Object.entries(request.headers)) {

@@ -120,6 +120,7 @@ export const createMusicuClient = (options: MusicuClientOptions) => {
   if (!object(options.comm)) throw new QqApiError('input');
   const comm = snapshot(options.comm);
   const headers = snapshot(options.headers ?? {});
+  const http = options.http;
   const limiter = options.limiter ?? defaultTokenBucket;
   const timeoutMs = options.timeoutMs ?? 25000;
   const maxRetries = options.maxRetries ?? 2;
@@ -153,7 +154,7 @@ export const createMusicuClient = (options: MusicuClientOptions) => {
           checkAbort(signal);
           let error: QqApiError;
           try {
-            const response = await options.http({
+            const response = await http({
               url: 'https://u.y.qq.com/cgi-bin/musicu.fcg',
               body,
               headers: { ...headers },

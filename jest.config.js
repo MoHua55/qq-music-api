@@ -10,6 +10,7 @@ module.exports = {
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
     'src/protocol/**/*.ts',
+    'src/transport/**/*.ts',
     'src/controllers/**/*.ts',
     'src/services/**/*.ts',
     'src/util/lyricParse.ts',
