@@ -21,6 +21,10 @@ router.get('/user/playlist', context.getUserPlaylist);
 router.get('/user/albums', context.getUserAlbums);
 router.get('/user/liked-songs', context.getUserLikedSongs);
 router.get('/user/playlist-detail', context.getOwnedPlaylistSongs);
+router.get('/user/guess-you-like', context.getGuessYouLike);
+
+// recommendations; a login session is used when present
+router.get('/recommend/playlists', context.getRecommendPlaylists);
 
 // downloadQQMusic
 router.get('/downloadQQMusic', context.getDownloadQQMusic);

@@ -98,6 +98,13 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     routePath: '/user/playlist-detail',
     category: 'User',
   },
+  { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
+  {
+    name: 'getRecommendPlaylists',
+    method: 'GET',
+    routePath: '/recommend/playlists',
+    category: 'Recommend',
+  },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   {
@@ -355,6 +362,17 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
       { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
+    ],
+  },
+  getGuessYouLike: {
+    description:
+      "Get a few songs from QQ Music's Guess You Like radio for the authenticated user (usually 5 per call). Songs keep the upstream format; reasons, when given, are in extras. Without a session it answers 401; when the upstream returns no songs it answers 422.",
+  },
+  getRecommendPlaylists: {
+    description:
+      'Get recommended playlists from the QQ Music playlist square. Uses the login session when there is one, otherwise reads anonymously. more only repeats the upstream hint; there is no continuation offset.',
+    queryParams: [
+      { key: 'limit', label: 'Limit', description: 'How many playlists, 25 by default, up to 60.' },
     ],
   },
   getDownloadQQMusic: {

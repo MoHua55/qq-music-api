@@ -289,17 +289,17 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
       expect(result.headers['retry-after']).toBeUndefined();
     });
 
-    it('answers 502 for an unknown business code and keeps the number', async () => {
-      replies.get_radio_track = { code: 22006 };
+    it.each([
+      // 22006 是码表里登记过的推荐拒绝码（实测见过），其他数字不猜含义
+      [22006, 'recommendation.rejected'],
+      [12345, 'upstream.unknown'],
+    ])('answers 502 for business code %d with key %s and keeps the number', async (code, key) => {
+      replies.get_radio_track = { code };
 
       const result = await call('/user/guess-you-like', { token });
 
       expect(result.status).toBe(502);
-      expect(result.body).toMatchObject({
-        code: 502,
-        errorKey: 'upstream.unknown',
-        upstreamCode: 22006,
-      });
+      expect(result.body).toMatchObject({ code: 502, errorKey: key, upstreamCode: code });
     });
 
     it('answers 502 without the error page when the upstream HTTP request fails', async () => {

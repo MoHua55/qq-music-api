@@ -13,6 +13,8 @@ import getMvByTag from './mv/getMvByTag';
 import getRadioLists from './radio/getRadioLists';
 // getTopLists
 import getTopLists from './rank/getTopLists';
+import getGuessYouLike from './recommend/getGuessYouLike';
+import getRecommendPlaylists from './recommend/getRecommendPlaylists';
 // search
 import getHotKey from './search/getHotKey';
 import getSearchByKey from './search/getSearchByKey';
@@ -70,4 +72,7 @@ export default {
   getUserAlbums,
   getUserLikedSongs,
   getUserPlaylist,
+  // recommend
+  getGuessYouLike,
+  getRecommendPlaylists,
 };

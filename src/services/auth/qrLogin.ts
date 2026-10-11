@@ -384,6 +384,8 @@ export interface QrLoginService {
     quality?: string | number,
     mediaId?: string,
   ): Promise<Dictionary | null>;
+  /** 新路由用：解析会话并交给共用实现建自己的上游客户端。解不开、过期都返回 `null`。 */
+  resolveSession(token?: string): Promise<AuthSession | null>;
   configureAuthSessionRepository(repository: AuthSessionRepository): void;
   logout(token?: string): Promise<void>;
 }
@@ -1416,7 +1418,7 @@ const ensureQimei = async (
 };
 
 /** The cookie form of a credential, accepted by both the musicu RPC face and the legacy CGIs. */
-const credentialCookieHeader = (credential: QqCredential): string => {
+export const credentialCookieHeader = (credential: QqCredential): string => {
   const musicid = identifierOf(credential.str_musicid) || String(credential.musicid);
   return [
     `uin=${musicid}`,
@@ -3040,6 +3042,10 @@ class QrLoginServiceImpl implements QrLoginService {
           ),
         )
       : null;
+  }
+
+  public async resolveSession(token?: string): Promise<AuthSession | null> {
+    return this.authFor(token);
   }
 
   /**

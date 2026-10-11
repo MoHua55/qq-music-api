@@ -6,6 +6,7 @@ import getAlbumInfo from './getAlbumInfo';
 import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
+import getGuessYouLike from './getGuessYouLike';
 import getHotKey from './getHotkey';
 import getImageUrl from './getImageUrl';
 import getLyric from './getLyric';
@@ -18,6 +19,7 @@ import getOwnedPlaylistSongs from './getOwnedPlaylistSongs';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
+import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerAlbum from './getSingerAlbum';
@@ -96,4 +98,6 @@ export default {
   getUserLikedSongs: withControllerLogging('getUserLikedSongs', getUserLikedSongs),
   getOwnedPlaylistSongs: withControllerLogging('getOwnedPlaylistSongs', getOwnedPlaylistSongs),
   getUserPlaylist: withControllerLogging('getUserPlaylist', getUserPlaylist),
+  getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
+  getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
 };

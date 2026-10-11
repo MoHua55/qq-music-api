@@ -16,6 +16,12 @@ import {
   type RuntimeCapabilities,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import { guessYouLikeResult } from '../services/recommend/guessYouLike';
+import type { NewRouteResult } from '../services/recommend/newRouteResult';
+import {
+  recommendPlaylistsLimitOf,
+  recommendPlaylistsResult,
+} from '../services/recommend/recommendPlaylists';
 import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
@@ -147,6 +153,10 @@ const serviceErrorResponse = (error: unknown): Response => {
 };
 
 const LOGIN_REQUIRED = { code: 401, message: 'Login required' };
+
+/** 新路由的结果已经带好状态码与 header，这里只负责写成 Response。 */
+const fromResult = (result: NewRouteResult): Response =>
+  json(result.body, result.status, result.headers);
 
 const secretsOf = (env: ServerlessEnv) => ({
   current: env.QQ_SESSION_SECRET ?? '',
@@ -449,6 +459,21 @@ const routes: Record<string, RouteHandler> = {
     return profile ? json({ code: 200, profile }) : json(LOGIN_REQUIRED, 401);
   },
 
+  '/user/guess-you-like': async ({ service: getService, token }) =>
+    fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
+
+  // 有会话就带凭证，没有就匿名。没设密钥时解不开任何会话，也不建服务，直接匿名读。
+  '/recommend/playlists': async ({ url, env, service: getService, token }) => {
+    const session =
+      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
+    return fromResult(
+      await recommendPlaylistsResult(
+        session,
+        recommendPlaylistsLimitOf(url.searchParams.get('limit')),
+      ),
+    );
+  },
+
   '/user/playlist': async ({ url, service: getService, token }) => {
     const data = await (await getService()).getUserPlaylists(
       token,
@@ -660,6 +685,7 @@ const LOGIN_ROUTES = new Set([
   '/user/albums',
   '/user/liked-songs',
   '/user/playlist-detail',
+  '/user/guess-you-like',
   '/getMusicPlay/:songmid?',
 ]);
 
