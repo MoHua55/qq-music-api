@@ -11,10 +11,8 @@ import type { QrEvent } from './qrLogin';
 // must NOT receive.
 //
 // Endpoints, the appid and the status codes below are third-party reverse-engineered protocol
-// facts taken from `L-1124/QQMusicApi` (`qqmusic_api/modules/login.py`,
-// `qqmusic_api/models/login.py`, pinned commit 8ec78ce3f16805ebe470b8308a96fef925cf8e56).
-// They are NOT official Tencent definitions. Unrecognised upstream numbers stay opaque safe
-// codes and are never renamed into an official error meaning.
+// facts (inspected 2026-08-03). They are NOT official Tencent definitions. Unrecognised
+// upstream numbers stay opaque safe codes and are never renamed into an official error meaning.
 //
 // This module must not import anything from `qrLogin.ts` at runtime (type-only imports are
 // erased): `qrLogin.ts` imports this file, and a runtime cycle would break module init.

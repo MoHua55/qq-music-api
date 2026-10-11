@@ -6,8 +6,7 @@ const axios = require('axios');
 // M1-only protocol probe. Production HTTP endpoints are intentionally deferred to M2.
 
 const PROTOCOL_SOURCE = Object.freeze({
-  repository: 'https://github.com/L-1124/QQMusicApi',
-  commit: '8ec78ce3f16805ebe470b8308a96fef925cf8e56',
+  kind: 'third-party reverse-engineered protocol facts, not official Tencent definitions',
   inspectedAt: '2026-08-03',
 });
 
