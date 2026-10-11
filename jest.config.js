@@ -2,6 +2,8 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/tests/setup.ts'],
+  // The default suite may use its local HTTP hosts, but never a real upstream endpoint.
+  setupFilesAfterEnv: ['<rootDir>/tests/helpers/offlineNetwork.cjs'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.worktrees/', '<rootDir>/dist/'],
   modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/'],
   collectCoverage: true,
