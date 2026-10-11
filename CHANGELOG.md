@@ -4,9 +4,17 @@
 
 - Node 增加 `/login/channels`，可在登录前查询支持的登录通道、会话模式与后端功能。Node 和 serverless 的响应都新增 `data.features`，按接口分组，用布尔值说明已经实现的方法；推荐、写入等尚未实现的方法保持 `false`。原有通道、会话模式和 `configured` 的含义不变。
 
+### 改进
+
+- 旧接口出错返回 `500` 时，不再把原始异常原样带回去。以前响应里可能夹着上游请求地址、请求头、调用栈这类内部信息；现在 `error` 只留固定的说明文字，再加上可以公开的错误码（例如 `ECONNRESET`）和上游 HTTP 状态码。状态码和 `error` 字段都没变。日志也只记录同样的摘要，账号和设备相关的参数值会被遮掉。
+
 ### 内部改进
 
 - 为后续接口增加共用请求核心，支持批次请求、限流、只读重试和整体超时。现有接口仍使用原来的请求流程。新增离线测试同时验证 Node 原生 fetch 和 Web Response 的行为。
+
+### 仓库维护
+
+- 默认测试里不再有只看状态码的旧路由测试。Folia 会调用的歌曲信息、歌手专辑、歌手热门歌曲改成模拟上游的严格测试，Node 和 Serverless 各跑一遍；其余旧路由测试移到 `tests/legacy-routes/`，用 `npm run test:legacy-routes`（不连外网）或 `npm run probe:legacy-routes`（连真实接口）单独跑。
 
 ## [3.1.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.4...v3.1.5) (2026-10-11)
 
