@@ -45,7 +45,9 @@ npm start
 | `npm start` | 直接运行 TypeScript 源码 |
 | `npm run build` | TypeScript 类型检查 |
 | `npm run lint` | Biome 代码检查 |
-| `npm test` | Jest 测试 |
+| `npm test` | Jest 测试（不连外网） |
+| `npm run test:legacy-routes` | 跑保留下来的旧路由测试，外网照样被拦住，只确认路由不会出错或卡住 |
+| `npm run probe:legacy-routes` | 用同一批旧路由测试去连真实的 QQ 音乐接口；会出网，需要时手动跑，不进 CI |
 | `npm run build:js` | 生成 CommonJS、ESM、类型与运行时资源 |
 | `npm run start:dist` | 运行编译后的服务 |
 | `npm run docs` | 在本机预览 Docsify 文档 |

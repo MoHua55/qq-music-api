@@ -142,6 +142,9 @@ qq-music-api/
 4. **CI 质量门**: GitHub Actions CI 是仓库的权威验证，PR 合并前必须通过 lint、类型检查、测试、JavaScript 构建和 npm package 内容检查。
 5. **PR 附件**: 请在 PR 描述中说明已运行的验证。如果因为特殊原因无法完成某项检查，请在 PR 中进行说明。
 6. **上游网络测试**: 不要仅凭测试是否导入 `supertest` 判断它是否访问真实 QQ 音乐服务。任何测试分层都必须使用明确的文件约定或清单，并确保巢状目录、JavaScript suite 与 coverage threshold 不会被漏掉。
+   - `npm test` 默认拦住所有外网连接，新测试请模拟上游回应，并检查回应内容，不要只看状态码。
+   - 只检查状态码落在某个集合里的旧路由测试放在 `tests/legacy-routes/`，不进默认测试。`npm run test:legacy-routes` 在拦住外网的情况下跑它们；`npm run probe:legacy-routes` 才会真的连 QQ 音乐，需要时手动跑，不进 CI。
+   - 这份清单记在 `tests/testSuite.layout.test.ts`；移动或新增这类测试时要一起更新。
 7. **发布边界**: 一般 PR 不修改版本、不建立或移动 tag，也不发布 npm。发布步骤只由维护者依 [RELEASING.md](./RELEASING.md) 明确执行。
 
 ---
