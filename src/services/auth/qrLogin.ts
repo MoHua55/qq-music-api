@@ -1,5 +1,6 @@
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
+import type { UpstreamPhase } from '../../util/safeError';
 import {
   albumPicCoverUrlOf,
   firstSongAlbumCoverUrl,
@@ -1422,7 +1423,7 @@ const credentialCookieHeader = (credential: QqCredential): string => {
 const callMusicu = async (
   http: AuthHttpClient,
   device: AndroidDevice,
-  phase: string,
+  phase: UpstreamPhase,
   module: string,
   method: string,
   param: Dictionary,
@@ -2172,7 +2173,7 @@ const getOwnedPlaylistSongs = async (
   http: AuthHttpClient,
   auth: AuthSession,
   { disstid = 0, dirid = 0, offset = 0, limit = 100 }: OwnedPlaylistSongsParams = {},
-  phase = 'get-owned-playlist-songs',
+  phase: UpstreamPhase = 'get-owned-playlist-songs',
 ): Promise<Dictionary> => {
   const encryptedUin = stringOf(auth.credential.encryptUin);
   if (!encryptedUin) throw new Error('Login credential is missing encryptUin');

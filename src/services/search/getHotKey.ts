@@ -1,5 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
+import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
 interface GetHotKeyParams {
@@ -41,7 +42,7 @@ export default ({ method = 'get', params = {}, option = {} }: GetHotKeyParams) =
       return {
         status: 500,
         body: {
-          error,
+          error: toLegacyErrorBody(error),
         },
       };
     });

@@ -20,6 +20,7 @@ import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
 import { AuthCredentialRejectedError } from '../util/authError';
+import { toLegacyErrorMessage } from '../util/safeError';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -755,7 +756,7 @@ export const handleRequest = async (
     // client can act on, everything else is a 500.
     if (error instanceof AuthCredentialRejectedError)
       return json({ code: error.httpStatus, message: error.message }, error.httpStatus);
-    return json({ error: error instanceof Error ? error.message : 'Unknown error' }, 500);
+    return json({ error: toLegacyErrorMessage(error) }, 500);
   }
 };
 

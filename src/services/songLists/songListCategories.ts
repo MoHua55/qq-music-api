@@ -1,5 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
+import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
 interface SongListCategoriesParams {
@@ -39,7 +40,7 @@ export default ({ method = 'get', params = {}, option = {} }: SongListCategories
       return {
         status: 500,
         body: {
-          error,
+          error: toLegacyErrorBody(error),
         },
       };
     });

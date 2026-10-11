@@ -1,6 +1,7 @@
 import type { Context, Next } from 'koa';
 import { AuthCredentialRejectedError } from './authError';
 import { logger } from './logger';
+import { summarizeError, toLegacyErrorMessage } from './safeError';
 
 type SummaryValue = Record<string, unknown>;
 type ControllerHandler = (ctx: Context, next: Next) => Promise<unknown> | unknown;
@@ -21,10 +22,34 @@ const SENSITIVE_KEYS = new Set([
   'qqmusic_key',
   'qqmusic_uin',
   'token',
+  // 账号与设备标识：日志里只需要知道带了这个参数，不需要知道值。
+  'access_token',
+  'androidid',
+  'deviceid',
+  'encryptuin',
+  'euin',
+  'guid',
+  'hostuin',
+  'imei',
+  'loginuin',
+  'musicid',
+  'openid',
+  'qimei16',
+  'qm_keyst',
+  'refresh_token',
+  'str_musicid',
+  'udid',
+  'uid',
+  'uin',
 ]);
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   Object.prototype.toString.call(value) === '[object Object]';
+
+// 跨 realm 的 Error 与 DOMException 不一定通过 instanceof，按内部标签一起认。
+const isErrorLike = (value: unknown): boolean =>
+  value instanceof Error ||
+  ['[object Error]', '[object DOMException]'].includes(Object.prototype.toString.call(value));
 
 const isSensitiveKey = (key: string, extras: ReadonlySet<string> = new Set()): boolean =>
   SENSITIVE_KEYS.has(key.toLowerCase()) || extras.has(key.toLowerCase());
@@ -73,12 +98,8 @@ export const summarizeValue = (value: unknown, depth = 0): unknown => {
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') return trimString(value);
   if (typeof value === 'number' || typeof value === 'boolean') return value;
-  if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: value.message,
-    };
-  }
+  // 原始异常的 message、stack、config 都可能带着地址和凭证，日志里只留白名单摘要。
+  if (isErrorLike(value)) return summarizeError(value);
   if (Buffer.isBuffer(value)) {
     return {
       type: 'buffer',
@@ -147,17 +168,15 @@ const handleControllerError = (
   baseMeta: SummaryValue,
   startedAt: number,
 ): void => {
-  const normalizedError =
-    error instanceof Error ? error : new Error(typeof error === 'string' ? error : 'Unknown error');
   // 上游明确拒绝凭证是客户端可以自己处理的情况（清掉会话重新登录），不是服务端故障。之前它和其余
   // 异常一样落到 500，客户端只能判成网络错误，于是失效的会话永远清不掉。其余异常行为不变。
-  const rejected = normalizedError instanceof AuthCredentialRejectedError;
-  const status = rejected ? normalizedError.httpStatus : 500;
+  const rejected = error instanceof AuthCredentialRejectedError;
+  const status = rejected ? error.httpStatus : 500;
   const meta = {
     ...baseMeta,
     status,
     durationMs: Date.now() - startedAt,
-    error: summarizeValue(normalizedError),
+    error: summarizeError(error),
   };
   // 与 logControllerCompletion 的分级一致：4xx 是警告，5xx 才是错误。
   if (rejected) logger.warn('request.validation_failed', meta);
@@ -165,8 +184,9 @@ const handleControllerError = (
   ctx.status = status;
   if (ctx.body === undefined)
     ctx.body = rejected
-      ? { code: status, message: normalizedError.message }
-      : { error: normalizedError.message };
+      ? { code: status, message: error.message }
+      : // 500 仍然用 error 键，但内容只来自固定模板，不再回传原始异常文字。
+        { error: toLegacyErrorMessage(error) };
 };
 
 export const withControllerLogging =
