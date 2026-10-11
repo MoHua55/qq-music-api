@@ -96,7 +96,7 @@
 ### Features
 
 - Migrate the maintained fork to TypeScript and add the local API Explorer.
-- Add native QQ Music App and WeChat QR login, authenticated playback, and cancellable QR sessions.
+- Add native mobile QQ and WeChat QR login, authenticated playback, and cancellable QR sessions.
 - Add runnable JavaScript package output and export the HTTP server handle for npm embedders.
 
 ### Bug fixes
