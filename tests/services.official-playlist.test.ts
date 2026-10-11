@@ -167,10 +167,41 @@ describe('toSongListDetailResponse', () => {
           songnum: 50,
           total_song_num: 50,
           hasmore: 0,
+          // 官方歌单的 host_uin 实测是 0，照原样给出
+          uin: 0,
           songlist: data.songlist,
         },
       ],
     });
+  });
+
+  it('补上播放数与建立者 id，字段名沿用上游，不改写成 visitnum', () => {
+    const data = dissData();
+    data.dirinfo.listennum = 12345;
+    data.dirinfo.host_uin = 20001;
+    data.dirinfo.encrypt_uin = 'fixture-encrypted-uin';
+
+    const detail = toSongListDetailResponse(data)?.cdlist[0];
+
+    expect(detail).toMatchObject({
+      listennum: 12345,
+      uin: 20001,
+      encrypt_uin: 'fixture-encrypted-uin',
+    });
+    expect(detail).not.toHaveProperty('visitnum');
+  });
+
+  it('上游没给或给错类型时不补，不把缺失写成 0', () => {
+    const data = dissData();
+    delete data.dirinfo.host_uin;
+    data.dirinfo.listennum = '12345';
+    data.dirinfo.encrypt_uin = '';
+
+    const detail = toSongListDetailResponse(data)?.cdlist[0];
+
+    expect(detail).not.toHaveProperty('listennum');
+    expect(detail).not.toHaveProperty('uin');
+    expect(detail).not.toHaveProperty('encrypt_uin');
   });
 
   it('第一首没有专辑时封面退回 dirinfo.picurl', () => {
