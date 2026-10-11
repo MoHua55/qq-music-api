@@ -1902,6 +1902,30 @@ const FAVORITE_PLAYLIST_PAGE_SIZE = 100;
 const hasMoreOf = (page: Dictionary): boolean =>
   page.hasmore === true || numberOf(page.hasmore) === 1;
 
+type PagingStopReason = 'limit' | 'empty-page' | 'repeated-page';
+
+/**
+ * 没读完就停下时留一条诊断。停下是为了不无限读，不代表资料完整；这条日志说明为什么停、读到多少，
+ * 只有数量，不记账号或歌单 id。
+ */
+const logPagingStopped = (
+  source: 'favorite-playlists' | 'song-list-detail',
+  reason: PagingStopReason,
+  pages: number,
+  items: number,
+  upstreamTotal: number | undefined,
+): void => {
+  logger.warn('qq-auth.paging-stopped', {
+    source,
+    reason,
+    pages,
+    items,
+    ...(upstreamTotal !== undefined && Number.isSafeInteger(upstreamTotal)
+      ? { upstreamTotal }
+      : {}),
+  });
+};
+
 const playlistIdOf = (value: unknown): string => {
   const item = dictionaryOf(value);
   return identifierOf(item.tid ?? item.dissid ?? item.id ?? item.dirId ?? item.dirid);
@@ -1931,6 +1955,10 @@ const getPlaylists = async (
   if (encryptedUin) {
     const seenFavorites = new Set<string>();
     let offset = 0;
+    let pages = 0;
+    let unique = 0;
+    let upstreamTotal: number | undefined;
+    let stopReason: PagingStopReason | undefined;
     while (offset < FAVORITE_PLAYLIST_LIMIT) {
       const favoritePage = await callMusicu(
         http,
@@ -1942,6 +1970,9 @@ const getPlaylists = async (
         auth.credential,
       );
       const pageItems = Array.isArray(favoritePage.v_list) ? favoritePage.v_list : [];
+      pages += 1;
+      upstreamTotal =
+        favoritePage.total === undefined ? upstreamTotal : numberOf(favoritePage.total);
       favoritesComplete = !hasMoreOf(favoritePage);
       let fresh = 0;
       for (const item of pageItems) {
@@ -1950,10 +1981,17 @@ const getPlaylists = async (
         if (id) seenFavorites.add(id);
         fresh += 1;
       }
+      unique += fresh;
       favoritePlaylists.push(...pageItems.map(withOriginalCover));
       offset += pageItems.length;
-      if (favoritesComplete || fresh === 0) break;
+      if (favoritesComplete) break;
+      if (fresh === 0) {
+        stopReason = pageItems.length === 0 ? 'empty-page' : 'repeated-page';
+        break;
+      }
     }
+    if (!favoritesComplete)
+      logPagingStopped('favorite-playlists', stopReason ?? 'limit', pages, unique, upstreamTotal);
   }
 
   const seen = new Set<string>();
@@ -2112,9 +2150,12 @@ const getAuthenticatedSongListDetail = async (
   const total = numberOf(first.total_song_num);
   const readAll = () => total !== undefined && songs.length >= total;
   let last = first;
+  let pages = 1;
+  let repeatedPage = false;
   for (let page = 1; page < AUTHENTICATED_SONG_LIST_MAX_PAGES; page += 1) {
     if (!hasMoreOf(last) || songsOf(last).length === 0 || readAll()) break;
     last = await readPage(songs.length, AUTHENTICATED_SONG_LIST_PAGE_SIZE);
+    pages += 1;
     const pageSongs = songsOf(last);
     // 上游不理 song_begin、整页都是读过的歌：不接上去，也不再往下读。
     // 认不出身份的歌一律当成新的，不拿来判断重复。
@@ -2122,7 +2163,10 @@ const getAuthenticatedSongListDetail = async (
       const id = songIdOf(song);
       return id !== '' && seen.has(id);
     });
-    if (pageSongs.length > 0 && repeated) break;
+    if (pageSongs.length > 0 && repeated) {
+      repeatedPage = true;
+      break;
+    }
     for (const song of pageSongs) {
       const id = songIdOf(song);
       if (id) seen.add(id);
@@ -2131,7 +2175,16 @@ const getAuthenticatedSongListDetail = async (
   }
   // 回传的 hasmore 说的是这次读取的结果：读满总数或上游说没有更多才算读完；停在上限、空页或重复页
   // 时如实标成没读完，而不是照搬最后一页的原值。
-  return { ...first, songlist: songs, hasmore: readAll() || !hasMoreOf(last) ? 0 : 1 };
+  const complete = readAll() || !hasMoreOf(last);
+  if (!complete) {
+    const reason = repeatedPage
+      ? 'repeated-page'
+      : songsOf(last).length === 0
+        ? 'empty-page'
+        : 'limit';
+    logPagingStopped('song-list-detail', reason, pages, songs.length, total);
+  }
+  return { ...first, songlist: songs, hasmore: complete ? 0 : 1 };
 };
 
 const FAVORITE_ASSET_URL = 'https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg';
