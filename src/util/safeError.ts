@@ -41,6 +41,8 @@ export interface SafeErrorSummary extends LegacyErrorBody {
   stage?: UpstreamPhase | 'device-bootstrap';
   upstreamCode?: number;
   globalCode?: number;
+  /** 只给开发日志看的具体原因，来自下面登记过的固定文字，不会出现在对外回应里。 */
+  reason?: string;
 }
 
 const GENERIC_MESSAGE = 'Service request failed';
@@ -57,7 +59,79 @@ const SAFE_NAMES = new Set([
   'QqProtocolError',
   'QqDeviceBootstrapError',
   'AuthCredentialRejectedError',
+  'QrLoginServiceError',
+  'WechatQrError',
+  'SealedSessionError',
+  'SessionCryptoError',
 ]);
+
+/**
+ * 程序自己抛出的固定文字。日志用它们说明具体原因；不在这里的文字一律不记录，因为它可能夹带
+ * 地址、凭证或调用方输入。新增固定文字时要登记，`tests/safeError.reasons.test.ts` 会扫描 src 检查。
+ */
+const KNOWN_REASONS = new Set([
+  'A session secret is required',
+  'A session secret is required to open state',
+  'A session secret is required to seal state',
+  'Another QR login is already active',
+  'CreateQRCode response missing a valid PNG/qrcodeID',
+  'Decrypted state is not valid JSON',
+  'GetSession response missing uid/sid',
+  'Login credential is missing encryptUin',
+  'Login response missing credential',
+  'MQTT WebSocket closed',
+  'MQTT WebSocket error',
+  'MQTT cookies missing login credential',
+  'MQTT handshake failed',
+  'MQTT handshake timeout',
+  'MQTT packet timeout',
+  'MQTT redirect limit exceeded',
+  'Malformed MQTT variable integer',
+  'QQ auth redirect limit exceeded',
+  'QR login is temporarily backed off',
+  'QR session cannot create another code',
+  'QR session has no upstream QR after createQr()',
+  'QR session not found or expired',
+  'RSAES-PKCS1-v1_5 payload too long for this key',
+  'Request body must be a JSON object.',
+  'Sealed payload is not valid JSON',
+  'State failed authentication',
+  'State is not a readable envelope',
+  'State was written by an unsupported envelope version',
+  'Token failed authentication',
+  'Token field iv has an unusable length',
+  'Token is not a sealed session',
+  'Token was sealed by an unknown key',
+  'Token was sealed for another purpose',
+  'Truncated MQTT CONNACK',
+  'Truncated MQTT PUBLISH',
+  'Truncated MQTT properties',
+  'Truncated MQTT subscription identifier',
+  'Unable to create QR login',
+  'Unable to start QR login',
+  'Unrecognised WeChat QR status',
+  'Unsupported MQTT WebSocket payload',
+  'WeChat QR response is not a PNG/JPEG image',
+  'WeChat authorization missing code',
+  'WeChat poll response missing wx_errcode',
+  'WeChat qrconnect response missing uuid',
+]);
+
+/** 由字段名或十六进制码组成的固定模板；整句都必须吻合，多一个字都不算。 */
+const KNOWN_REASON_PATTERNS = [
+  /^MQTT (?:CONNACK|SUBACK) rejected: 0x[0-9a-f]{1,2}$/,
+  /^Unsupported MQTT property 0x[0-9a-f]{1,2}$/,
+  /^QQ auth request failed with status [1-5]\d{2}$/,
+  /^Token field [a-z]{1,16} is not base64url$/,
+  /^Envelope field [a-z]{1,16} (?:is missing|has an unusable length)$/,
+];
+
+/** 很长的配置错误只记录开头那句固定说明。 */
+const KNOWN_REASON_PREFIXES = [
+  'Legacy QQ HTTP transport is not registered',
+  'No AuthHttpClient was provided',
+  'The QQ App channel needs an MQTT listener and this runtime has none',
+];
 
 const TIMEOUT_CODES = new Set([
   'ETIMEDOUT',
@@ -160,8 +234,15 @@ const bootstrapSummary = (error: unknown): SafeErrorSummary | undefined => {
   };
 };
 
-/** 任意异常 → 日志可用的安全摘要。 */
-export const summarizeError = (error: unknown): SafeErrorSummary => {
+const reasonOf = (error: unknown): string | undefined => {
+  const message = read(error, 'message');
+  if (typeof message !== 'string') return undefined;
+  if (KNOWN_REASONS.has(message)) return message;
+  if (KNOWN_REASON_PATTERNS.some((pattern) => pattern.test(message))) return message;
+  return KNOWN_REASON_PREFIXES.find((prefix) => message.startsWith(`${prefix}.`));
+};
+
+const summarize = (error: unknown): SafeErrorSummary => {
   const name = safeName(read(error, 'name'));
   if (name === 'QqProtocolError') {
     const summary = protocolSummary(error);
@@ -185,9 +266,12 @@ export const summarizeError = (error: unknown): SafeErrorSummary => {
     httpStatus(read(read(error, 'response'), 'status')) ??
     httpStatus(read(error, 'httpStatus')) ??
     httpStatus(read(error, 'status'));
+  const wechatCode =
+    name === 'WechatQrError' ? safeInteger(read(error, 'upstreamCode')) : undefined;
   const extras = {
     ...(code === undefined ? {} : { code }),
     ...(status === undefined ? {} : { status }),
+    ...(wechatCode === undefined ? {} : { upstreamCode: wechatCode }),
   };
 
   if (status !== undefined)
@@ -199,6 +283,13 @@ export const summarizeError = (error: unknown): SafeErrorSummary => {
   if (code !== undefined && NETWORK_CODES.has(code))
     return { name, message: `Upstream request failed (${code})`, ...extras };
   return { name, message: GENERIC_MESSAGE, ...extras };
+};
+
+/** 任意异常 → 日志可用的安全摘要；认得的固定文字另外放进 `reason`。 */
+export const summarizeError = (error: unknown): SafeErrorSummary => {
+  const summary = summarize(error);
+  const reason = reasonOf(error);
+  return reason === undefined ? summary : { ...summary, reason };
 };
 
 /** 旧曲库服务 500 回应里的 `error` 对象：只保留名称、固定文案、白名单错误码和上游状态码。 */
