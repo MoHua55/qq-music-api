@@ -39,6 +39,23 @@ export const albumCoverUrlOf = (albumMid: unknown): string | undefined => {
     : undefined;
 };
 
+/** 专辑图地址的写法：`T002R{尺寸}M000{专辑 mid}.jpg`，后面可能跟 `?max_age=…`。 */
+const ALBUM_COVER_URL_PATTERN = /\/T002R\d+x\d+M000([0-9A-Za-z]+)\.(?:jpg|jpeg|png|webp)(?:\?|$)/;
+
+/** 从专辑图地址里取出专辑 mid；不是专辑图（比如日历图）或认不出来就返回 `undefined`。 */
+export const albumMidOfCoverUrl = (url: unknown): string | undefined =>
+  ALBUM_COVER_URL_PATTERN.exec(stringOf(url).trim())?.[1];
+
+/**
+ * 官方歌单的收藏条目自带的 `albumPicUrl`，只要它是一张专辑图，就是第一首歌的专辑图（2026-10-09
+ * 真实账号实测）。拿它拼出和 `firstSongAlbumCoverUrl` 完全一样的封面地址，就不用再为每张官方歌单多读
+ * 一次上游。
+ *
+ * 不看 `logo`：每日30首的 `logo` 是日历图，不是专辑图。
+ */
+export const albumPicCoverUrlOf = (entry: unknown): string | undefined =>
+  albumCoverUrlOf(albumMidOfCoverUrl(dictionaryOf(entry).albumPicUrl));
+
 /**
  * 官方歌单的封面就是第一首歌的专辑图，与 QQ 音乐客户端的显示一致。第一首没有专辑时不往后找，
  * 返回 `undefined`，由调用方保留原来的封面。

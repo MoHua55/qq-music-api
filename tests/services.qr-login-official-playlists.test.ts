@@ -356,14 +356,19 @@ const withOriginalCovers = (entries: Record<string, any>[]) =>
   );
 
 /** 官方歌单还没补封面时的 /user/playlist：自建原样、普通收藏沿用原本的封面。 */
-const mergedBeforeOfficialCovers = () => [
-  ...clone(createdPlaylists.v_playlist),
-  ...withOriginalCovers(clone(favoritePlaylists.v_list)),
-];
+const mergedBeforeOfficialCovers = (
+  favorites: Record<string, any>[] = favoritePlaylists.v_list,
+) => [...clone(createdPlaylists.v_playlist), ...withOriginalCovers(clone(favorites))];
+
+/** 官方歌单条目没有 `albumPicUrl` 的样子（普通收藏本来就是空的），用来走“多读第一首歌”的路径。 */
+const withoutAlbumPic = (entries: Record<string, any>[]) =>
+  clone(entries).map((entry) =>
+    entry.dirType === 2 || entry.dirType === 3 ? { ...entry, albumPicUrl: '' } : entry,
+  );
 
 describe('getUserPlaylists：官方歌单的封面', () => {
-  it('官方歌单换成第一首歌的专辑封面，普通收藏沿用原本的封面，自建歌单原样', async () => {
-    const { service, dissCalls } = createHarness();
+  it('官方歌单自带专辑图地址时直接用它，不打上游；普通收藏沿用原本的封面，自建歌单原样', async () => {
+    const { service, calls } = createHarness();
 
     const result = await service.getUserPlaylists(TOKEN);
 
@@ -382,6 +387,48 @@ describe('getUserPlaylists：官方歌单的封面', () => {
         }),
       ]),
     );
+    // 只有列表本身的两次读取（自建、收藏），没有任何一张官方歌单多读一首歌
+    expect(calls.map((call) => call.method).sort()).toEqual([
+      'CgiGetPlaylistFavInfo',
+      'GetPlaylistByUin',
+    ]);
+  });
+
+  it('封面地址与“多读第一首歌”得到的逐字相同，不管 albumPicUrl 是哪种尺寸、带不带参数', async () => {
+    const viaAlbumPic = createHarness({
+      favorites: clone(favoritePlaylists.v_list).map((entry) =>
+        entry.dirType === 3
+          ? { ...entry, albumPicUrl: `${entry.albumPicUrl}?max_age=2592000` }
+          : entry,
+      ),
+    });
+    const viaFirstSong = createHarness({ favorites: withoutAlbumPic(favoritePlaylists.v_list) });
+
+    const fast = await viaAlbumPic.service.getUserPlaylists(TOKEN);
+    const slow = await viaFirstSong.service.getUserPlaylists(TOKEN);
+
+    const coversOf = (result: typeof fast) =>
+      (result?.v_playlist as Record<string, unknown>[]).map((entry) => [
+        entry.tid,
+        entry.bigpicUrl,
+        entry.picUrl,
+      ]);
+    expect(coversOf(fast)).toEqual(coversOf(slow));
+    expect(viaAlbumPic.dissCalls()).toHaveLength(0);
+    expect(viaFirstSong.dissCalls()).toHaveLength(3);
+  });
+
+  it('官方歌单没有 albumPicUrl 时，为这一张多读第一首歌补封面', async () => {
+    const favorites = withoutAlbumPic(favoritePlaylists.v_list);
+    const { service, dissCalls } = createHarness({ favorites });
+
+    const result = await service.getUserPlaylists(TOKEN);
+
+    const expected = mergedBeforeOfficialCovers(favorites);
+    Object.assign(expected[2], { bigpicUrl: COVER_DAILY, picUrl: COVER_DAILY });
+    Object.assign(expected[3], { bigpicUrl: COVER_211192, picUrl: COVER_211192 });
+    Object.assign(expected[4], { bigpicUrl: COVER_211111, picUrl: COVER_211111 });
+    expect(result).toEqual({ v_playlist: expected, total: 7, bFinish: true });
     expect(
       dissCalls()
         .map((call) => [call.param.disstid, call.param.song_begin, call.param.song_num])
@@ -394,6 +441,45 @@ describe('getUserPlaylists：官方歌单的封面', () => {
       ].sort(),
     );
     for (const call of dissCalls()) expect(call.cookie).toContain(`qm_keyst=${MUSICKEY}`);
+  });
+
+  it('albumPicUrl 不是专辑图（比如日历图）或认不出来时，同样多读第一首歌，不拿它顶替', async () => {
+    const strange = [
+      'http://y.qq.com/m/resource/calendar/1009_300.jpg',
+      'not a url',
+      'http://y.gtimg.cn/music/photo_new/T002R300x300M000.jpg',
+      'http://y.gtimg.cn/music/photo_new/T011R300x300M000000FixAlbum007.jpg',
+      'http://y.gtimg.cn/music/photo_new/T002R300x300M000000Fix%20Album.jpg',
+    ];
+    const favorites = strange.map((albumPicUrl, i) => ({
+      tid: 211000 + i,
+      dirId: 211000 + i,
+      dirType: 3,
+      name: `算法歌单 ${i}`,
+      albumPicUrl,
+    }));
+    const { service, dissCalls } = createHarness({ favorites, diss: pagedDiss(50, 50) });
+
+    const result = (await service.getUserPlaylists(TOKEN))?.v_playlist as Record<string, unknown>[];
+
+    expect(dissCalls()).toHaveLength(strange.length);
+    expect(result.slice(2).map((entry) => entry.picUrl)).toEqual(
+      strange.map(() => coverOf('albumMid0001')),
+    );
+  });
+
+  it('一部分有 albumPicUrl、一部分没有：只为没有的那些多读第一首歌', async () => {
+    const favorites = clone(favoritePlaylists.v_list).map((entry) =>
+      entry.tid === 211111 ? { ...entry, albumPicUrl: '' } : entry,
+    );
+    const { service, dissCalls } = createHarness({ favorites });
+
+    const result = (await service.getUserPlaylists(TOKEN))?.v_playlist as Record<string, unknown>[];
+
+    expect(dissCalls().map((call) => call.param.disstid)).toEqual([211111]);
+    expect(result[2]).toMatchObject({ picUrl: COVER_DAILY });
+    expect(result[3]).toMatchObject({ picUrl: COVER_211192 });
+    expect(result[4]).toMatchObject({ picUrl: COVER_211111 });
   });
 
   it('官方歌单原本带着封面字段也一律换掉', async () => {
@@ -413,7 +499,9 @@ describe('getUserPlaylists：官方歌单的封面', () => {
 
   it('读不到第一首的专辑时条目原样（不拿 logo 顶替），/user/playlist 照常返回', async () => {
     const warn = jest.spyOn(logger, 'warn');
+    const favorites = withoutAlbumPic(favoritePlaylists.v_list);
     const { service } = createHarness({
+      favorites,
       diss: (param) => {
         if (param.disstid === 211192) return envelope({}, 10004);
         if (param.disstid === 211111) return envelope({}, 1000);
@@ -425,7 +513,11 @@ describe('getUserPlaylists：官方歌单的封面', () => {
 
     const result = await service.getUserPlaylists(TOKEN);
 
-    expect(result).toEqual({ v_playlist: mergedBeforeOfficialCovers(), total: 7, bFinish: true });
+    expect(result).toEqual({
+      v_playlist: mergedBeforeOfficialCovers(favorites),
+      total: 7,
+      bFinish: true,
+    });
     // 官方歌单的规则是第一首歌的专辑图，读不到就不给封面，不退回歌单自己的 logo
     for (const entry of (result?.v_playlist as Record<string, unknown>[]).slice(2, 5)) {
       expect(entry).not.toHaveProperty('picUrl');
@@ -444,6 +536,7 @@ describe('getUserPlaylists：官方歌单的封面', () => {
 
   it('网络错误也只让这一条没有封面', async () => {
     const { service } = createHarness({
+      favorites: withoutAlbumPic(favoritePlaylists.v_list),
       diss: (param) =>
         param.disstid === 211192 ? new Error('socket hang up') : defaultDiss(param),
     });
@@ -457,6 +550,7 @@ describe('getUserPlaylists：官方歌单的封面', () => {
   it('上游抛出的不是 Error 也照样只跳过这一条', async () => {
     const warn = jest.spyOn(logger, 'warn');
     const { service } = createHarness({
+      favorites: withoutAlbumPic(favoritePlaylists.v_list),
       diss: (param) => (param.disstid === 211192 ? Promise.reject('boom') : defaultDiss(param)),
     });
 
@@ -512,9 +606,28 @@ describe('getUserPlaylists：官方歌单的封面', () => {
     expect(result.slice(2 + 20)).toEqual(favorites.slice(20));
   });
 
+  it('自带 albumPicUrl 的不占 20 张的额度：25 张都有封面，一次上游请求都不发', async () => {
+    const favorites = Array.from({ length: 25 }, (_, i) => ({
+      tid: 211000 + i,
+      dirId: 211000 + i,
+      dirType: 3,
+      name: `算法歌单 ${i}`,
+      albumPicUrl: `http://y.gtimg.cn/music/photo_new/T002R500x500M000000FixAlbum${i}.jpg`,
+    }));
+    const { service, dissCalls } = createHarness({ favorites });
+
+    const result = (await service.getUserPlaylists(TOKEN))?.v_playlist as Record<string, unknown>[];
+
+    expect(dissCalls()).toEqual([]);
+    expect(result.slice(2).map((entry) => entry.picUrl)).toEqual(
+      favorites.map((_, i) => coverOf(`000FixAlbum${i}`)),
+    );
+  });
+
   it('各条目的读取同时发出，不是一条等一条', async () => {
     const pending: Array<() => void> = [];
     const { service, dissCalls } = createHarness({
+      favorites: withoutAlbumPic(favoritePlaylists.v_list),
       diss: (param) =>
         new Promise((resolve) => {
           pending.push(() => resolve(defaultDiss(param)));

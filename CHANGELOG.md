@@ -2,6 +2,16 @@
 
 暂无。
 
+## [3.1.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.4...v3.1.5) (2026-10-11)
+
+### 改进
+
+- `/user/playlist` 里官方歌单（每日30首与算法歌单）的封面少打上游请求：条目自带的 `albumPicUrl` 是专辑图时直接用它拼出封面，不再为每张歌单多读一首歌；缺失或不是专辑图时才像以前一样读第一首歌，一次最多 20 张。封面地址和字段与 3.1.4 完全相同。
+
+### 文档
+
+- README、接口文档和 API Explorer 里把 `qq` 通道写成了“QQ 音乐 App 扫码”，实际是用手机 QQ 扫码，现已更正。通道 id（`qq`、`wechat`）和接口行为都没有变。
+
 ## [3.1.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.3...v3.1.4) (2026-10-09)
 
 ### 问题修复
