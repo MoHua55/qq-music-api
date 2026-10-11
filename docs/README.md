@@ -421,7 +421,7 @@ const userInfo = {
 
 调用例子: `/getSongListDetail?disstid=7011264340`
 
-QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等，即 `/user/playlist` 收藏项目中 `dirType: 3` 的歌单）在这条匿名接口上只返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。
+QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等，即 `/user/playlist` 收藏项目中 `dirType: 3` 的歌单）在这条匿名接口上只返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。重新读取时每页 1000 首，最多读 10 页；读到上限或遇到空页时会停下，这时可以比较 `cur_song_num` 和 `total_song_num` 看有没有读全（上游没给总数时看不出来）。上游不理分页、反复给同一页时，重复的歌不会被接上去。
 
 其他歌单仍走匿名接口，响应不变。重新读取失败时返回原来的 `code: 10`，状态码仍为 `200`，不会返回 `401`。Serverless 部署未设置 `QQ_SESSION_SECRET` 时不会重新读取。
 
@@ -1337,7 +1337,7 @@ songs: [
 
 `qr/check` 成功时会设置 HttpOnly `qqmusic_session`，并在响应的 `cookie` 字段返回同一个 opaque session 值，供跨来源 transport 保存。该值不包含 QQ 音乐凭证；`musickey`、MQTT token 和 Android 装置上下文不会写入一般日志或响应。用户资料中的账号 ID 只会作为 profile 字段返回。
 
-`/user/playlist` 分别读取自建项目与收藏歌单后合并去重。内建「我喜欢」集合的 `dirId: 201` 不是普通歌单 ID，`/user/liked-songs` 会使用登录凭证的 `encryptUin` 调用专用接口；调用方不得把 `201` 或其 `tid` 猜成通用 `disstid`。
+`/user/playlist` 分别读取自建项目与收藏歌单后合并去重。收藏歌单每页读 100 条，一次最多读 1000 条。读到上限、或者上游给了空页、反复给同一页时会停下；只要上游最后一页还说有更多，响应里的 `more` 就是 `true`，表示列表没读全（目前没有参数可以接着往下读）。`total` 是这次实际返回的条目数。内建「我喜欢」集合的 `dirId: 201` 不是普通歌单 ID，`/user/liked-songs` 会使用登录凭证的 `encryptUin` 调用专用接口；调用方不得把 `201` 或其 `tid` 猜成通用 `disstid`。
 
 `/user/playlist` 会统一封面字段。自建项目本来就有 `picUrl`／`bigpicUrl`。收藏的他人歌单上游只给 `logo`（为空时看 `albumPicUrl`），服务照自建项目的字段名补上 `bigpicUrl`／`picUrl`，沿用歌单原本的封面；已带封面字段的项目不覆盖。官方歌单（收藏项目中 `dirType: 2` 的每日30首与 `dirType: 3` 的算法歌单）的封面是第一首歌的专辑图，与 QQ 音乐客户端一致。条目自带的 `albumPicUrl` 是专辑图时，服务直接用它拼出封面写入这两个字段，不多发请求；`albumPicUrl` 缺失或不是专辑图时，才为这一张多读一首歌，这类读取一次最多处理 20 张，读取失败时该项目不补封面，列表照常返回。`logo`／`albumPicUrl` 一律保留上游原值。
 
