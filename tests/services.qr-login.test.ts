@@ -1609,7 +1609,7 @@ describe('QQ login channel routing', () => {
       ).param,
     );
 
-  it('should default to the QQ Music App channel when no channel is requested', async () => {
+  it('should default to the mobile QQ channel when no channel is requested', async () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession();
     await harness.service.createQr(key);
@@ -1618,7 +1618,7 @@ describe('QQ login channel routing', () => {
     expect(harness.wechatRequests).toHaveLength(0);
   });
 
-  it('should route the canonical `qq` channel through the QQ Music App flow', async () => {
+  it('should route the canonical `qq` channel through the mobile QQ flow', async () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession('qq');
     await harness.service.createQr(key);

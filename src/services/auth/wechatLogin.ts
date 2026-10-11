@@ -6,7 +6,7 @@ import type { QrEvent } from './qrLogin';
 //
 // This is the *web* OAuth flow: open.weixin.qq.com hands out a QR whose confirmation yields a
 // WeChat OAuth `code`, which is then swapped for a QQ Music credential. It shares nothing with
-// the QQ Music App channel (`tmeLoginType: 6`, MQTT over WSS) beyond that final musicu call,
+// the mobile QQ channel (`tmeLoginType: 6`, MQTT over WSS) beyond that final musicu call,
 // which stays in `qrLogin.ts` because it needs the Android device context that these endpoints
 // must NOT receive.
 //

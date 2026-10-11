@@ -58,7 +58,7 @@ const BACKOFF_BASE_MS = 30 * 1000;
 const BACKOFF_MAX_MS = 15 * 60 * 1000;
 
 /**
- * Login channels. `qq` is the QQ Music App QR (MQTT over WSS, `tmeLoginType: 6`) and stays the
+ * Login channels. `qq` is the mobile QQ QR (MQTT over WSS, `tmeLoginType: 6`) and stays the
  * default so the public contract is unchanged for callers that do not ask for a channel; `wechat`
  * is the WeChat QR. These two are the whole product surface, and `SUPPORTED_LOGIN_CHANNELS` is the
  * authority on it.
