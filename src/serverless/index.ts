@@ -1,5 +1,6 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
+import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
@@ -30,7 +31,6 @@ import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/user
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
-import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
 import { failureResponse, json } from './response';
 import { createRouter } from './router';
@@ -589,7 +589,7 @@ const routes: Record<string, RouteHandler> = {
 
   '/getSingerAlbum': operationRoute(getSingerAlbum),
 
-  '/getSingerHotsong': legacyRoutes['/getSingerHotsong'],
+  '/getSingerHotsong': operationRoute(getSingerHotsong),
 };
 
 /** The routes that need a session secret to mean anything. Catalog routes work without one. */
