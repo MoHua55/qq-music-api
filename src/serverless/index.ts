@@ -1,3 +1,4 @@
+import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
@@ -28,7 +29,7 @@ import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/user
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
-import { legacyRoutes } from './legacyRoutes';
+import { operationRoute } from './operationRoute';
 import { failureResponse, json } from './response';
 import { createRouter } from './router';
 import { openQrState, type SealedQrDeviceStateV1, sealQrState } from './sealedQrState';
@@ -602,7 +603,7 @@ const routes: Record<string, RouteHandler> = {
     return json({ response: response.data });
   },
 
-  '/getAlbumInfo': legacyRoutes['/getAlbumInfo'],
+  '/getAlbumInfo': operationRoute(getAlbumInfo),
 
   '/getSingerAlbum': async ({ url }) => {
     const singermid = url.searchParams.get('singermid');

@@ -1,8 +1,8 @@
+import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
 import cookies from './cookies';
-import getAlbumInfo from './getAlbumInfo';
 import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
@@ -48,6 +48,7 @@ import {
   qrKey,
   userDetail,
 } from './login';
+import { operationController } from './operation';
 
 const { get: getCookie, set: setCookie } = cookies;
 
@@ -78,7 +79,7 @@ export default {
   getDigitalAlbumLists: withControllerLogging('getDigitalAlbumLists', getDigitalAlbumLists),
   getLyric: withControllerLogging('getLyric', getLyric),
   getMusicPlay: withControllerLogging('getMusicPlay', getMusicPlay),
-  getAlbumInfo: withControllerLogging('getAlbumInfo', getAlbumInfo),
+  getAlbumInfo: withControllerLogging('getAlbumInfo', operationController(getAlbumInfo)),
   getComments: withControllerLogging('getComments', getComments),
   getRecommend: withControllerLogging('getRecommend', getRecommend),
   getMvPlay: withControllerLogging('getMvPlay', getMvPlay),

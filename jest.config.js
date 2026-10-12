@@ -18,11 +18,11 @@ module.exports = {
     'src/protocol/**/*.ts',
     'src/transport/**/*.ts',
     'src/controllers/**/*.ts',
+    'src/routes/operations/**/*.ts',
     'src/services/**/*.ts',
     'src/util/lyricParse.ts',
     '!src/**/*.d.ts',
     '!src/app.ts',
-    '!src/routes/**',
   ],
   coverageThreshold: {
     global: {
