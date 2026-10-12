@@ -278,6 +278,70 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     );
   });
 
+  // 开发日志：取不到链接的那几首各记一条，只带白名单里的安全整数；对外回应完全不变。
+  it('keeps playback answers unchanged and logs safe numbers for each failed song', async () => {
+    const debug = jest.spyOn(logger, 'debug').mockImplementation(() => undefined);
+    mockUpstream.state.vkeyItems = {
+      'fixture-song-b': {
+        purl: '',
+        result: 104003,
+        errtype: '3',
+        code: 0,
+        vkey: 'fixture-private-vkey',
+        tips: 'fixture-private-tip',
+        opi30surl: 'https://fixture-private-url/',
+        filename: 'fixture-private-file',
+      },
+      'fixture-song-c': { purl: '', result: 1.5, code: 2 ** 60, subcode: 'abc', errtype: { n: 1 } },
+    };
+
+    const result = await call('/getMusicPlay/fixture-song-a,fixture-song-b,fixture-song-c', {
+      token,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
+      data: {
+        playUrl: {
+          'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false },
+          'fixture-song-b': { url: '', error: '暂无播放链接' },
+          'fixture-song-c': { url: '', error: '暂无播放链接' },
+        },
+      },
+    });
+    const events = debug.mock.calls
+      .filter(([event]) => event === 'playback.url-unavailable')
+      .map(([, meta]) => meta);
+    expect(events).toEqual([
+      {
+        phase: 'get-music-play',
+        index: 1,
+        songmid: 'fixture-song-b',
+        quality: '128',
+        result: 104003,
+        errtype: 3,
+        code: 0,
+      },
+      { phase: 'get-music-play', index: 2, songmid: 'fixture-song-c', quality: '128' },
+    ]);
+    const logged = JSON.stringify(debug.mock.calls);
+    for (const secret of [
+      'fixture-private',
+      'fixture.mp3',
+      CONTRACT_CREDENTIAL.musickey,
+      CONTRACT_CREDENTIAL.encryptUin,
+      CONTRACT_CREDENTIAL.str_musicid,
+    ])
+      expect(logged).not.toContain(secret);
+  });
+
+  it('logs nothing for playback when every song has a link', async () => {
+    const debug = jest.spyOn(logger, 'debug').mockImplementation(() => undefined);
+    const result = await call('/getMusicPlay/fixture-song-a,fixture-song-b', { token });
+    expect(result.status).toBe(200);
+    expect(debug.mock.calls.filter(([event]) => event === 'playback.url-unavailable')).toEqual([]);
+  });
+
   it.each(userCases)('answers 401 without a session for $path', async (fixture) => {
     const result = await call(fixture.path);
     expect(result.status).toBe(401);
