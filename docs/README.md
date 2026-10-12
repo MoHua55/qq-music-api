@@ -1318,7 +1318,7 @@ songs: [
 - 上游没给的数字（`songnum`、`play_cnt`）就不出现，不会补成 0。
 - `more` 只是转述上游的提示。实测这个推荐更像一条推荐流，不是固定长度的列表，所以没有提供「接着读」的参数。
 - 会话过期或解不开时当作没登录、匿名读；会话还在但凭证被 QQ 拒绝时回 `401`，前端应清掉这个会话。
-- 一张能用的歌单都没有时回 `422`。
+- 上游给的列表是空的回 `422`；给了条目但一张都读不出可用的 `tid`，说明上游格式变了，回 `502`（`upstream.invalid-response`）；只有部分条目读不出来时照样回 `200`，读不出来的直接跳过。
 
 #### 出错时的响应
 
@@ -1340,6 +1340,8 @@ songs: [
 | `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`network.*` |
 
 `message` 是固定的英文说明，不会带上游的原始内容或凭证。
+
+想知道为什么回了 `401` 或 `422`，可以用 `LOG_LEVEL=debug` 启动：会多一条 `recommend.request-diagnostic` 日志，只有接口名、状态码、`errorKey` 和上游的数字码（推荐歌单跳过条目时也会记下跳过几条）。`5xx` 和 `429` 平时就会记一条 `recommend.request-failed` 警告。`LOG_LEVEL` 目前只在 Node 部署上确认有效；serverless 部署要看平台有没有把这个环境变量交给运行时。
 
 ### 查询登录通道与后端能力
 
