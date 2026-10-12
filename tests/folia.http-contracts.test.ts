@@ -312,18 +312,17 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     const events = debug.mock.calls
       .filter(([event]) => event === 'playback.url-unavailable')
       .map(([, meta]) => meta);
+    // 只记阶段、位置、音质和安全错码，不记歌曲 id：靠 index 对上是请求里的第几首。
     expect(events).toEqual([
       {
         phase: 'get-music-play',
         index: 1,
-        songmid: 'fixture-song-b',
         quality: '128',
-        result: 104003,
-        errtype: 3,
-        code: 0,
+        entryCodes: { result: 104003, errtype: 3, code: 0 },
       },
-      { phase: 'get-music-play', index: 2, songmid: 'fixture-song-c', quality: '128' },
+      { phase: 'get-music-play', index: 2, quality: '128', entryCodes: {} },
     ]);
+    expect(JSON.stringify(events)).not.toMatch(/fixture-song-[abc]/);
     const logged = JSON.stringify(debug.mock.calls);
     for (const secret of [
       'fixture-private',
