@@ -1,4 +1,5 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getSongInfo } from '../routes/operations/getSongInfo';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
@@ -29,7 +30,6 @@ import getSingerList from './getSingerList';
 import getSingerMv from './getSingerMv';
 import getSingerStarNum from './getSingerStarNum';
 import getSmartbox from './getSmartbox';
-import getSongInfo from './getSongInfo';
 import getSongListCategories from './getSongListCategories';
 import getSongListDetail from './getSongListDetail';
 import getSongLists from './getSongLists';
@@ -62,7 +62,7 @@ export default {
   getSongListCategories: withControllerLogging('getSongListCategories', getSongListCategories),
   getSongLists: withControllerLogging('getSongLists', getSongLists),
   batchGetSongLists: withControllerLogging('batchGetSongLists', batchGetSongLists),
-  getSongInfo: withControllerLogging('getSongInfo', getSongInfo),
+  getSongInfo: withControllerLogging('getSongInfo', operationController(getSongInfo)),
   batchGetSongInfo: withControllerLogging('batchGetSongInfo', batchGetSongInfo),
   getSongListDetail: withControllerLogging('getSongListDetail', getSongListDetail),
   getNewDisks: withControllerLogging('getNewDisks', getNewDisks),

@@ -1,4 +1,5 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getSongInfo } from '../routes/operations/getSongInfo';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
@@ -581,7 +582,7 @@ const routes: Record<string, RouteHandler> = {
     return json(body, status);
   },
 
-  '/getSongInfo/:songmid/:songid?': legacyRoutes['/getSongInfo/:songmid/:songid?'],
+  '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
 
   '/getAlbumInfo': operationRoute(getAlbumInfo),
 
