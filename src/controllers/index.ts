@@ -1,4 +1,5 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSongInfo } from '../routes/operations/getSongInfo';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
@@ -23,7 +24,6 @@ import getRecommend from './getRecommend';
 import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
-import getSingerAlbum from './getSingerAlbum';
 import getSingerDesc from './getSingerDesc';
 import getSingerHotsong from './getSingerHotsong';
 import getSingerList from './getSingerList';
@@ -70,7 +70,7 @@ export default {
   getMv: withControllerLogging('getMv', getMv),
   getSingerList: withControllerLogging('getSingerList', getSingerList),
   getSimilarSinger: withControllerLogging('getSimilarSinger', getSimilarSinger),
-  getSingerAlbum: withControllerLogging('getSingerAlbum', getSingerAlbum),
+  getSingerAlbum: withControllerLogging('getSingerAlbum', operationController(getSingerAlbum)),
   getSingerHotsong: withControllerLogging('getSingerHotsong', getSingerHotsong),
   getSingerMv: withControllerLogging('getSingerMv', getSingerMv),
   getSingerDesc: withControllerLogging('getSingerDesc', getSingerDesc),
