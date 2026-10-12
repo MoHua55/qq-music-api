@@ -24,11 +24,11 @@ import {
 } from '../services/recommend/recommendPlaylists';
 import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
-import u_common from '../services/u_common';
 import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
+import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
 import { failureResponse, json } from './response';
 import { createRouter } from './router';
@@ -581,79 +581,13 @@ const routes: Record<string, RouteHandler> = {
     return json(body, status);
   },
 
-  '/getSongInfo/:songmid/:songid?': async ({ url, params }) => {
-    const song_mid = params.songmid ?? url.searchParams.get('songmid') ?? undefined;
-    const song_id = params.songid ?? url.searchParams.get('songid') ?? '';
-    const response = await u_common({
-      method: 'get',
-      options: {
-        params: {
-          format: 'json',
-          data: JSON.stringify({
-            comm: { ct: 24, cv: 0 },
-            songinfo: {
-              method: 'get_song_detail_yqq',
-              param: { song_type: 0, song_mid, song_id },
-              module: 'music.pf_song_detail_svr',
-            },
-          }),
-        },
-      },
-    });
-    return json({ response: response.data });
-  },
+  '/getSongInfo/:songmid/:songid?': legacyRoutes['/getSongInfo/:songmid/:songid?'],
 
   '/getAlbumInfo': operationRoute(getAlbumInfo),
 
-  '/getSingerAlbum': async ({ url }) => {
-    const singermid = url.searchParams.get('singermid');
-    if (!singermid) return json({ data: { message: 'no singermid' } }, 400);
-    const num = +(url.searchParams.get('limit') || 5);
-    const begin = +(url.searchParams.get('page') || 0);
-    const response = await u_common({
-      method: 'get',
-      options: {
-        params: {
-          format: 'json',
-          singermid,
-          data: JSON.stringify({
-            comm: { ct: 24, cv: 0 },
-            singer: {
-              method: 'GetAlbumList',
-              param: { sort: 5, singermid, begin, num },
-              module: 'music.musichallAlbum.AlbumListServer',
-            },
-          }),
-        },
-      },
-    });
-    return json({ response: response.data });
-  },
+  '/getSingerAlbum': legacyRoutes['/getSingerAlbum'],
 
-  '/getSingerHotsong': async ({ url }) => {
-    const singermid = url.searchParams.get('singermid');
-    if (!singermid) return json({ data: { message: 'no singermid' } }, 400);
-    const num = +(url.searchParams.get('limit') || 5);
-    const page = +(url.searchParams.get('page') || 0);
-    const response = await u_common({
-      method: 'get',
-      options: {
-        params: {
-          format: 'json',
-          singermid,
-          data: JSON.stringify({
-            comm: { ct: 24, cv: 0 },
-            singer: {
-              method: 'get_singer_detail_info',
-              param: { sort: 5, singermid, sin: (page - 1) * num, num },
-              module: 'music.web_singer_info_svr',
-            },
-          }),
-        },
-      },
-    });
-    return json({ response: response.data });
-  },
+  '/getSingerHotsong': legacyRoutes['/getSingerHotsong'],
 };
 
 /** The routes that need a session secret to mean anything. Catalog routes work without one. */

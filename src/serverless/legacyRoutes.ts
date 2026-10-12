@@ -1,4 +1,5 @@
 import getAlbumInfoService from '../services/album/getAlbumInfo';
+import u_common from '../services/u_common';
 import { json } from './response';
 
 // src/serverless/legacyRoutes.ts
@@ -9,6 +10,7 @@ import { json } from './response';
 
 interface LegacyRouteContext {
   url: URL;
+  params: Record<string, string>;
 }
 
 type LegacyRouteHandler = (context: LegacyRouteContext) => Promise<Response>;
@@ -23,5 +25,77 @@ export const legacyRoutes = {
       options: {},
     });
     return json(body, status);
+  },
+
+  '/getSongInfo/:songmid/:songid?': async ({ url, params }) => {
+    const song_mid = params.songmid ?? url.searchParams.get('songmid') ?? undefined;
+    const song_id = params.songid ?? url.searchParams.get('songid') ?? '';
+    const response = await u_common({
+      method: 'get',
+      options: {
+        params: {
+          format: 'json',
+          data: JSON.stringify({
+            comm: { ct: 24, cv: 0 },
+            songinfo: {
+              method: 'get_song_detail_yqq',
+              param: { song_type: 0, song_mid, song_id },
+              module: 'music.pf_song_detail_svr',
+            },
+          }),
+        },
+      },
+    });
+    return json({ response: response.data });
+  },
+
+  '/getSingerAlbum': async ({ url }) => {
+    const singermid = url.searchParams.get('singermid');
+    if (!singermid) return json({ data: { message: 'no singermid' } }, 400);
+    const num = +(url.searchParams.get('limit') || 5);
+    const begin = +(url.searchParams.get('page') || 0);
+    const response = await u_common({
+      method: 'get',
+      options: {
+        params: {
+          format: 'json',
+          singermid,
+          data: JSON.stringify({
+            comm: { ct: 24, cv: 0 },
+            singer: {
+              method: 'GetAlbumList',
+              param: { sort: 5, singermid, begin, num },
+              module: 'music.musichallAlbum.AlbumListServer',
+            },
+          }),
+        },
+      },
+    });
+    return json({ response: response.data });
+  },
+
+  '/getSingerHotsong': async ({ url }) => {
+    const singermid = url.searchParams.get('singermid');
+    if (!singermid) return json({ data: { message: 'no singermid' } }, 400);
+    const num = +(url.searchParams.get('limit') || 5);
+    const page = +(url.searchParams.get('page') || 0);
+    const response = await u_common({
+      method: 'get',
+      options: {
+        params: {
+          format: 'json',
+          singermid,
+          data: JSON.stringify({
+            comm: { ct: 24, cv: 0 },
+            singer: {
+              method: 'get_singer_detail_info',
+              param: { sort: 5, singermid, sin: (page - 1) * num, num },
+              module: 'music.web_singer_info_svr',
+            },
+          }),
+        },
+      },
+    });
+    return json({ response: response.data });
   },
 } satisfies Record<string, LegacyRouteHandler>;
