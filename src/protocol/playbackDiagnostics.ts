@@ -8,6 +8,11 @@ export const PLAYBACK_FAILURE_FIELDS = ['result', 'errtype', 'code', 'subcode'] 
 
 export type PlaybackFailureField = (typeof PLAYBACK_FAILURE_FIELDS)[number];
 
+/** 单曲层的数字字段，与现有日志提取接口共用同一份白名单。 */
+export const PLAYBACK_ENTRY_CODE_FIELDS = PLAYBACK_FAILURE_FIELDS;
+export type PlaybackEntryCodeField = PlaybackFailureField;
+export type PlaybackEntryCodes = Partial<Record<PlaybackEntryCodeField, number>>;
+
 /** 安全整数照收；纯数字字符串（上游有时把码写成字符串）换成整数；其他一律丢掉。 */
 const safeIntegerOf = (value: unknown): number | undefined => {
   if (typeof value === 'number') return Number.isSafeInteger(value) ? value : undefined;
@@ -34,6 +39,9 @@ export const playbackFailureCodesOf = (
   }
   return codes;
 };
+
+/** 只提取单曲条目，不混入 HTTP、网关或请求级业务码。 */
+export const playbackEntryCodesOf = playbackFailureCodesOf;
 
 /** songmid 只收常见的字母数字写法，免得把任意上游文字带进日志。 */
 export const loggableSongmid = (value: string): string | undefined =>
