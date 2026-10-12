@@ -1,1288 +1,185 @@
 <h2 align="center" id="qqmusicapi">QQ Music API</h2>
 
-!> 这是非官方、社区维护的 QQ 音乐 API。问题与建议请提交到当前 fork 的 [issue](https://github.com/yakult-green-tea/qq-music-api/issues)。软件按 [MIT License](https://github.com/yakult-green-tea/qq-music-api/blob/main/LICENSE) 提供；使用者仍应自行遵守所在地法律、平台条款与内容授权要求。
+这是非官方、社区维护的 QQ 音乐 API，可以独立部署，也可以嵌入 Node.js 或 Electron。软件按 [MIT License](https://github.com/yakult-green-tea/qq-music-api/blob/main/LICENSE) 提供。项目来源与许可证说明见 [ATTRIBUTION.md](https://github.com/yakult-green-tea/qq-music-api/blob/main/ATTRIBUTION.md)。
 
-## API结构图
+先按自己的用途往下看：
 
-![qq-music](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/qq-music.png)
+- [启动服务](#启动服务)：本机、npm 包和 Docker 的运行方式。
+- [API Explorer](#api-explorer)：用表单查看参数和响应。
+- [QQ 音乐原生扫码登录](#qq-音乐原生扫码登录)：扫码流程、会话和用户资料。
+- [查询登录通道与后端能力](#查询登录通道与后端能力)：判断当前部署支持什么。
+- [猜你喜欢与推荐歌单](#猜你喜欢与推荐歌单)：歌曲、歌单和错误响应。
+- [API接口](#api接口)：原有曲库、搜索、MV 等路由。
+- [Folia 接入清单](./folia-integration.md)：面向 3.2.0 的接入草稿。
 
-## 当前架构
+## 启动服务
 
-!> 当前主干分支已经完成 TypeScript 化改造，项目由 `Koa2 + TypeScript` 服务端和内置 `API Explorer` 调试工作台两部分组成。
+需要 Node.js 20 或更新版本。在仓库根目录运行：
 
-- `src/app.ts`：应用入口，负责中间件、路由、静态资源与 Explorer 集成。
-- `src/controllers/*`：控制器层，负责参数处理与响应封装。
-- `src/services/*`：服务层，负责访问 QQ 音乐相关数据能力。
-- `src/config/apiExplorer.ts`：Explorer 元数据源，统一维护接口清单、分类、参数与示例请求体。
-- `src/explorer/contracts` / `domain` / `application`：Explorer 的状态模型、树构建、筛选逻辑与 Store/Command。
-- `public/explorer/*`：Explorer 页面静态资源，包括界面、交互和样式。
-- `tests/*`：覆盖控制器、服务、Explorer 元数据、Explorer 领域逻辑和页面路由。
+```powershell
+git clone https://github.com/yakult-green-tea/qq-music-api.git
+Set-Location qq-music-api
+npm install
+npm start
+```
+
+默认地址是 `http://localhost:3200`。服务启动后，打开 `http://localhost:3200/explorer` 查看接口；浏览器可直接访问不需要登录的 GET 路由。
+
+也可以安装 npm 包来启动服务：
+
+```powershell
+npm install @yakult-green-tea/qq-music-api
+$env:PORT = '3200'
+node node_modules/@yakult-green-tea/qq-music-api/dist/src/app.js
+```
+
+本地 Docker 镜像的构建和运行：
+
+```powershell
+npm run build:local-images
+npm run run:images
+```
+
+默认映射本机 3200 端口。嵌入方通过 npm 安装本包时，需要更新依赖版本、锁文件并重新构建，才能用到新版本。
 
 ## API Explorer
 
-!> `API Explorer` 是项目内置的本地调试工作台，默认入口为 `http://localhost:3200/explorer`，页面会自动从 `/explorer/metadata` 拉取接口元数据并生成调试表单。
+Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explorer`。它从 `/explorer/metadata` 读取接口清单，自动生成参数表单。
 
 ### 主要能力
 
-- 按 `GET` / `POST` 进行方法筛选。
-- 通过接口名、分类和路径关键字快速搜索接口。
-- 自动渲染路径参数、查询参数和 JSON Body 编辑区。
-- 在 `Response` 面板查看最近一次请求结果。
-- 在 `Logs` 面板查看当前会话内的请求日志、状态和错误信息。
+可以按 GET / POST 筛选，也可以搜索接口名称、分类和路由。填写参数后发送请求，在 Response 面板查看结果，在 Logs 面板查看本次页面会话的请求历史。
 
 ### 功能截图
 
-#### 整体预览
+<a id="整体预览"></a>
 
 ![Explorer 整体预览](./explorer-overview.png)
 
-## API接口
+设置 `AUTO_OPEN_EXPLORER=true` 后，服务启动时会尝试打开浏览器。
 
-!> koa2 接口说明(参数, 地址, 效果图)
+## 配置
 
-## 新特性
+| 环境变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `PORT` | `3200` | HTTP 服务端口 |
+| `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
+| `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
+| `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
+| `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug` |
+| `QQ_SESSION_SECRET` | 无 | Serverless 会话加密密钥 |
+| `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
 
-### 支持自定义设置cookie
+设备身份文件不包含用户凭证。多实例部署应各自指定身份文件，避免多个实例共用同一个设备身份。
 
-!> 2020-01-23 新增, 只需要配置 `config/user-info.js` 中的 `cookies` 字段就会在发送请求时带上你的 `cookies`。
+## 运行时入口
 
-#### 格式化自定义的 cookie
+| 导出 | 适用环境 | 用途 |
+| --- | --- | --- |
+| `@yakult-green-tea/qq-music-api` | Node.js、Docker、Electron | 完整 Koa 服务，可注入登录会话仓库 |
+| `@yakult-green-tea/qq-music-api/serverless` | 使用 Web 标准 Request / Response 的运行时 | `handleRequest(request, env, options)` |
+| `@yakult-green-tea/qq-music-api/mqtt` | 可以维持 WebSocket 长连接的可信宿主 | 手机 QQ 扫码的 MQTT 编解码与监听器 |
 
-![normalize-cookie.png](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/normalize-cookie.png)
+手机 QQ 扫码需要持续的 MQTT over WSS 连接。Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`。Vercel Functions 部署只应提供微信通道；没有中继的 Serverless 入口也只提供微信。
 
-### 特性提示支持
+Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。轮换时可以暂时保留 `QQ_SESSION_SECRET_PREVIOUS`，等旧会话失效后再移除。
 
-![new-feature-error-tips.png](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/new-feature-error-tips.png)
+### 嵌入 Node.js 与 Electron
 
-### 获取 Cookie
+包根入口载入时就会调用 `app.listen()`，并导出 HTTP server 句柄 `server`。同一进程只应载入一次；宿主监听 `listening` / `error`，退出时调用 `server.close()`。
 
-!> 目前只支持用户自己从 *QQ音乐* 获取获取 `Cookie`, 如何获取 `Cookie`, 登录 `QQ音乐`, 然后 `F12`, 找到 `Network`, 随便找一个获取数据的接口, 复制接口中 `request headers` 中的 `Cookie` 即可。
+默认会话只保存在进程内，重启后要重新登录。需要跨重启保存时，可信宿主可在载入包后立即调用 `configureAuthSessionRepository({ kind, load, save })`。`load()` 应返回解密后的会话列表，`save(sessions)` 接收包含凭证的完整会话。
 
-接口说明: 调用此接口, 可获取自己在 `config/user-info.js` 配置的 `Cookie` 被格式化的结果
+会话仓库必须由宿主加密。完整凭证不能进入 renderer、浏览器存储、普通 JSON 文件或日志；renderer 只保存 opaque `qqmusic_session`。Electron 可在主进程使用 `safeStorage`，但只有明文后端时不应保存凭证。仓库读写失败会退回内存行为，不阻断重新扫码。
 
-配置信息如下:
+## QQ 音乐原生扫码登录
 
-```
-const userInfo = {
-	loginUin: 'qq号码',
-	cookie: '',
-}
-```
+Node 支持手机 QQ 和微信扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。扫码登录相关路由都是 GET。
 
-接口地址: `/getCookie`
+| 步骤 | 接口 | 读取结果 |
+| --- | --- | --- |
+| 1 | `/login/channels` | 确认通道、会话模式和配置 |
+| 2 | `/login/qr/key?channel=qq` 或 `channel=wechat` | 保存 `data.unikey`；不传通道时默认手机 QQ |
+| 3 | `/login/qr/create?key=<unikey>` | 显示 `data.qrimg`，按 data URL 自带的 MIME type 读取图片 |
+| 4 | `/login/qr/check?key=<unikey>` | `801` 等待、`802` 已扫描、`803` 已确认、`800` 过期或失败 |
+| 关闭登录界面 | `/login/qr/cancel?key=<unikey>` | 取消二维码会话 |
+| 登录后 | `/login/status` | 读取 `data.profile`；未登录时 `data` 为空 |
+| 退出 | `/logout` | 清除当前会话，也删除注入仓库中的记录 |
 
-调用例子: `/getCookie`
+手机 QQ 图片目前为 PNG，微信图片目前为 JPEG，不要固定写死图片类型。服务同一时间只允许一个二维码会话；新会话会接管尚未扫码的旧会话。
 
-示例截图:
+扫码成功后设置 HttpOnly `qqmusic_session`，并在 check 响应的 `cookie` 字段返回同一个 opaque session。跨来源 transport 可以保存完整的 `qqmusic_session=<opaque token>`，再通过 `cookie` query 传回；支持相应入口时也可用 `X-QQ-Session` 请求头。含会话参数的完整 URL 不应写进日志或公开分享。QQ 原始凭证只保留在可信服务端。
 
-![normalize-cookie.png](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/normalize-cookie.png)
+### 扫码失败诊断
 
-### 获取QQ音乐产品的下载地址
+key、create 的错误响应和 check 的 `800` 响应可能带以下字段。自然过期的 `800` 不带这些诊断字段，不能把所有 `800` 都当作同一种失败。
 
-接口说明: 调用此接口, 可获取QQ音乐标准产品下载链接
+| 字段 | 怎么读 |
+| --- | --- |
+| `failureStage` | 失败步骤，如 `device-bootstrap`、`session-bootstrap`、`mqtt-listener`、`credential-validation` |
+| `failureReason` | 固定原因，如 `dns-error`、`network-timeout`、`upstream-http-error`；未知原因为 `unexpected-error` |
+| `upstreamHttpStatus` | QQ 上游的 HTTP 状态，和本服务状态分开 |
+| `upstreamCode`、`upstreamGlobalCode`、`upstreamSubCode` | 取得的上游安全数字码；不能只凭数字推断原因 |
+| `retryAfterMs` | 需要等待的毫秒数；HTTP 错误响应同时提供 `Retry-After` |
+| `lastFailure` | 本地退避 `429` 的前一次失败摘要；重启或换实例后不保留 |
 
-接口地址: `/downloadQQMusic`
-
-调用例子: `/downloadQQMusic`
-
-示例截图:
-
-![获取QQ音乐产品的下载地址](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/downloadQQMusic.png)
-
-### 获取歌单分类
-
-接口说明: 调用此接口, 可获取歌单分类, 包含`category`信息
-
-接口地址: `/getSongListCategories`
-
-调用例子: `/getSongListCategories`
-
-
-<details>
-  <summary>SortID</summary>
-
-    sortId: 1, sortName: 默认
-    sortId: 2, sortName: 最新
-    sortId: 3, sortName: 最热
-    sortId: 4, sortName: 评分
-    sortId: 5, sortName: none
-</details>
-
-**歌单分类(categoryId & categoryName)**
-
-<details>
-  <summary>1. 热门</summary>
-
-    1.1
-      "categoryId": 10000000,
-      "categoryName": 全部,
-</details>
-
-<details>
-  <summary>2. 语种</summary>
-  
-    2.1
-      "categoryId": 167,
-      "categoryName": "英语",
-    2.2
-      "categoryId": 168,
-      "categoryName": "韩语",
-    2.3
-      "categoryId": 166,
-      "categoryName": "粤语",
-    2.4
-      "categoryId": 169,
-      "categoryName": "日语",
-    2.5
-      "categoryId": 170,
-      "categoryName": "小语种",
-    2.6
-      "categoryId": 203,
-      "categoryName": "闽南语",
-    2.7
-      "categoryId": 204,
-      "categoryName": "法语",
-    2.8
-      "categoryId": 205,
-      "categoryName": "拉丁语",
-</details>
-
-<details>
-  <summary>3. 流派</summary>
-
-    3.1
-      "categoryId": 6,
-      "categoryName": "流行",
-    3.2
-      "categoryId": 15,
-      "categoryName": "轻音乐",
-    3.3
-      "categoryId": 11,
-      "categoryName": "摇滚",
-    3.4
-      "categoryId": 28,
-      "categoryName": "民谣",
-    3.5
-      "categoryId": 8,
-      "categoryName": "R&B",
-    3.6
-      "categoryId": 153,
-      "categoryName": "嘻哈",
-    3.7
-      "categoryId": 24,
-      "categoryName": "电子",
-    3.8
-      "categoryId": 27,
-      "categoryName": "古典",
-    3.9
-      "categoryId": 18,
-      "categoryName": "乡村",
-    3.10
-      "categoryId": 22,
-      "categoryName": "蓝调",
-    3.11
-      "categoryId": 21,
-      "categoryName": "爵士",
-    3.12
-      "categoryId": 164,
-      "categoryName": "新世纪",
-    3.13
-      "categoryId": 25,
-      "categoryName": "拉丁",
-    3.14
-      "categoryId": 218,
-      "categoryName": "后摇",
-    3.15
-      "categoryId": 219,
-      "categoryName": "中国传统",
-    3.16
-      "categoryId": 220,
-      "categoryName": "世界音乐",
-</details>
-
-<details>
-  <summary>4. 主题</summary>
-
-    4.1
-      "categoryId": 39,
-      "categoryName": "ACG",
-    4.2
-      "categoryId": 136,
-      "categoryName": "经典",
-    4.3
-      "categoryId": 146,
-      "categoryName": "网络歌曲",
-    4.4
-      "categoryId": 133,
-      "categoryName": "影视",
-    4.5
-      "categoryId": 141,
-      "categoryName": "KTV热歌",
-    4.6
-      "categoryId": 131,
-      "categoryName": "儿歌",
-    4.7
-      "categoryId": 145,
-      "categoryName": "中国风",
-    4.8
-      "categoryId": 194,
-      "categoryName": "古风",
-    4.9
-      "categoryId": 148,
-      "categoryName": "情歌",
-    4.10
-      "categoryId": 196,
-      "categoryName": "城市",
-    4.11
-      "categoryId": 197,
-      "categoryName": "现场音乐",
-    4.12
-      "categoryId": 199,
-      "categoryName": "背景音乐",
-    4.13
-      "categoryId": 200,
-      "categoryName": "佛教音乐",
-    4.14
-      "categoryId": 201,
-      "categoryName": "UP主",
-    4.15
-      "categoryId": 202,
-      "categoryName": "乐器",
-    4.16
-      "categoryId": 14,
-      "categoryName": "DJ",
-</details>
-
-<details>
-  <summary>5. 心情</summary>
-
-    5.1
-      "categoryId": 52,
-      "categoryName": "伤感",
-    5.2
-      "categoryId": 122,
-      "categoryName": "安静",
-    5.3
-      "categoryId": 117,
-      "categoryName": "快乐",
-    5.4
-      "categoryId": 116,
-      "categoryName": "治愈",
-    5.5
-      "categoryId": 125,
-      "categoryName": "励志",
-    5.6
-      "categoryId": 59,
-      "categoryName": "甜蜜",
-    5.7
-      "categoryId": 55,
-      "categoryName": "寂寞",
-    5.8
-      "categoryId": 126,
-      "categoryName": "宣泄",
-    5.9
-      "categoryId": 68,
-      "categoryName": "思念",
-</details>
-
-<details>
-  <summary>6. 场景</summary>
-
-    6.1
-      "categoryId": 78,
-      "categoryName": "睡前",
-    6.2
-      "categoryId": 102,
-      "categoryName": "夜店",
-    6.3
-      "categoryId": 101,
-      "categoryName": "学习",
-    6.4
-      "categoryId": 99,
-      "categoryName": "运动",
-    6.5
-      "categoryId": 99,
-      "categoryName": "运动",
-    6.6
-      "categoryId": 76,
-      "categoryName": "约会",
-    6.7
-      "categoryId": 94,
-      "categoryName": "工作",
-    6.8
-      "categoryId": 81,
-      "categoryName": "旅行",
-    6.9
-      "categoryId": 103,
-      "categoryName": "派对",
-    6.10
-      "categoryId": 222,
-      "categoryName": "婚礼",
-    6.11
-      "categoryId": 223,
-      "categoryName": "咖啡馆",
-    6.12
-      "categoryId": 224,
-      "categoryName": "跳舞",
-    6.13
-      "categoryId": 16,
-      "categoryName": "校园",
-  </summary>
-</details>
-
-示例截图:
-
-![获取歌单分类](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSongListCategories.png)
-
-### 获取歌单列表
-
-接口说明: 调用此接口, 可获取歌单列表
-
-参数列表:
-
-- 必选参数
-
-	- `categoryId`: 类别`id`, 详见 `/getSongListCategories`
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为1
-
-	- `limit`: 取出歌单数量, 默认为 20
-
-	- `sortId`: 最新, 最热,评分,  默认为5
-
-接口地址: `/getSongLists`
-
-调用例子: `/getSongLists?categoryId=10000000`
-
-示例截图:
-
-**获取歌单列表**
-
-![获取歌单列表](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSongLists.png)
-
-### 批量获取歌单列表
-
-接口说明: 调用此接口, 可批量获取歌单列表
-
-参数列表:
-
-- 必选参数
-
-	- `categoryIds`: 类别`id`列表, 详见 `/getSongListCategories`
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为1
-
-	- `limit`: 取出歌单数量, 默认为 20
-
-	- `sortId`: 最新, 最热,评分,  默认为5
-
-接口地址: `/batchGetSongLists`
-
-调用例子: `/batchGetSongLists`
-
-```body
-{
-  "limit": 19,
-  "page": 0,
-  "sortId": 5,
-  "categoryIds": [167, 168]
-}
-```
-
-示例截图:
-
-**批量获取歌单列表**
-
-![获取歌单列表](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/batchGetSongLists.png)
-
-**获取歌单列表-带参数**
-
-![获取歌单列表-带参数](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSongLists-params.png)
-
-### 获取歌单详情
+本地退避使用 `qr-key` / `local-backoff`，仍在确认中的会话使用 `qr-key` / `session-busy`。没有取得的字段不会出现。上游拒绝时保留安全数字码，但不把未知码解释成设备超限或账号问题。
 
-接口说明: 调用此接口, 可获取歌单详情
+### Android device context 与建立 session 前的退避
 
-参数列表:
+设备身份默认存在 `.auth-state/qq-device.json`，可通过 `QQ_AUTH_STATE_PATH` 改路径；写盘失败时退回进程内身份。它保存设备识别值与 device session，不保存用户凭证。持久化身份可以避免每次重启都重新注册设备，但不会让多个实例共享登录会话。
 
-- 必选参数
+建立二维码之前的失败会退避：首次返回 `502` 和失败摘要，后续请求返回 `429`、`Retry-After` 和 `lastFailure`。取消或替换未扫码的二维码不计退避，过期清理只计一次。
 
-	- `disstid`: 歌单`id`
+## 登录后的资料与歌单
 
-- 可选参数
+| 接口 | 参数 | 返回内容 |
+| --- | --- | --- |
+| `/user/detail` | 会话 | 当前用户资料 |
+| `/user/playlist` | 可选 `uid`、`favoriteOffset` | 自建与收藏歌单 |
+| `/user/liked-songs` | `offset`、`limit`，最多 100 | 内建“我喜欢”的歌曲分页 |
+| `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`，最多 100 | 登录用户自己歌单的歌曲分页，包括不公开歌单 |
+| `/user/albums` | `offset`、`limit`，默认 20、最多 100 | 收藏专辑分页 |
 
-	- 登录会话（`X-QQ-Session` 请求头、`cookie` 参数或 `qqmusic_session` Cookie）: 只在读取官方歌单时使用，见下文
+`/user/playlist` 只支持当前账号。`uid` 不传就是本人，传其他账号会回 `400`，说明为 `uid must be the logged-in account`。
 
-接口地址: `/getSongListDetail`
+### 收藏歌单接着读
 
-调用例子: `/getSongListDetail?disstid=7011264340`
+自建与收藏歌单会合并去重。收藏每页读取 100 条，每轮最多 1000 条：
 
-QQ 音乐按账号生成的官方歌单（百万收藏、新歌推荐、歌手漫游等，即 `/user/playlist` 收藏项目中 `dirType: 3` 的歌单）在这条匿名接口上只返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。重新读取时每页 1000 首，最多读 10 页；读到上限或遇到空页时会停下，这时 `cdlist[0].hasmore` 是 `1`，读完时是 `0`；也可以比较 `cur_song_num` 和 `total_song_num`。匿名接口的原始响应不带 `hasmore`。重新读取的 `cdlist[0]` 另外带上游给的 `listennum`（播放数）、`uin` 和 `encrypt_uin`（建立者）；上游没给就不出现。`listennum` 和匿名接口的 `visitnum` 是不是同一个统计还没核对，所以字段名照上游原样。上游不理分页、反复给同一页时，重复的歌不会被接上去。
+- 全部读完时，`more: false`，`total` 等于本轮列表长度。
+- 到 1000 条仍没读完时，`more: true`，`total` 是自建数加上上游给的收藏总数；用 `nextFavoriteOffset` 作为下一次的 `favoriteOffset`。续读只返回收藏歌单。
+- 空页或上游反复给同一页时也会停止，`more: true`，但没有 `nextFavoriteOffset`，调用方不能无限重试。
 
-其他歌单仍走匿名接口，响应不变。重新读取失败时返回原来的 `code: 10`，状态码仍为 `200`，不会返回 `401`。Serverless 部署未设置 `QQ_SESSION_SECRET` 时不会重新读取。
+### 选对歌单详情接口
 
-示例截图:
+内建“我喜欢”走 `/user/liked-songs`。它的 `dirId: 201` 不是普通歌单 id，不要把它当作通用 `disstid`。
 
-![获取歌单详情](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSongListDetail.png)
+自建歌单走 `/user/playlist-detail`，建议总是传 `tid`；`tid` 与 `dirid` 至少传一个，否则回 `400`。只传 `dirid` 仅适用于当前账号自己的目录。
 
-### 获取MV标签
+收藏的他人歌单走 `/getSongListDetail`。收藏条目也可能有 `dirId`，所以不能凭它判断归属；自建条目常有 `dirName` / `songNum`，收藏条目常用 `name` / `songnum` / `orderTime`，还要结合创建者判断。把收藏歌单送到自己的歌单接口，可能读不到完整歌曲。
 
-接口说明: 调用此接口, 可获取MV标签
+匿名接口读不到不公开歌单时，可能仍回上游 `code: 0` 和空列表，因此空列表不能证明这张歌单真的为空。
 
-接口地址: `/getMvByTag`
+### 歌单封面
 
-调用例子: `/getMvByTag`
+普通收藏歌单优先沿用 `logo`，为空时看 `albumPicUrl`，补成 `picUrl` / `bigpicUrl`；已有字段不覆盖。官方收藏歌单（`dirType: 2` 或 `3`）使用第一首歌的专辑封面。条目已有可用专辑图时直接生成；缺少时每轮最多为 20 张读取第一首歌，读取失败不影响列表返回。`logo` 与 `albumPicUrl` 的上游原值保留。
 
-示例截图:
+`/user/albums` 返回 `albums`、`total` 和 `more`。不要把其他专辑接口的非零码或全零结构当作本路由没有收藏。
 
-![获取MV标签](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getMvByTag.png)
+## 猜你喜欢与推荐歌单
 
-### 获取MV播放信息
+这两条接口使用同一套错误响应。出错时的响应和旧接口不一样：状态码直接说明结果，响应里带固定的 `errorKey`，前端照它判断就行（见本节最后）。
 
-接口说明: 调用此接口, 可获取MV播放信息
+### 猜你喜欢
 
-参数列表:
-
-- 必选参数
-
-	- `vid`: `video id`
-
-接口地址: `/getMvPlay`
-
-调用例子: `/getMvPlay?vid=u00222le4ox`
-
-示例截图:
-
-![获取MV播放信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getMvPlay.png)
-
-### 获取歌手MV
-
-接口说明: 调用此接口, 可获取歌手MV
-
-参数列表:
-
-- 必选参数
-
-	- `singermid`: 歌手`id`
-
-- 可选参数
-
-	- `order`: 当前MV类型, 默认为`time`
-
-		- `listen`: 歌手专辑音乐MV
-
-		- `time`: 粉丝上传MV视频
-
-	- `limit`: 取出歌单数量, 默认为5
-
-接口地址: `/getSingerMV`
-
-调用例子: `/getSingerMV?singermid=0025NhlN2yWrP4&order=all&limit=5`
-
-示例截图:
-
-![获取歌手MV - default](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerMv-default.png)
-
-![获取歌手MV - belong](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerMv-listen.png)
-
-![获取歌手MV - fans](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerMv-time.png)
-
-### 获取歌手热门歌曲
-
-接口说明: 调用此接口, 可获取歌手热门歌曲
-
-参数列表:
-
-- 必选参数
-
-	- `singermid`: 歌手`id`
-
-- 可选参数
-
-	- `page`: 页数, 默认为0
-
-	- `limit`: 取出歌单数量, 默认为5
-
-接口地址: `/getSingerHotsong`
-
-调用例子: `/getSingerHotsong?singermid=0025NhlN2yWrP4&limit=10&page=2`
-
-示例截图:
-
-![获取歌手热门歌曲](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerHotsong.png)
-
-### 获取相似歌手
-
-接口说明: 调用此接口, 可获取相似歌手
-
-参数列表:
-
-- 必选参数
-
-	- `singermid`: 歌手`id`
-
-接口地址: `/getSimilarSinger`
-
-调用例子: `/getSimilarSinger?singermid=0025NhlN2yWrP4`
-
-示例截图:
-
-![获取相似歌手](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSimilarSinger.png)
-
-### 获取歌手信息
-
-接口说明: 调用此接口, 可获取歌手信息
-
-参数列表:
-
-- 必选参数
-
-	- `singermid`: 歌手`id`
-
-接口地址: `/getSingerDesc`
-
-调用例子: `/getSingerDesc?singermid=0025NhlN2yWrP4`
-
-示例截图:
-
-![获取歌手信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerDesc.png)
-
-### 获取歌手列表
-
-接口说明: 调用此接口, 可获取歌手列表
-
-参数列表:
-
-- 可选参数
-
-  <details>
-    <summary>area 默认是 -100</summary>
-    
-        "id": -100,
-        "name": "全部"
-        "id": 200,
-        "name": "内地"
-        
-        "id": 2,
-        "name": "港台"
-        
-        "id": 5,
-        "name": "欧美"
-        
-        "id": 4,
-        "name": "日本"
-        
-        "id": 3,
-        "name": "韩国"
-        
-        "id": 6,
-        "name": "其他"
-  </details>
-
-  <details>
-    <summary>genre 默认是 -100</summary>   
-
-      "id": -100,
-      "name": "全部"
-      
-      "id": 1,
-      "name": "流行"
-      
-      "id": 6,
-      "name": "嘻哈"
-      
-      "id": 2,
-      "name": "摇滚"
-      
-      "id": 4,
-      "name": "电子"
-      
-      "id": 3,
-      "name": "民谣"
-      
-      "id": 8,
-      "name": "R&B"
-      
-      "id": 10,
-      "name": "民歌"
-      
-      "id": 9,
-      "name": "轻音乐"
-      
-      "id": 5,
-      "name": "爵士"
-      
-      "id": 14,
-      "name": "古典"
-      
-      "id": 25,
-      "name": "乡村"
-      
-      "id": 20,
-      "name": "蓝调"
-  </details>
-
-  <details>
-    <summary>index 默认是 -100</summary>
-
-      "id": -100,
-      "name": "热门"
-      
-      "id": 1,
-      "name": "A"
-      
-      "id": 2,
-      "name": "B"
-      
-      "id": 3,
-      "name": "C"
-      
-      "id": 4,
-      "name": "D"
-      
-      "id": 5,
-      "name": "E"
-      
-      "id": 6,
-      "name": "F"
-      
-      "id": 7,
-      "name": "G"
-      
-      "id": 8,
-      "name": "H"
-      
-      "id": 9,
-      "name": "I"
-      
-      "id": 10,
-      "name": "J"
-      
-      "id": 11,
-      "name": "K"
-      
-      "id": 12,
-      "name": "L"
-      
-      "id": 13,
-      "name": "M"
-      
-      "id": 14,
-      "name": "N"
-      
-      "id": 15,
-      "name": "O"
-      
-      "id": 16,
-      "name": "P"
-      
-      "id": 17,
-      "name": "Q"
-      
-      "id": 18,
-      "name": "R"
-      
-      "id": 19,
-      "name": "S"
-      
-      "id": 20,
-      "name": "T"
-      
-      "id": 21,
-      "name": "U"
-      
-      "id": 22,
-      "name": "V"
-      
-      "id": 23,
-      "name": "W"
-      
-      "id": 24,
-      "name": "X"
-      
-      "id": 25,
-      "name": "Y"
-      
-      "id": 26,
-      "name": "Z"
-      
-      "id": 27,
-      "name": "#"
-  </details>
-
-  <details>
-    <summary>sex 默认是 -100</summary>
-
-      "id": -100,
-      "name": "全部"
-      
-      "id": 0,
-      "name": "男"
-      
-      "id": 1,
-      "name": "女"
-      
-      "id": 2,
-      "name": "组合"
-  </details>
-
-接口地址: `/getSingerList`
-
-调用例子: `/getSingerList`
-调用例子: `/getSingerList?area=200&sex=2&index=3&genre=2`
-
-示例截图:
-
-![获取歌手列表](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerList.png)
-
-### 获取歌手被关注数量信息
-
-接口说明: 调用此接口, 可获取歌手被关注数量信息
-
-参数列表:
-
-- 必选参数
-
-	- `singermid`: 歌手`id`
-
-接口地址: `/getSingerStarNum`
-
-调用例子: `/getSingerStarNum?singermid=0025NhlN2yWrP4`
-
-示例截图:
-
-![获取歌手被关注数量信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerStarNum.png)
-
-### 获取电台列表
-
-接口说明: 调用此接口, 可获取电台列表, 分类
-
-接口地址: `/getRadioLists`
-
-调用例子: `/getRadioLists`
-
-示例截图:
-
-![获取电台列表](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getRadioLists.png)
-
-### 获取专辑
-
-接口说明: 调用此接口, 可获取专辑信息(专辑列表、详情)
-
-参数列表:
-
-- 必选参数
-
-	- `albummid`: 专辑`id`
-
-接口地址: `/getAlbumInfo`
-
-调用例子: `/getAlbumInfo?albummid=0016l2F430zMux`
-
-示例截图:
-
-![获取专辑](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getAlbumInfo.png)
-
-### 获取数字专辑
-
-接口说明: 调用此接口, 可获取数字专辑, 轮播图`banner`, 专辑列表等信息, 详见[API结构图](#API结构图)
-
-接口地址: `/getDigitalAlbumLists`
-
-调用例子: `/getDigitalAlbumLists`
-
-示例截图:
-
-![获取数字专辑](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getDigitalAlbumLists.png)
-
-### 获取歌曲歌词
-
-接口说明: 调用此接口, 可获取歌曲歌词
-
-参数列表:
-
-- 必选参数
-
-	- `songmid`: 专辑`id`
-
-- 可选参数
-
-	- `isFormat`: 是否格式化歌词, 默认值为 `false`
-
-接口地址: `/getLyric`
-
-调用例子: `/getLyric?songmid=003rJSwm3TechU`
-
-示例截图:
-
-![获取歌曲歌词 - 未格式化](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getLyric.png)
-
-![获取歌曲歌词 - 格式化](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getLyric-parse.png)
-
-### 获取MV
-
-接口说明: 调用此接口, 可获取MV以及其Tag信息
-
-参数列表:
-
-- 必选参数
-
-	- `area_id`: 区域`id`, 默认值为全部(15)
-
-<details>
-  <summary>Area</summary>
-
-    "area": [
-      {
-        "id": 15,
-        "name": "全部"
-      },
-      {
-        "id": 16,
-        "name": "内地"
-      },
-      {
-        "id": 17,
-        "name": "港台"
-      },
-      {
-        "id": 18,
-        "name": "欧美"
-      },
-      {
-        "id": 19,
-        "name": "韩国"
-      },
-      {
-        "id": 20,
-        "name": "日本"
-      }
-    ]
-</details>
-
-`version_id`: 版本`id`, 默认值为全部(7)
-
-<details>
-  <summary>Version</summary>
-
-    "version": [
-      {
-        "id": 7,
-        "name": "全部"
-      },
-      {
-        "id": 8,
-        "name": "MV"
-      },
-      {
-        "id": 9,
-        "name": "现场"
-      },
-      {
-        "id": 10,
-        "name": "翻唱"
-      },
-      {
-        "id": 11,
-        "name": "舞蹈"
-      },
-      {
-        "id": 12,
-        "name": "影视"
-      },
-      {
-        "id": 13,
-        "name": "综艺"
-      },
-      {
-        "id": 14,
-        "name": "儿歌"
-      }
-    ]
-</details>
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为1
-
-	- `limit`: 取出歌单数量, 默认为 20
-
-接口地址: `/getMv`
-
-调用例子: `/getMv`
-
-示例截图:
-
-![获取MV](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getMv.png)
-
-### 获取新碟信息
-
-接口说明: 调用此接口, 可获取新碟信息
-
-参数列表:
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为 1
-
-	- `limit`: 取出歌单数量, 默认为 20
-
-接口地址: `/getNewDisks`
-
-调用例子: `/getNewDisks`
-
-示例截图:
-
-![获取新碟信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getNewDisks.png)
-
-### 获取歌手专辑
-
-接口说明: 调用此接口, 可获取歌手专辑
-
-参数列表:
-
-- 必选参数
-
-	- `singermid`: 歌手`id`
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为1
-
-	- `limit`: 取出歌单数量, 默认为 20
-
-接口地址: `/getSingerAlbum`
-
-调用例子: `/getSingerAlbum?singermid=0025NhlN2yWrP4`
-
-示例截图:
-
-![获取歌手专辑](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSingerAlbum.png)
-
-### 获取歌曲相关信息
-
-接口说明: 调用此接口, 可获取歌曲相关信息
-
-参数列表:
-
-- 必选参数
-
-	- `songmid`: 歌曲`id`
-
-接口地址: `/getSongInfo`
-
-调用例子: `/getSongInfo?songmid=0025NhlN2yWrP4`
-
-示例截图:
-
-![获取歌曲相关信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSongInfo.png)
-
-### 批量获取歌曲相关信息
-
-接口说明: 调用此接口, 可批量获取歌曲相关信息
-
-参数列表:
-
-- 必选参数
-```
-songs: [
-  [songmid, songid]
-]
-```
-
-其中 `songid`可以不传
-
-接口地址: `/batchGetSongInfo`
-
-调用例子: `/batchGetSongInfo`
-
-```body
-{
-  "songs": [
-    ["001CLC7W2Gpz4J"],
-    ["0025NhlN2yWrP4"]
-  ]
-}
-```
-
-示例截图:
-
-![获取歌曲相关信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/batchGetSongInfo.png)
-
-### 获取歌曲播放链接
-
-接口说明: 调用此接口, 可获取歌曲播放链接
-
-参数列表:
-
-- 必选参数
-
-- `songmid`: 歌曲`id`, 多个播放链接使用 `,`分隔
-
-- `resType`: 仅返回播放链接, 默认是 `play`。`[all | play]`
-
-- `quality`: 播放品质, 默认是 128。`[m4a | 128 | 320 | ape | flac]`
-
-- `mediaId`: 可选。使用歌曲详情中的 `file.media_mid`；当它与 `songmid` 不同时，QQ vkey filename 需要同时包含两者。
-
-接口地址: `/getMusicPlay/:songmid`（仍兼容旧的 `?songmid=` query）
-
-调用例子:
-
-示例截图:
-
-#### 获取单个播放链接
-
-例子: `/getMusicPlay/0025NhlN2yWrP4`
-
-![获取单个播放链接](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getMusicPlay.png)
-
-#### 获取多个播放链接
-
-例子: `/getMusicPlay/001yNIo41SJjuC,001wPuVc4ZiMhj?resType=play`
-
-![获取多个歌曲播放链接](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/just-get-play-url.png)
-
-#### 获取多个播放链接
-
-例子: `/getMusicPlay/001yNIo41SJjuC,001wPuVc4ZiMhj?resType=all`
-
-![获取接口所有数据](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/get-play-all-data.png)
-
-#### 歌曲品质
-
-例子: `/getMusicPlay/001yNIo41SJjuC?resType=play&quality=m4a`
-
-扫码登录后，该接口会优先使用当前 `qqmusic_session` 对应的登录凭证取得音源。同源浏览器自动携带 HttpOnly cookie；跨来源 transport 可传 `cookie=qqmusic_session%3D<opaque-token>`，但不得记录或分享含该参数的完整 URL。没有 opaque session 时仍保留既有 legacy 行为。
-
-![song-quality-128.png](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/song-quality-128.png)
-
-![song-quality-m4a.png](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/song-quality-m4a.png)
-
-### 获取搜索热词
-
-接口说明: 调用此接口, 可获取搜索热词
-
-接口地址: `/getHotkey`
-
-调用例子: `/getHotkey`
-
-示例截图:
-
-![获取搜索热词](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/gethotkey.png)
-
-### 获取关键字搜索提示
-
-接口说明: 调用此接口, 可获取获取关键字搜索提示
-
-参数列表:
-
-- 必选参数
-
-	- `key`: 搜索关键字
-
-接口地址: `/getSmartbox`
-
-调用例子: `/getSmartbox?key=周杰伦`
-
-示例截图:
-
-![获取获取关键字搜索提示](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSmartbox.png)
-
-### 获取搜索结果
-
-接口说明: 调用此接口, 可获取获取搜索结果
-
-参数列表(部分参数待注释):
-
-- 必选参数
-
-	- `key`: 搜索关键字
-
-	- ~~`catZhida`: 默认值为1~~
-
-		~~1. `0` 表示歌曲~~
-
-		~~2. `2` 表示歌手~~
-
-		~~3. `3` 表示专辑~~
-
-	- `remoteplace`: 默认值为 `song`
-
-		1. 单曲: `song`
-
-		2. 专辑: `album`
-
-		3. MV: `mv`
-
-		4. 歌单: `playlist`
-
-		5. 用户: `user`
-
-		6. 歌词: `lyric`
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为 `1`
-
-	- `limit`: 取出歌单数量, 默认为 `10`
-
-接口地址: `/getSearchByKey`
-
-调用例子: `/getSearchByKey?key=周杰伦`
-
-示例截图:
-
-![获取获取搜索结果](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getSearchByKey.png)
-
-### 获取首页推荐
-
-接口说明: 调用此接口, 可获取首页推荐
-
-接口地址: `/getRecommend`
-
-调用例子: `/getRecommend`
-
-示例截图:
-
-![获取首页推荐](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getRecommend.png)
-
-### 获取排行榜单列表
-
-接口说明: 调用此接口, 可获取排行榜单列表
-
-- 可选参数
-
-	- `page`: 当前页数, 默认为 `1`
-
-	- `limit`: 取出歌单数量, 默认为 `10`
-
-接口地址: `/getTopLists`
-
-调用例子: `/getTopLists`
-
-示例截图:
-
-![获取排行榜单列表](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getTopLists.png)
-
-### 获取排行榜单详情
-
-接口说明: 调用此接口, 可获取排行榜单详情
-
-- 可选参数
-
-	- `topId`: 榜单`id`
-
-	- `page`: 当前页数, 默认为1
-
-	- `limit`: 取出歌单数量, 默认为 10
-
-接口地址: `/getRanks`
-
-调用例子: `/getRanks`
-
-示例截图:
-
-![获取排行榜单详情](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getRanks.png)
-
-### 获取评论信息(cmd代表的意思没太弄明白)
-
-接口说明: 调用此接口, 可获取评论信息
-
-- 必选参数
-
-	- `id`: 专辑或者歌单请求结果的`id`
-
-- 可选参数
-
-	- `rootcommentid`: 榜单`id`
-
-	- `cid`: 
-
-	- `pagenum`: 当前页数, 默认为 `0`
-
-	- `pagesize`: 取出评论数量, 默认为 `25`
-
-	- `cmd`: 
-
-	- `reqtype`: 
-
-	- `biztype`: 
-
-
-接口地址: `/getComments`
-
-调用例子: `/getComments?id=8220&rootcommentid=album_8220_1003310416_1558068713`
-
-示例截图:
-
-![获取评论信息 - id获取](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getComments-id.png)
-
-![获取评论信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getComments.png)
-
-![获取评论信息 - 带params](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getComments-param.png)
-
-### 获取歌曲 + 专辑 图片
-
-接口说明: 调用此接口, 可获取票务信息
-
-- 必选参数
-
-  - `id`: 专辑或者歌单请求结果的`id`
-
-- 可选参数
-
-  - `size`: 图片大小, 默认 `300x300`
-
-  - `maxAge`: 图片过期时间, 默认 `12 mins = 2592000ms`
-
-接口地址: `/getImageUrl`
-
-调用例子: `/getImageUrl?id=000MkMni19ClKG` or `/getImageUrl?id=000MkMni19ClKG&size=500x500`
-
-示例截图:
-
-![获取歌曲id](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/get-song-id.png)
-
-![获取歌曲图片地址](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/get-song-image.png)
-
-![歌曲图片地址](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/song-image.png)
-
-![获取专辑id](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/get-song-album-id.png)
-
-![获取歌曲专辑地址](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/get-album-image.png)
-
-![歌曲专辑地址](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/album-image.png)
-
-### 获取票务信息
-
-接口说明: 调用此接口, 可获取票务信息
-
-接口地址: `/getTicketInfo`
-
-调用例子: `/getTicketInfo`
-
-示例截图:
-
-![获取票务信息](https://raw.githubusercontent.com/Rain120/qq-music-api/master/screenshot/getTicketInfo.png)
-
-### 猜你喜欢与推荐歌单
-
-这两条是新接口。出错时的响应和旧接口不一样：状态码直接说明结果，响应里带固定的 `errorKey`，前端照它判断就行（见本节最后）。
-
-#### 猜你喜欢
-
-`GET /user/guess-you-like`，需要登录（cookie 或 `X-QQ-Session`）。每次从 QQ 音乐的「猜你喜欢」电台拿几首歌，目前一般是 5 首，多叫几次就能一直听下去。
+`GET /user/guess-you-like`，需要登录（cookie 或 `X-QQ-Session`）。每次从 QQ 音乐的「猜你喜欢」电台拿几首歌，目前通常返回 5 首；补歌时要按歌曲标识去重，不能保证每批都是新歌。
 
 ```json
 {
   "code": 200,
-  "songs": [{ "mid": "...", "id": 123, "name": "...", "singer": [], "album": {}, "file": {} }],
-  "extras": [{ "reason": "..." }]
+  "songs": [{ "mid": "demo-song-mid", "id": 90001, "name": "示例歌曲", "singer": [], "album": {}, "file": {} }],
+  "extras": [{ "reason": "示例推荐理由" }]
 }
 ```
 
@@ -1292,7 +189,7 @@ songs: [
 - 上游说成功但一首歌都没给，回 `422`（`errorKey: resource.not-found`）。
 - Serverless 部署没设 `QQ_SESSION_SECRET` 时回 `501`，和其他要登录的接口一样。
 
-#### 推荐歌单
+### 推荐歌单
 
 `GET /recommend/playlists`，可选 `limit`（默认 25，最多 60）。有登录会话就带着凭证去读，没有就匿名读；Serverless 没设 `QQ_SESSION_SECRET` 也能匿名读。
 
@@ -1301,13 +198,13 @@ songs: [
   "code": 200,
   "playlists": [
     {
-      "tid": 123,
-      "title": "...",
-      "desc": "...",
-      "picurl": "https://...",
+      "tid": 90001,
+      "title": "示例歌单",
+      "desc": "示例简介",
+      "picurl": "https://example.invalid/image.jpg",
       "songnum": 30,
       "play_cnt": 4321,
-      "creator": { "uin": "...", "encrypt_uin": "...", "nick": "...", "avatar": "https://..." }
+      "creator": { "uin": "demo-creator", "encrypt_uin": "demo-encrypted-id", "nick": "示例创建者", "avatar": "https://example.invalid/image.jpg" }
     }
   ],
   "more": true
@@ -1320,7 +217,7 @@ songs: [
 - 会话过期或解不开时当作没登录、匿名读；会话还在但凭证被 QQ 拒绝时回 `401`，前端应清掉这个会话。
 - 上游给的列表是空的回 `422`；给了条目但一张都读不出可用的 `tid`，说明上游格式变了，回 `502`（`upstream.invalid-response`）；只有部分条目读不出来时照样回 `200`，读不出来的直接跳过。
 
-#### 出错时的响应
+### 出错时的响应
 
 ```json
 {
@@ -1339,11 +236,11 @@ songs: [
 | `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
 | `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`network.*` |
 
-`message` 是固定的英文说明，不会带上游的原始内容或凭证。
+上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
 
 想知道为什么回了 `401` 或 `422`，可以用 `LOG_LEVEL=debug` 启动：会多一条 `recommend.request-diagnostic` 日志，只有接口名、状态码、`errorKey` 和上游的数字码（推荐歌单跳过条目时也会记下跳过几条）。`5xx` 和 `429` 平时就会记一条 `recommend.request-failed` 警告。`LOG_LEVEL` 目前只在 Node 部署上确认有效；serverless 部署要看平台有没有把这个环境变量交给运行时。
 
-### 查询登录通道与后端能力
+## 查询登录通道与后端能力
 
 先调用 `GET /login/channels`，就能知道当前部署支持哪些登录通道和后端功能。这个接口不需要登录，也不访问 QQ 上游。
 
@@ -1390,145 +287,252 @@ songs: [
 
 新增方法时会在对应分组里加布尔字段。遇到自己不认识的字段可以忽略，查询尚未声明的方法时按不支持处理。
 
-### QQ 音乐原生扫码登录
+## API接口
 
-扫码登录支持手机 QQ 与微信两条通道，直接返回上游 QR 图片，不需要服务器生成二维码。手机 QQ 通道目前为 PNG，微信通道目前为 JPEG，调用方必须使用 data URL 自带的 MIME type。
+下面是原有路由的索引，主要用于 Node 服务。Serverless 支持的范围以 `/login/channels` 为准，不能把整个 Node 路由表当成 Serverless 的功能清单。
 
-| 接口 | 参数 | 返回 |
-| --- | --- | --- |
-| `/login/qr/key` | 可选 `channel=qq\|wechat`（旧名 `mobile` 仍受理，归一成 `qq`） | `data.unikey`，短期 QR 工作阶段 key |
-| `/login/qr/create` | `key` | `data.qrimg`，MIME type 依上游图片嗅探 |
-| `/login/qr/check` | `key` | `800` 过期/失败、`801` 等待、`802` 已扫描、`803` 已确认 |
-| `/login/status` | cookie（浏览器自动携带） | `data.profile`；未登录时 `data` 为空 |
-| `/user/detail` | cookie | 当前用户信息 |
-| `/user/playlist` | 可选 `uid`、`favoriteOffset`、cookie | 自建和收藏歌单，封面字段已统一；收藏超过 1000 张时可以接着读（见下文） |
-| `/user/liked-songs` | 可选 `offset`、`limit`（最大 100）、cookie | 内建「我喜欢」歌曲分页 |
-| `/user/playlist-detail` | `tid`（建议必传）、可选 `dirid`，可选 `offset`、`limit`（最大 100）、cookie | 自己歌单的歌曲分页，不受歌单可见性限制 |
-| `/user/albums` | 可选 `offset`、`limit`（最大 100，默认 20）、cookie | 收藏的专辑分页 |
-| `/user/guess-you-like` | cookie | 猜你喜欢的几首歌（见「猜你喜欢与推荐歌单」） |
-| `/getMusicPlay/:songmid` | `quality`、cookie | 使用当前扫码登录态取得播放链接 |
-| `/logout` | cookie | 清除当前登录态，并同步删除注入仓库中的记录 |
+示例中的 `demo-*` 和 `90001` 都是虚构值，只展示写法；实际调用时从查询结果取得歌曲、歌手、专辑和歌单标识。为避免不同路由对路径参数的处理差异，这里统一使用 query 参数。
 
-`qr/check` 成功时会设置 HttpOnly `qqmusic_session`，并在响应的 `cookie` 字段返回同一个 opaque session 值，供跨来源 transport 保存。该值不包含 QQ 音乐凭证；`musickey`、MQTT token 和 Android 装置上下文不会写入一般日志或响应。用户资料中的账号 ID 只会作为 profile 字段返回。
+原有接口没有统一改成推荐接口的错误形状。有些曲库接口会用 HTTP `200` 返回包含非零上游码的 body，调用方还要检查 body。`404` 表示没有这条路由，不能用来判断歌单或歌曲为空。
 
-`/user/playlist` 分别读取自建项目与收藏歌单后合并去重。`uid` 只能是登录账号自己的 id（不传就是本人）；传别人的 uid 会回 `400`（`{ code: 400, message: 'uid must be the logged-in account' }`），不会去读别人的歌单。以前这样传会把对方的自建歌单和自己的收藏混在一起。收藏歌单每页读 100 条，一次最多读 1000 条。
+### 获取歌单分类
 
-- 一次就读完时，`more` 是 `false`，`total` 就是 `playlist` 的条数，和以前一样。
-- 读到 1000 条还没读完时，`more` 是 `true`，`total` 是真实总数（自建数加上上游报的收藏总数），响应另外带 `nextFavoriteOffset`。把它当成 `favoriteOffset` 再请求一次就能接着读；接着读的那一轮只返回收藏歌单，每轮同样最多 1000 条，读完时不再带 `nextFavoriteOffset`。
-- 上游给了空页、或者不理分页反复给同一页时也会停下，`more` 同样是 `true`，但不带 `nextFavoriteOffset`：接着读只会重复同一件事，所以这一轮就到此为止。
+`GET /getSongListCategories` 返回歌单分类。调用 `/getSongLists` 前可以从这里取得 `categoryId`，无需在客户端复制整份分类表。
 
-`favoriteOffset` 和其他 offset 参数一样宽松，不是正整数时当作第一轮。内建「我喜欢」集合的 `dirId: 201` 不是普通歌单 ID，`/user/liked-songs` 会使用登录凭证的 `encryptUin` 调用专用接口；调用方不得把 `201` 或其 `tid` 猜成通用 `disstid`。
+### 获取歌单列表
 
-`/user/playlist` 会统一封面字段。自建项目本来就有 `picUrl`／`bigpicUrl`。收藏的他人歌单上游只给 `logo`（为空时看 `albumPicUrl`），服务照自建项目的字段名补上 `bigpicUrl`／`picUrl`，沿用歌单原本的封面；已带封面字段的项目不覆盖。官方歌单（收藏项目中 `dirType: 2` 的每日30首与 `dirType: 3` 的算法歌单）的封面是第一首歌的专辑图，与 QQ 音乐客户端一致。条目自带的 `albumPicUrl` 是专辑图时，服务直接用它拼出封面写入这两个字段，不多发请求；`albumPicUrl` 缺失或不是专辑图时，才为这一张多读一首歌，这类读取一次最多处理 20 张，读取失败时该项目不补封面，列表照常返回。`logo`／`albumPicUrl` 一律保留上游原值。
+`GET /getSongLists?categoryId=10000000&page=0&limit=20&sortId=5` 返回指定分类的歌单。参数都可省略，示例显示当前默认值；`page` 从 0 开始。
 
-`/user/playlist-detail` 是同一支 `music.srfDissInfo.DissInfo/CgiGetDiss` 的通用形式，用来读登录用户自己的歌单：`tid` 映射到 `disstid`，`dirid` 映射到 `dirid`，`offset`／`limit` 映射到 `song_begin`／`song_num`，响应形状与 `/user/liked-songs` 相同（`dirid=201` 即「我喜欢」）。匿名的 `/getSongListDetail` 读不到设为「不公开」（`dirShow: 2`）的歌单：上游仍回 `code: 0`，但 `cdlist[0]` 没有 `dissname`、`songlist` 为空，与真的空歌单无法区分。2026-09-11 实测：同一个自建歌单公开时两条路由都返回 3 首，改为不公开后匿名路由返回 0 首，本路由仍返回 3 首。
+### 批量获取歌单列表
 
-应当总是传 `tid`。只传 `dirid` 仅对当前账号自己的目录有效；`/user/playlist` 里收藏的他人歌单同样带 `dirId`，但那是创建者账号里的目录号，单独传给本路由会被上游以 `10004` 拒绝。收藏的他人歌单也不应走本路由：实测一个 37 首的收藏歌单在这里只返回 36 首（缺一首付费曲目，`total_song_num` 同样是 36），匿名路由则完整返回。区分自建与收藏不能看有没有 `dirId`，要看条目形状：自建项目有 `dirName`／`songNum`，且 `uin` 与「我喜欢」相同；收藏项目用 `name`／`songnum`／`orderTime`，`uin` 是创建者的。`tid` 与 `dirid` 至少要给一个，否则回 `400`。
-
-`/user/albums` 不走 `musicu.fcg`，而是 `fav/fcgi-bin/fcg_get_profile_order_asset.fcg`（`reqtype=2`）。2026-08-08 实测：`music.musicasset.AlbumFavRead/CgiGetAlbumFavInfo` 存在但在任何入参与客户端标识下都返回 `80000` 与全零结构，即使账号已收藏专辑也一样，因此该码不能当成「没有数据」。这支 CGI 接受原生扫码凭证，其 `reqtype=3` 返回的收藏歌单与 musicu 完全一致，不带 cookie 时降为 `4000`。响应中的 `albumlist`／`totalalbum`／`has_more` 是上游拼写，控制器会改写成 `albums`／`total`／`more` 后再交给调用方；分页参数 `sin`／`ein` 是闭区间下标。
-
-登录态播放沿用 auth 专用 `createAuthHttpClient` 调用 `musicu.fcg`，不会自行建立 axios client，也不会依赖或修改共用 `src/util/request.ts` 的全局 defaults。
-
-想知道某首歌为什么拿不到链接，可以用 `LOG_LEVEL=debug` 启动服务：每首没链接的歌会记一条 `playback.url-unavailable`，内容是它在这次请求里的位置（`index`）、`songmid`、`quality`，以及上游单曲条目里的 `result`、`errtype`、`code`、`subcode`（只记整数）。这些数字的意思还没有确认，日志只照实记下；凭证、链接、文件名和账号 id 都不会写进去。
-
-自 `3.1.1` 起，Android `UrlGetVkey` 返回有效 `purl` 但没有 `sip` 时，服务会先用 256 KiB Range 请求探测 `sjy6.stream.qqmusic.qq.com`；若该节点不接受当前签名 URL，再调用 `GetCdnDispatch`，并行测量调度结果与 `dl.stream.qqmusic.qq.com`，选择实际可响应且吞吐较好的节点。若探测或调度异常，最终仍使用默认节点，避免把裸 `purl` 交给浏览器当成本服务的相对路径。
-
-选中的节点只缓存在当前 `QrLoginService` 实例中，生命周期不会跨进程重启；缓存时间采用调度响应的 `refreshTime`，并限制在 1 分钟到 24 小时之间。缓存只在新的候选列表仍包含该节点时复用，不缓存 vkey、`purl` 或完整签名 URL。单实例、单用户、一次只发起一个播放请求的部署不会产生跨请求并发选路；缓存的主要代价是节点状态在有效期内可能变化，此时会等到缓存过期或候选列表改变后重新测速。
-
-服务只允许一个并行 QR。上游拒绝（包括安全数字码 `50006`）会保留为 `upstreamCode`，并返回 `retryAfterMs` / `Retry-After`，调用方应等待后重新出码。
-
-#### 扫码失败诊断
-
-`/login/qr/key`、`/login/qr/create` 的错误响应和 `/login/qr/check` 的 `800` 响应可附以下字段：
-
-| 字段 | 含义 |
-| --- | --- |
-| `failureStage` | 失败阶段，如 `device-bootstrap`、`session-bootstrap`、`mqtt-listener`、`credential-validation` |
-| `failureReason` | 固定原因代码，如 `dns-error`、`network-timeout`、`upstream-http-error`；未知错误为 `unexpected-error` |
-| `upstreamHttpStatus` | 上游 HTTP 状态，与本服务返回的 `502` 等状态分开记录 |
-| `upstreamCode`、`upstreamGlobalCode`、`upstreamSubCode` | 上游数字码，分别对应业务码、musicu 顶层码和 QIMEI 内层码；不推断官方含义 |
-| `retryAfterMs` | 需等待的毫秒数，HTTP 错误响应同时提供 `Retry-After` |
-| `lastFailure` | 本地退避 `429` 的前一次失败摘要，结构同上述诊断字段；重启或切换服务实例后不保留 |
-
-本地退避使用 `qr-key` / `local-backoff`，会话仍在确认中使用 `qr-key` / `session-busy`。未取得的字段不返回；异常原文、响应正文和登录凭证不进入诊断摘要。
-
-#### 实际验收与故障诊断
-
-2026-08-04 使用正式 auth service 完成真实扫码：`801 waiting → 802 scanned → 803 confirmed`；credential exchange 与 `GetLoginUserInfo` 均返回 HTTP 200 / code 0。测试账号返回了有效 profile，但上游昵称字段为空，调用方不应把昵称当作登录成功的唯一判断条件。
-
-2026-08-05 的 G4 已确认：QQ Match Data 搜索正常、可用音源可以播放／快进／暂停，自动 QRC 歌词正常。部分歌曲的 320 → 128 fallback 均收到 HTTP 200、global code 0、module code 0，但 `purl` 为空；QQ 响应没有提供会员、地区或版权原因，因此服务只能描述为「上游未提供播放 URL」，不能把它命名为下架，也不能在会员与 IP 限制之间做确定判断。若需进一步排查，只收脱敏 response body；不得分享 `qqmusic_session`、完整音源 URL、curl 或 HAR。
-
-本次 QIMEI 实际响应的安全结构如下，原值不得写入日志：
+`POST /batchGetSongLists` 接受 JSON body，一次查询多个分类。这里的 `page` / `limit` 保留旧的起止下标语义，分别直接传给上游 `sin` / `ein`，不是 `/getSongLists` 的页号与每页数量：
 
 ```json
 {
-  "code": 0,
-  "data": "<JSON string>",
-  "parsedData": {
-    "code": 0,
-    "data": {
-      "q16": "<string, length 36>",
-      "q36": "<string, length 36>"
-    }
-  }
+  "categoryIds": [167, 168],
+  "page": 0,
+  "limit": 19,
+  "sortId": 5
 }
 ```
 
-因此 `QIMEI response missing q16/q36` 不能直接判断为上游格式变更。更新后应先确认 Node／Docker 已重启，再用上述结构化摘要检查外层与内层响应；但重启并不保证修复。
+分类 id 请从分类接口取得。
 
-#### `-30002` 根因：全局 axios 默认值污染（2026-08-05 已修复）
+### 获取歌单详情
 
-2026-08-05 的 G3 复验中，正式 service 重启后收到 HTTP 200、outer code `-30002`、outer data `undefined`；而同环境的独立 probe（稳定装置与 fresh device）以及 production／probe request builder 与 HTTP client 的 2×2 交叉验证，全部取得 outer／inner code 0 与长度 36 的 q16／q36。差异不在装置、不在请求构造、也不在 HTTP client，而在**进程**：
+`GET /getSongListDetail?disstid=90001` 读取歌单。`disstid` 必填；读取官方歌单时可以带登录会话。
 
-- `src/util/request.ts` 当时在 import 阶段改写全局 `axios.defaults`，其中 `axios.defaults.headers.post['Content-Type']` 被设为 `application/x-www-form-urlencoded;charset=UTF-8;text/plain;`（供既有 y.qq.com／c.y.qq.com service 使用）。
-- `createAuthHttpClient()` 内部的 `axios.create()` 会在**调用当下**快照全局默认值。
-- 于是 auth client 是在该模块之前还是之后建立，纯粹由 `src/app.ts` 的 import 图决定。之后建立时，QIMEI 的 JSON body 被声明为 form-urlencoded，上游返回 HTTP 200、outer code `-30002` 且没有 `data`。
+QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `dirType: 3`）有些无法由匿名接口读取，会返回 `code: 10`。请求带着登录会话时，服务会改用登录凭证经 `music.srfDissInfo.aiDissInfo/uniform_get_Dissinfo` 重新读取，并改写成同样的 `cdlist[0]` 结构，`logo` 为第一首歌的专辑图。
 
-同一进程、同一分钟内用 loopback echo server 复现的对照：
+重新读取时每页 1000 首，最多读 10 页；读到上限或遇到空页时会停下，这时 `cdlist[0].hasmore` 是 `1`，读完时是 `0`；也可以比较 `cur_song_num` 和 `total_song_num`。匿名接口的原始响应不带 `hasmore`。
+
+重新读取的 `cdlist[0]` 另外带上游给的 `listennum`（播放数）、`uin` 和 `encrypt_uin`（建立者）；上游没给就不出现。`listennum` 和匿名接口的 `visitnum` 是不是同一个统计还没核对，所以字段名照上游原样。上游不理分页、反复给同一页时，重复的歌不会被接上去。
+
+其他歌单仍走匿名接口，响应不变。重新读取失败时返回原来的 `code: 10`，状态码仍为 `200`，不会返回 `401`。Serverless 部署未设置 `QQ_SESSION_SECRET` 时不会重新读取。
+
+### 获取专辑
+
+`GET /getAlbumInfo?albummid=demo-album-mid` 返回专辑资料和歌曲；`albummid` 必填。
+
+### 获取数字专辑
+
+`GET /getDigitalAlbumLists` 返回数字专辑推荐等数据。
+
+### 获取歌手信息
+
+`GET /getSingerDesc?singermid=demo-singer-mid` 返回歌手资料；`singermid` 必填。
+
+### 获取歌手热门歌曲
+
+`GET /getSingerHotsong?singermid=demo-singer-mid&limit=5&page=0` 返回热门歌曲。`singermid` 必填，`limit` 默认 5、`page` 默认 0，保留原有分页算法。
+
+### 获取歌手专辑
+
+`GET /getSingerAlbum?singermid=demo-singer-mid&limit=5&page=0` 返回歌手专辑。`singermid` 必填，`limit` 默认 5；`page` 默认 0，作为专辑列表的起始位置传给上游。
+
+### 获取相似歌手
+
+`GET /getSimilarSinger?singermid=demo-singer-mid` 返回相似歌手；`singermid` 必填。
+
+### 获取歌手列表
+
+`GET /getSingerList` 返回歌手列表。可用 `area`、`sex`、`genre`、`index` 筛选，默认都为 `-100`；`page` 默认 1。具体筛选值以返回数据为准。
+
+### 获取歌手被关注数量信息
+
+`GET /getSingerStarNum?singermid=demo-singer-mid` 返回关注数量；`singermid` 必填。
+
+### 获取歌曲相关信息
+
+`GET /getSongInfo?songmid=demo-song-mid` 返回歌曲资料。还可传 `songid`，从返回结果读取专辑和 `file.media_mid` 等字段。
+
+### 批量获取歌曲相关信息
+
+`POST /batchGetSongInfo` 接受 JSON body。每项是 `[songmid, songid?]`，`songid` 可以省略：
 
 ```json
-{"label":"client-created-before-util-request","sent":"application/json"}
-{"label":"client-created-after-util-request","sent":"application/x-www-form-urlencoded;charset=UTF-8;text/plain;"}
+{
+  "songs": [["demo-song-mid-a"], ["demo-song-mid-b", 90002]]
+}
 ```
 
-这解释了独立 probe 为何总是成功（它从不 import `src/util/request.ts`）、为何重启无效（import 顺序是确定的）、以及为何 2026-08-04 通过而次日不通过（import 图变了）。
+### 获取歌曲播放链接
 
-最初的修复在 auth 一侧：`services/auth/httpClient.ts` 每次请求都自行钉住 `Content-Type: application/json`（仅在带 body 时）与 `responseType: 'json'`，不再继承宿主默认值。针对 npm 包嵌入 Electron 或 Node 宿主的场景，`src/util/request.ts` 现在也使用包私有 Axios 实例保存旧版 QQ 请求默认值，导入本包不再改写宿主共享的 `axios.defaults`。`tests/services.auth-http-client.test.ts` 与 `tests/util.request.test.ts` 分别用 loopback echo server 验证 auth 请求契约和 legacy 请求隔离。`-30002` 仍只作为安全数字码保留，不赋予官方错误名称。
+`GET /getMusicPlay/demo-song-mid` 返回播放结果，也保留旧写法 `?songmid=demo-song-mid`。
 
-#### Android device context 与建立 session 前的退避
-
-`services/auth/deviceContext.ts` 提供可注入、可测试且可配置存储位置的 device context repository：
-
-| 项目 | 行为 |
+| 参数 | 用途 |
 | --- | --- |
-| 默认路径 | `.auth-state/qq-device.json`（权限 0600，已 gitignore） |
-| 覆盖路径 | 环境变量 `QQ_AUTH_STATE_PATH` |
-| 关闭持久化 | `QQ_AUTH_STATE_PATH=memory` |
-| 写盘失败 | 降级为进程内上下文，不阻断登录 |
-| 存储内容 | 仅装置识别值与 device session；**不含 `musickey`、MQTT token 或任何用户凭证** |
+| `songmid` | 歌曲 mid；多个用逗号分隔 |
+| `resType` | `play` 只取播放结果，`all` 保留完整结果；默认 `play` |
+| `quality` | `m4a`、`128`、`320`、`ape`、`flac`；默认 `128` |
+| `mediaId` | 可选，使用歌曲详情的 `file.media_mid`；它可能与 `songmid` 不同 |
+| 会话 | 登录后优先使用当前扫码会话凭证；没有 opaque session 时保留原有行为 |
 
-QIMEI 与 device session 因此跨进程重启复用（重启后日志为 `source: 'restored'` 与 `qimei-result source: 'cache'`，不再重新注册装置）。多实例部署请各自指定 `QQ_AUTH_STATE_PATH`，不要共用同一份装置身份。
+<a id="获取单个播放链接"></a>
 
-建立 QR session 之前的失败（QIMEI 或 GetSession）会套用指数退避：首次返回 `502` 和失败摘要，随后的请求返回 `429`、`Retry-After` 和 `lastFailure`。取消或替换未扫码的二维码不计退避；过期清理只计一次。
+单曲示例：`/getMusicPlay/demo-song-mid?quality=320`。
 
-日志只记录外层／内层 code、数据类型与 q16／q36 长度。不得硬读 probe 的 `test-results`，也不要记录 QIMEI、完整响应 body、QR ID、cookie、token、`musickey`、MQTT token 或 Android 装置值。
+<a id="获取多个播放链接"></a>
+<a id="获取多个播放链接-1"></a>
 
-`GetSession.data.session.uid` 在真实响应中可能是数字，service 会将数字或字符串正规化为内部字符串；不要恢复为只接受字符串的解析方式。
+多曲示例：`/getMusicPlay/demo-song-mid-a,demo-song-mid-b?resType=play`；需要完整结果时改为 `resType=all`。
 
-auth session 默认仍使用进程内仓库，因此普通服务重启、水平扩容或请求落到另一个实例时不会共享登录态。可信嵌入方可在加载 npm 包后立即调用 `configureAuthSessionRepository({ kind, load, save })`：仓库保存的是 opaque token 对应的完整 credential、Android device 与 `expiresAt`，必须由宿主加密，不能进入 renderer、一般 JSON 文件或日志。恢复时会重新校验全部字段并丢弃超过 24 小时 TTL 的记录；仓库读取、解密或写入失败时降级为内存行为，不阻断重新扫码。
+<a id="歌曲品质"></a>
 
-Folia 采用 Electron 主进程 `safeStorage` 加密后写入 `electron-store`；renderer 的 `localStorage` 继续只保存 opaque `qqmusic_session`。Linux 若只能使用 Electron 的 `basic_text` 后端则拒绝写入凭证，以免把 `musickey` 伪装成“已加密”状态。
+音质示例：`/getMusicPlay/demo-song-mid?quality=flac`。高音质拿不到链接，不代表低音质也不能播放。上游正常响应但链接为空时，只能确定这一次没有提供音源，不能据此认定下架、会员或地区限制。
 
-#### 容器部署下的运行时约定
+用 `LOG_LEVEL=debug` 启动 Node 服务后，没拿到链接的条目会记录 `playback.url-unavailable`。日志只留 `phase`、`index`、`quality` 和 `entryCodes` 中的安全整数，不记录歌曲 id、凭证或播放链接。上游数字的含义没确认时不替它命名。
 
-Folia 的 `folia-qq-api` 镜像用 `npm run build:js` 的 JavaScript 产物运行（`node dist/src/app.js`），不在容器里跑 `ts-node`：
+登录态取链沿用独立的 auth HTTP client。Android 取链返回有效 `purl` 但缺少 `sip` 时，服务会探测可用 CDN；探测失败仍使用默认节点。缓存只保留所选节点，不保存完整签名播放链接，且只存在当前服务实例中。
 
-| 项目 | 容器内取值 |
+### 获取歌曲歌词
+
+`GET /getLyric?songmid=demo-song-mid` 返回歌词。`songmid` 是歌曲 mid；可选 `isFormat=true` 请求格式化，默认 `false`。
+
+### 获取搜索热词
+
+`GET /getHotkey` 返回搜索热词。
+
+### 获取关键字搜索提示
+
+`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。
+
+### 获取搜索结果
+
+`GET /getSearchByKey?key=示例关键词&limit=10&page=1` 查询搜索结果。`key` 必填，`limit` 默认 10、`page` 默认 1。可选 `remoteplace` 默认 `song`，其他值包括 `album`、`mv`、`playlist`、`user`、`lyric`；注意参数拼写是 `remoteplace`。
+
+### 获取MV标签
+
+`GET /getMvByTag` 返回 MV 标签。
+
+### 获取MV
+
+`GET /getMv?area_id=15&version_id=7&limit=20&page=0` 返回 MV 列表，示例显示默认值。分类可从返回的标签数据中读取。
+
+### 获取MV播放信息
+
+`GET /getMvPlay?vid=demo-video-id` 返回 MV 播放信息；`vid` 必填。
+
+### 获取歌手MV
+
+`GET /getSingerMv?singermid=demo-singer-mid&num=5&order=time` 返回歌手 MV。`singermid` 必填，`num` 默认 5；数量 query 参数是 `num`。`order=time` 会启用对应的时间排序请求。
+
+### 获取新碟信息
+
+`GET /getNewDisks?page=1&limit=20` 返回新碟信息，示例显示默认值；注意路径中的 `Disks` 拼写。
+
+### 获取首页推荐
+
+`GET /getRecommend` 返回旧的首页推荐结构。它与 `/recommend/playlists` 是两条不同路由，错误处理也不同。
+
+### 获取排行榜单列表
+
+`GET /getTopLists` 返回榜单列表。
+
+### 获取排行榜单详情
+
+`GET /getRanks?topId=4&limit=20&page=0` 返回榜单详情，示例显示默认值。`page` 在这里传给上游的是偏移量。可选 `period` 接受日期，服务会把它转换为相应的年和周。
+
+<a id="获取评论信息cmd代表的意思没太弄明白"></a>
+
+### 获取评论信息
+
+`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。
+
+其他参数 `cid`、`cmd`、`reqtype`、`biztype` 保留原有传递方式，默认分别为 `205360772`、`8`、`2`、`1`；具体上游含义未完整确认，不把这些参数当作通用分类保证。
+
+### 获取歌曲 + 专辑 图片
+
+`GET /getImageUrl?id=demo-album-mid&size=300x300` 根据图片标识生成图片地址。`id` 必填，`size` 默认 `300x300`，`maxAge` 默认 `2592000`，作为 `max_age` 原样写入图片地址。
+
+### 获取电台列表
+
+`GET /getRadioLists` 读取电台分类列表。它只列出电台，不代表当前后端提供分类电台取歌，也不能替代登录后的 `/user/guess-you-like`。
+
+### 获取票务信息
+
+`GET /getTicketInfo` 返回票务信息。
+
+### 获取QQ音乐产品的下载地址
+
+`GET /downloadQQMusic` 返回 QQ 音乐产品下载地址。
+
+## 新特性
+
+这一节保留旧的 Web Cookie 接口入口。新应用优先使用扫码会话，不需要手动复制 QQ 原始 Cookie。
+
+### 支持自定义设置cookie
+
+`GET /user/setCookie` 已停用动态设置，始终返回 `403` 和固定说明，不接受写入。早期手动填写原始 Cookie 的使用步骤不适用于当前接口。新应用使用扫码登录即可。
+
+<a id="格式化自定义的-cookie"></a>
+
+### 获取 Cookie
+
+`GET /user/getCookie` 只返回旧配置的脱敏摘要。已配置的 Cookie 会显示为遮罩，`cookieList` 和 `cookieObject` 也会脱敏，不会交出原始凭证。扫码得到的 `qqmusic_session` 是独立的会话，不能从这个接口取得。
+
+<a id="特性提示支持"></a>
+
+旧接口的提示与 body 形状保持各自原有规则，不能统一按推荐接口的 `errorKey` 读取。
+
+## 当前架构
+
+- `src/app.ts` 负责启动 Koa、挂载路由和 Explorer。
+- `src/controllers/` 处理 HTTP 参数与响应，`src/services/` 访问 QQ 数据。
+- `src/protocol/` 保存协议描述与错误分类，`src/transport/` 提供传输组件。
+- `src/serverless/` 提供 Web 标准入口；各部署支持的功能由能力接口声明。
+- `src/config/apiExplorer.ts` 是 Explorer 的接口清单和参数来源。
+- `tests/` 覆盖服务、HTTP 契约、Explorer 和发布产物。
+
+## API结构图
+
+```text
+调用方 → Node HTTP / Serverless 入口 → 服务与协议处理 → QQ 音乐
+              ↕
+         API Explorer（Node）
+```
+
+请求配置由包内私有客户端保存，不会改写宿主共享的 `axios.defaults`。登录凭证、设备身份和会话仓库是不同的存储内容，不能互相替代。
+
+## 开发与验证
+
+| 命令 | 用途 |
 | --- | --- |
-| 端口 | `PORT=3000`，只经 gateway 的 `/qq/` 暴露 |
-| 装置状态 | `QQ_AUTH_STATE_PATH=/app/.auth-state/qq-device.json`，挂具名卷 |
-| 根文件系统 | 只读；`/tmp` 为 tmpfs，装置状态卷是唯一可写路径 |
-| 运行用户 | `node`（非 root），`no-new-privileges` |
-| 健康检查 | `GET /login/status`，只读进程内会话状态，不会建立 QR 或注册装置 |
+| `npm start` | 运行 TypeScript 源码 |
+| `npm run build` | 检查源码和测试的 TypeScript 类型 |
+| `npm run lint` | 检查源码 |
+| `npm test` | 全套 Jest 离线测试，只允许本机测试连接 |
+| `npm run test:contracts` | Folia、Serverless 和发布产物契约测试 |
+| `npm run test:legacy-routes` | 预留的旧路由测试入口；当前集合为空，正常结束 |
+| `npm run probe:legacy-routes` | 允许真实上游的探测入口；当前集合为空，新增探测后需手动运行 |
+| `npm run build:js` | 生成 CommonJS、ESM、类型与运行时资源 |
+| `npm run start:dist` | 运行编译产物 |
+| `npm run docs` | 在本机预览 Docsify 文档 |
 
-因为运行时是 `--omit=dev` 安装，`src/` 里 import 的每个包都必须在 `dependencies`；`tests/runtime.dependencies.test.ts` 会在这条约束被破坏时失败。装置状态卷被删除后下次启动会重新注册装置，属于预期行为。
+全套 Jest 在 Windows 上使用 PowerShell。离线测试通过表示本地契约通过，不能替代真账号或各宿主的实际验收。发布流程见 [RELEASING.md](https://github.com/yakult-green-tea/qq-music-api/blob/main/RELEASING.md)，贡献方式见 [CONTRIBUTING.md](https://github.com/yakult-green-tea/qq-music-api/blob/main/CONTRIBUTING.md)。
+
+## 排查问题
+
+先确认部署实际加载的包版本、入口和配置，再看脱敏后的状态码与诊断字段。重启本身不能证明某个上游错误已经修复。
+
+一般日志不记录原始上游 body、二维码标识、Cookie、token、设备识别值、账号 id 或完整播放链接。反馈时只提供复现步骤、运行环境和脱敏摘要，敏感 HAR 留在本地。
