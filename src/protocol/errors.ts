@@ -1,10 +1,11 @@
 import {
   type BusinessErrorKind,
-  type CodeEvidence,
-  isBusinessErrorKey,
-  lookupBusinessCode,
+  isRegisteredErrorKey,
+  lookupUpstreamCode,
+  type UpstreamCodeLayer,
   type UpstreamOperation,
 } from './businessCodes';
+import { type EvidenceLevel, isEvidenceLevel } from './evidence';
 
 export type QqErrorKind =
   | BusinessErrorKind
@@ -38,7 +39,7 @@ export type QqFailure =
 
 interface QqErrorOptions extends UpstreamDetails {
   errorKey?: string;
-  evidence?: CodeEvidence;
+  evidence?: EvidenceLevel;
   retryable?: boolean;
 }
 
@@ -52,7 +53,7 @@ export interface SafeQqError {
   upstreamSubCode?: number;
   upstreamHttpStatus?: number;
   retryAfterMs?: number;
-  evidence?: CodeEvidence;
+  evidence?: EvidenceLevel;
 }
 
 const defaults: Record<QqErrorKind, { key: string; message: string; status: number }> = {
@@ -114,12 +115,6 @@ const networkKeys = new Set([
   'network.aborted',
   'network.unknown',
 ]);
-const evidenceLevels = new Set<CodeEvidence>([
-  'existing-behavior',
-  'observed-response',
-  'protocol-reference',
-  'third-party-report',
-]);
 const integerOf = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isSafeInteger(value) ? value : undefined;
 const statusOf = (value: unknown): number | undefined => {
@@ -148,7 +143,7 @@ export class QqApiError extends Error {
   public readonly upstreamSubCode?: number;
   public readonly upstreamHttpStatus?: number;
   public readonly retryAfterMs?: number;
-  public readonly evidence?: CodeEvidence;
+  public readonly evidence?: EvidenceLevel;
 
   constructor(kind: QqErrorKind, options: QqErrorOptions = {}) {
     const safeKind = Object.hasOwn(defaults, kind) ? kind : 'unexpected';
@@ -160,7 +155,7 @@ export class QqApiError extends Error {
       key &&
       (key === defaults[safeKind].key ||
         (safeKind === 'network' && networkKeys.has(key)) ||
-        isBusinessErrorKey(key, safeKind))
+        isRegisteredErrorKey(key, safeKind))
         ? key
         : defaults[safeKind].key;
     this.retryable = options.retryable === true && ['network', 'upstream-http'].includes(safeKind);
@@ -169,9 +164,7 @@ export class QqApiError extends Error {
     this.upstreamSubCode = integerOf(options.upstreamSubCode);
     this.upstreamHttpStatus = statusOf(options.upstreamHttpStatus);
     this.retryAfterMs = delayOf(options.retryAfterMs);
-    this.evidence = evidenceLevels.has(options.evidence as CodeEvidence)
-      ? options.evidence
-      : undefined;
+    this.evidence = isEvidenceLevel(options.evidence) ? options.evidence : undefined;
   }
 
   public toJSON(): SafeQqError {
@@ -227,6 +220,10 @@ const networkFailure = (raw: unknown, context: QqFailureContext): QqApiError => 
   });
 };
 
+/** A number only has a meaning for the call and layer it was registered under; nothing applies globally. */
+const registered = (context: QqFailureContext, layer: UpstreamCodeLayer, code: number) =>
+  context.operation === undefined ? undefined : lookupUpstreamCode(context.operation, layer, code);
+
 /** Used by new protocol/transport adapters. Existing route errors and status rules are untouched. */
 export const normalizeQqFailure = (
   failure: QqFailure,
@@ -251,13 +248,13 @@ export const normalizeQqFailure = (
   if (failure.source === 'http') return new QqApiError('invalid-response', details);
   const global = integerOf(details.upstreamGlobalCode);
   if (global !== undefined && global !== 0) {
-    const info = lookupBusinessCode(global, context.operation, 'gateway');
+    const info = registered(context, 'gateway', global);
     return new QqApiError('upstream-gateway', { ...details, evidence: info?.evidence });
   }
   if (failure.source === 'gateway') return new QqApiError('invalid-response', details);
   const code = integerOf(details.upstreamCode);
   if (code === undefined || code === 0) return new QqApiError('invalid-response', details);
-  const info = lookupBusinessCode(code, context.operation);
+  const info = registered(context, 'business', code);
   return new QqApiError(info?.kind ?? 'upstream-business', {
     ...details,
     errorKey: info?.errorKey,

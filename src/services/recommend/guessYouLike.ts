@@ -33,7 +33,7 @@ export const GUESS_YOU_LIKE: MusicuDescriptor<GuessYouLikeData> = {
   // 实测可用的参数组；num 再大也只回 5 首。
   param: { id: 99, firstplay: 1, num: 15 },
   readOnly: true,
-  operation: 'recommendation-read',
+  operation: 'recommend.guess-you-like',
   decode,
 };
 

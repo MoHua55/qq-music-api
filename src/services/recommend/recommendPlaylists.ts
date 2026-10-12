@@ -40,7 +40,7 @@ const recommendFeed = (limit: number): MusicuDescriptor<RecommendFeedData> => ({
   method: 'GetRecommendFeed',
   param: { From: 0, Size: limit },
   readOnly: true,
-  operation: 'recommendation-read',
+  operation: 'recommend.playlists',
   decode,
 });
 

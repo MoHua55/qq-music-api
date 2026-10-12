@@ -1,17 +1,59 @@
-export type UpstreamOperation =
-  | 'generic'
-  | 'login'
-  | 'phone-login'
-  | 'playlist-read'
-  | 'playlist-write'
-  | 'album-read'
-  | 'recommendation-read';
+import type { EvidenceLevel } from './evidence';
 
-export type CodeEvidence =
-  | 'existing-behavior'
-  | 'observed-response'
-  | 'protocol-reference'
-  | 'third-party-report';
+// src/protocol/businessCodes.ts
+//
+// 上游数字码的登记表：哪一步调用、哪一层、哪个数字、什么意思、凭什么这样说。
+//
+// 同一个数字在不同调用、不同层可以完全不同义（例如 104400 在带凭证的读取里表示凭证失效，
+// 在歌手接口的内层却只是参数不对），所以查表一定要同时给出调用和层级，只给数字查不到任何东西。
+// 没有「对所有调用都成立」的条目；没登记的组合一律当成未知，不推断。零依赖，两个运行时共用。
+
+/** 哪一步上游调用。扫码登录按通道分开：两个通道的同名步骤背后不是同一次请求。 */
+export const UPSTREAM_OPERATIONS = [
+  /** 手机 QQ 扫码：用扫码得到的票据换正式凭证。 */
+  'login.qq.credential-exchange',
+  /** 手机 QQ 扫码：换凭证失败后，直接拿扫码票据去读登录用户。 */
+  'login.qq.fallback-validation',
+  /** 微信扫码：用授权码换正式凭证。 */
+  'login.wechat.credential-exchange',
+  /** 微信扫码：用刚换到的凭证读登录用户。 */
+  'login.wechat.credential-validation',
+  /** 微信扫码：验证被拒后刷新一次凭证。 */
+  'login.wechat.credential-refresh',
+  /** 登录之后带凭证的 musicu 读取（资料、歌单、喜欢、取播放链接等）。 */
+  'session.authenticated-read',
+  /** 猜你喜欢（`get_radio_track` id 99）。 */
+  'recommend.guess-you-like',
+  /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
+  'recommend.playlists',
+  /** 网页版每日推荐候选接口（目前没有路由用它，只记录观测）。 */
+  'recommend.web-daily-candidate',
+  /** 匿名的歌单详情 CGI。 */
+  'playlist.anonymous-detail',
+  /** 带凭证重读歌单详情。 */
+  'playlist.authenticated-detail',
+  /** 往歌单里加歌（还没有路由）。 */
+  'playlist.add-songs',
+  /** 从歌单里删歌（还没有路由）。 */
+  'playlist.del-songs',
+  /** 收藏的专辑列表（musicu 版，已改走旧 CGI）。 */
+  'library.favorite-albums',
+  /** 带会话取播放链接（`UrlGetVkey`）。 */
+  'playback.authenticated-url',
+] as const;
+
+export type UpstreamOperation = (typeof UPSTREAM_OPERATIONS)[number];
+
+/** 码出现在哪一层。不同层的数字不能混用。 */
+export type UpstreamCodeLayer =
+  /** musicu 顶层 `code`。 */
+  | 'gateway'
+  /** musicu 单项 `req_N.code`，或旧 CGI 回应里的 `code`。 */
+  | 'business'
+  /** 单项里的 `subcode`。 */
+  | 'business-subcode'
+  /** 取链接响应里单曲条目的数字（`midurlinfo[i]`）。 */
+  | 'song-entry';
 
 export type BusinessErrorKind =
   | 'credential-invalid'
@@ -25,113 +67,216 @@ export type BusinessErrorKind =
   | 'upstream-business'
   | 'upstream-gateway';
 
-export interface BusinessCodeInfo {
-  readonly code: number;
+export interface UpstreamCodeEntry {
+  readonly operation: UpstreamOperation;
+  readonly sourceLayer: UpstreamCodeLayer;
+  readonly upstreamCode: number;
   readonly kind: BusinessErrorKind;
   readonly errorKey: string;
-  readonly evidence: CodeEvidence;
-  readonly disposition: 'error' | 'idempotent-candidate';
+  readonly evidence: EvidenceLevel;
+  /** 出处的简述。不写账号、歌名或 id，也不写第三方项目名。 */
+  readonly note: string;
+  /** 写入请求的「已经是这个状态」候选：协议验证后由请求描述符明确放行，才能当成成功。 */
+  readonly disposition?: 'idempotent-candidate';
+  /** 给使用者的处理建议。只有出处明确时才写。 */
+  readonly suggestedAction?: 'manage-login-devices' | 'wait' | 'sign-in-again';
+  /** 是否表示现有会话的凭证已经失效（对应路由上的 401）。只有凭证失效那几条才是 true。 */
+  readonly invalidatesSession?: boolean;
 }
 
-interface CodeRule extends BusinessCodeInfo {
-  readonly operations: readonly UpstreamOperation[] | 'any';
-  readonly source: 'business' | 'gateway';
-}
+type EntryBody = Omit<UpstreamCodeEntry, 'operation' | 'sourceLayer' | 'upstreamCode'>;
 
-const rule = (
-  code: number,
-  kind: BusinessErrorKind,
-  errorKey: string,
-  evidence: CodeEvidence,
-  operations: CodeRule['operations'],
-  disposition: BusinessCodeInfo['disposition'] = 'error',
-  source: CodeRule['source'] = 'business',
-): CodeRule => ({ code, kind, errorKey, evidence, operations, disposition, source });
+const entries = (
+  operations: readonly UpstreamOperation[],
+  sourceLayer: UpstreamCodeLayer,
+  codes: readonly number[],
+  body: EntryBody,
+): UpstreamCodeEntry[] =>
+  operations.flatMap((operation) =>
+    codes.map((upstreamCode) => ({ operation, sourceLayer, upstreamCode, ...body })),
+  );
 
-// Evidence describes the protocol observation or mapping, never a confirmed account diagnosis.
-// Only the established credential rejections map to 401. Other login numbers stay login-scoped.
-const rules: readonly CodeRule[] = [
-  ...[1000, 104400, 104401].map((code) =>
-    rule(code, 'credential-invalid', 'auth.credential-invalid', 'existing-behavior', 'any'),
+/** 两个通道换凭证用的是同一个上游方法，刷新凭证也是；登录码只在这几步有意思。 */
+const LOGIN_EXCHANGE: readonly UpstreamOperation[] = [
+  'login.qq.credential-exchange',
+  'login.wechat.credential-exchange',
+  'login.wechat.credential-refresh',
+];
+
+/** 带凭证读取时，上游用这几个码表示凭证不被认可。 */
+const CREDENTIAL_CODES = [1000, 104400, 104401] as const;
+
+const credentialRejected = (
+  operations: readonly UpstreamOperation[],
+  note: string,
+): UpstreamCodeEntry[] =>
+  entries(operations, 'business', CREDENTIAL_CODES, {
+    kind: 'credential-invalid',
+    errorKey: 'auth.credential-invalid',
+    evidence: 'existing-behavior',
+    note,
+    suggestedAction: 'sign-in-again',
+    invalidatesSession: true,
+  });
+
+const observedUnknown = (note: string): EntryBody => ({
+  kind: 'upstream-business',
+  errorKey: 'upstream.unknown',
+  evidence: 'observed-response',
+  note,
+});
+
+export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
+  ...entries(LOGIN_EXCHANGE, 'business', [20279], {
+    kind: 'device-limit',
+    errorKey: 'auth.device-limit',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：登录设备数已达上限。社区回报里多次出现在手机 QQ 扫码的换凭证步骤；本项目未做受控复现',
+    suggestedAction: 'manage-login-devices',
+    invalidatesSession: false,
+  }),
+  ...entries(LOGIN_EXCHANGE, 'business', [20277, 20278], {
+    kind: 'account-restricted',
+    errorKey: 'auth.account-restricted',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：账号受限；本项目未实测',
+    invalidatesSession: false,
+  }),
+  ...entries(LOGIN_EXCHANGE, 'business', [20450], {
+    kind: 'account-banned',
+    errorKey: 'auth.account-banned',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：账号被封禁；本项目未实测',
+    invalidatesSession: false,
+  }),
+  ...entries(LOGIN_EXCHANGE, 'business', [20272, 20274], {
+    kind: 'account-binding',
+    errorKey: 'auth.account-binding',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：账号绑定异常（20272）或缺失（20274）；本项目未实测',
+    invalidatesSession: false,
+  }),
+  ...entries(LOGIN_EXCHANGE, 'business', [20261], {
+    kind: 'login-rejected',
+    errorKey: 'auth.login-rejected',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：登录参数不被接受；本项目未实测，只说「被拒」不说原因',
+    invalidatesSession: false,
+  }),
+  ...entries(LOGIN_EXCHANGE, 'business', [104604], {
+    kind: 'rate-limited',
+    errorKey: 'auth.rate-limited',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：登录操作过于频繁；本项目未实测。只是分类，不改变现有的扫码冷却',
+    suggestedAction: 'wait',
+    invalidatesSession: false,
+  }),
+  ...entries(
+    ['login.qq.credential-exchange'],
+    'business',
+    [50006],
+    observedUnknown('本项目实测见过（手机 QQ 扫码换凭证被拒），原因未知；不能当成设备超限'),
   ),
-  rule(2001, 'rate-limited', 'upstream.rate-limited', 'protocol-reference', 'any'),
-  rule(104604, 'rate-limited', 'auth.rate-limited', 'protocol-reference', ['login']),
-  rule(20279, 'device-limit', 'auth.device-limit', 'protocol-reference', ['login']),
-  ...[20277, 20278].map((code) =>
-    rule(code, 'account-restricted', 'auth.account-restricted', 'protocol-reference', ['login']),
+  ...entries(
+    ['login.qq.fallback-validation'],
+    'business',
+    [1000],
+    observedUnknown(
+      '本项目实测见过：换凭证失败后改用扫码票据读登录用户也被拒。它盖住了换凭证那一步的真实原因，不能当成会话失效或设备超限',
+    ),
   ),
-  rule(20450, 'account-banned', 'auth.account-banned', 'protocol-reference', ['login']),
-  ...[20272, 20274].map((code) =>
-    rule(code, 'account-binding', 'auth.account-binding', 'protocol-reference', ['login']),
+  ...credentialRejected(
+    ['session.authenticated-read'],
+    '本项目一直以来的处理：带凭证的 musicu 读取在单项这一层回这几个码，表示凭证不被认可，路由回 401',
   ),
-  rule(20261, 'login-rejected', 'auth.login-rejected', 'protocol-reference', ['login']),
-  rule(20271, 'login-rejected', 'auth.verification-rejected', 'protocol-reference', [
-    'phone-login',
-  ]),
-  rule(50006, 'upstream-business', 'upstream.unknown', 'observed-response', ['login']),
-  rule(10, 'upstream-business', 'playlist.anonymous-unreadable', 'observed-response', [
-    'playlist-read',
-  ]),
-  rule(10004, 'not-found', 'playlist.not-found', 'observed-response', ['playlist-read']),
-  // This number has been observed without login, but has not been validated as a credential code.
-  rule(80120, 'upstream-business', 'playlist.authentication-unverified', 'observed-response', [
-    'playlist-read',
-  ]),
-  // A future write descriptor must explicitly allow this result after protocol validation.
-  rule(
-    80092,
-    'upstream-business',
-    'playlist.already-applied',
-    'protocol-reference',
-    ['playlist-write'],
-    'idempotent-candidate',
+  ...credentialRejected(
+    ['recommend.guess-you-like', 'recommend.playlists'],
+    '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
   ),
-  rule(80105, 'upstream-business', 'playlist.write-rejected', 'third-party-report', [
-    'playlist-write',
-  ]),
-  rule(22006, 'upstream-business', 'recommendation.rejected', 'observed-response', [
-    'recommendation-read',
-  ]),
-  ...[80000, 40000].map((code) =>
-    rule(code, 'upstream-business', 'album.endpoint-unavailable', 'observed-response', [
-      'album-read',
-    ]),
+  ...entries(['recommend.guess-you-like'], 'business', [22006], {
+    ...observedUnknown('本项目实测见过（带 song_ids 且 num 改成 10 时被拒），原因没有分离'),
+    errorKey: 'recommendation.rejected',
+  }),
+  ...entries(
+    ['recommend.web-daily-candidate'],
+    'business',
+    [500003],
+    observedUnknown(
+      '本项目实测见过（HTTP 200、网关码 0、单项码 500003），原因未知；不能推断成出口 IP 被拒',
+    ),
   ),
-  rule(
-    500003,
-    'upstream-gateway',
-    'upstream.gateway-rejected',
-    'third-party-report',
-    'any',
-    'error',
-    'gateway',
+  ...entries(
+    ['recommend.web-daily-candidate'],
+    'business-subcode',
+    [860100005],
+    observedUnknown('本项目实测见过（与单项码 500003 一起出现），原因未知'),
+  ),
+  ...entries(['playlist.anonymous-detail'], 'business', [10], {
+    ...observedUnknown('本项目实测：算法歌单用匿名接口读不到，要带凭证重读'),
+    errorKey: 'playlist.anonymous-unreadable',
+  }),
+  ...entries(['playlist.authenticated-detail'], 'business', [10004], {
+    kind: 'not-found',
+    errorKey: 'playlist.not-found',
+    evidence: 'observed-response',
+    note: '本项目实测：带凭证读一个不存在的歌单',
+  }),
+  ...entries(['playlist.authenticated-detail'], 'business', [80120], {
+    ...observedUnknown('本项目实测见过（不带登录时），还没确认是不是凭证失效，所以不回 401'),
+    errorKey: 'playlist.authentication-unverified',
+  }),
+  ...entries(['playlist.add-songs', 'playlist.del-songs'], 'business', [80092], {
+    kind: 'upstream-business',
+    errorKey: 'playlist.already-applied',
+    evidence: 'protocol-reference',
+    note: '公开协议资料：歌曲已经在（或不在）歌单里；写入路由验证协议后才能放行成成功',
+    disposition: 'idempotent-candidate',
+  }),
+  ...entries(['playlist.add-songs'], 'business', [80105], {
+    kind: 'upstream-business',
+    errorKey: 'playlist.write-rejected',
+    evidence: 'third-party-report',
+    note: '第三方回报：往「我喜欢」加歌被拒；参数还是权限问题未知',
+  }),
+  ...entries(
+    ['playlist.del-songs'],
+    'business',
+    [2001],
+    observedUnknown(
+      '网页实测见过：删歌单里的歌时单项码 2001、data.retCode 0。不能当成成功，也不能当成限流、自动重试或给冷却时间',
+    ),
+  ),
+  ...entries(['library.favorite-albums'], 'business', [80000, 40000], {
+    ...observedUnknown('本项目实测：收藏专辑的 musicu 接口不可用，已改走旧 CGI'),
+    errorKey: 'album.endpoint-unavailable',
+  }),
+  ...entries(
+    ['playback.authenticated-url'],
+    'song-entry',
+    [104003],
+    observedUnknown(
+      '本项目实测见过（免费账号，320 与 128 都有，subcode 1；有的歌 320 被拒、128 拿得到链接）。只表示这一个音质这一次没给链接，原因未分类',
+    ),
   ),
 ];
 
-/** Unknown numbers, success codes and meanings from another operation have no inferred meaning. */
-export const lookupBusinessCode = (
-  code: number,
-  operation: UpstreamOperation = 'generic',
-  source: CodeRule['source'] = 'business',
-): BusinessCodeInfo | undefined => {
-  if (!Number.isSafeInteger(code) || code === 0) return undefined;
-  const found = rules.find(
-    (entry) =>
-      entry.code === code &&
-      entry.source === source &&
-      (entry.operations === 'any' || entry.operations.includes(operation)),
+/** 查表：调用、层级、数字都对得上才有结果；拿到的是副本，改了也不影响登记表。 */
+export const lookupUpstreamCode = (
+  operation: UpstreamOperation,
+  sourceLayer: UpstreamCodeLayer,
+  upstreamCode: number,
+): UpstreamCodeEntry | undefined => {
+  if (!Number.isSafeInteger(upstreamCode) || upstreamCode === 0) return undefined;
+  const entry = UPSTREAM_CODES.find(
+    (candidate) =>
+      candidate.operation === operation &&
+      candidate.sourceLayer === sourceLayer &&
+      candidate.upstreamCode === upstreamCode,
   );
-  if (!found) return undefined;
-  // Do not expose mutable references to the classification table.
-  return {
-    code: found.code,
-    kind: found.kind,
-    errorKey: found.errorKey,
-    evidence: found.evidence,
-    disposition: found.disposition,
-  };
+  return entry ? { ...entry } : undefined;
 };
 
-export const isBusinessErrorKey = (value: unknown, kind: string): value is string =>
+/** 错误核心用来校验调用方给的 errorKey：只有登记表里同一类的 key 才收。 */
+export const isRegisteredErrorKey = (value: unknown, kind: string): value is string =>
   typeof value === 'string' &&
-  rules.some((entry) => entry.errorKey === value && entry.kind === kind);
+  UPSTREAM_CODES.some((entry) => entry.errorKey === value && entry.kind === kind);
