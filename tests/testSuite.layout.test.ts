@@ -4,10 +4,8 @@ import path from 'node:path';
 /**
  * Keeps the default suite honest about what it proves.
  *
- * The legacy route tests below only check that the status lands in a set such as
- * [200, 400, 404, 500], so they pass even when a route always fails, and they reach the real QQ
- * upstream when nothing blocks the network. They are kept, but outside the default suite, with
- * two explicit commands: one with the network blocked and one that probes the real upstream.
+ * The promoted route tests use synthetic upstream replies and exact response assertions.
+ * Any future live probes must stay outside the default suite and its network guard.
  */
 
 const ROOT = path.join(__dirname, '..');
@@ -16,7 +14,7 @@ const ROOT_DIR_TOKEN = '<rootDir>';
 const LEGACY_PATTERN = `${ROOT_DIR_TOKEN}/tests/legacy-routes/`;
 const OFFLINE_SETUP = `${ROOT_DIR_TOKEN}/tests/helpers/offlineNetwork.cjs`;
 
-const LEGACY_ROUTE_TESTS = [
+const PROMOTED_ROUTE_TESTS = [
   'batchGetSongInfo.test.ts',
   'batchGetSongLists.test.ts',
   'getComments.test.ts',
@@ -98,14 +96,12 @@ describe('default test suite layout', () => {
       expect(fs.existsSync(path.join(ROOT, 'tests', name))).toBe(true);
   });
 
-  it('keeps every legacy route test, and only those, in the legacy directory', () => {
+  it('promotes every mocked legacy route contract into the default suite', () => {
     const kept = fs.existsSync(LEGACY_DIR) ? listTests(LEGACY_DIR) : [];
 
-    expect(kept.map((file) => path.relative(LEGACY_DIR, file)).sort()).toEqual(
-      [...LEGACY_ROUTE_TESTS].sort(),
-    );
-    for (const name of LEGACY_ROUTE_TESTS)
-      expect(fs.existsSync(path.join(ROOT, 'tests', name))).toBe(false);
+    expect(kept).toEqual([]);
+    for (const name of PROMOTED_ROUTE_TESTS)
+      expect(fs.existsSync(path.join(ROOT, 'tests', name))).toBe(true);
   });
 
   it('leaves the legacy directory out of the default run without weakening it', () => {
@@ -119,24 +115,24 @@ describe('default test suite layout', () => {
 });
 
 describe('legacy route commands', () => {
-  it('runs the kept tests with the network blocked', () => {
+  it('keeps the reserved legacy command offline and allows an empty directory', () => {
     const config = loadConfig('jest.legacy-routes.config.js');
 
     expect(config.testMatch).toEqual([`${LEGACY_PATTERN}**/*.test.ts`]);
     expect(config.testPathIgnorePatterns ?? []).not.toContain(LEGACY_PATTERN);
     expect(config.setupFilesAfterEnv).toContain(OFFLINE_SETUP);
     expect(packageScripts()['test:legacy-routes']).toBe(
-      'jest --config jest.legacy-routes.config.js',
+      'jest --config jest.legacy-routes.config.js --passWithNoTests',
     );
   });
 
-  it('probes the real upstream only through its own command', () => {
+  it('reserves unguarded probes for their own explicit command', () => {
     const config = loadConfig('jest.legacy-routes.live.config.js');
 
     expect(config.testMatch).toEqual([`${LEGACY_PATTERN}**/*.test.ts`]);
     expect(config.setupFilesAfterEnv ?? []).not.toContain(OFFLINE_SETUP);
     expect(packageScripts()['probe:legacy-routes']).toBe(
-      'jest --config jest.legacy-routes.live.config.js --runInBand',
+      'jest --config jest.legacy-routes.live.config.js --runInBand --passWithNoTests',
     );
   });
 });
