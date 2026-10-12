@@ -1,6 +1,8 @@
 import getAlbumInfoService from '../services/album/getAlbumInfo';
+import type { QrLoginService } from '../services/auth/qrLogin';
 import u_common from '../services/u_common';
-import { json } from './response';
+import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
+import { AUTH_COOKIE_NAME, json, LOGIN_REQUIRED } from './response';
 
 // src/serverless/legacyRoutes.ts
 //
@@ -11,6 +13,8 @@ import { json } from './response';
 interface LegacyRouteContext {
   url: URL;
   params: Record<string, string>;
+  token: string | undefined;
+  service: () => Promise<QrLoginService>;
 }
 
 type LegacyRouteHandler = (context: LegacyRouteContext) => Promise<Response>;
@@ -97,5 +101,99 @@ export const legacyRoutes = {
       },
     });
     return json({ response: response.data });
+  },
+  '/login/status': async ({ service: getService, token }) => {
+    // §5.3 #3: never 401 here. Folia decides by whether `data.profile` exists.
+    const profile = await (await getService()).getLoginStatus(token);
+    return json({ code: 200, data: profile ? { profile } : {} });
+  },
+
+  '/logout': async ({ service: getService, token }) => {
+    // 🔴 Under `sealed` this cannot delete anything: the session lives in the token the client
+    // holds. `revoke()` is a documented no-op and logout means the client discarding it. The
+    // expired cookie below is what actually ends the session for a same-origin caller.
+    await (await getService()).logout(token);
+    return json({ code: 200 }, 200, { 'set-cookie': `${AUTH_COOKIE_NAME}=; Max-Age=0; Path=/` });
+  },
+
+  '/user/detail': async ({ service: getService, token }) => {
+    const profile = await (await getService()).getUserDetail(token);
+    return profile ? json({ code: 200, profile }) : json(LOGIN_REQUIRED, 401);
+  },
+
+  '/user/playlist': async ({ url, service: getService, token }) => {
+    const data = await (await getService()).getUserPlaylists(
+      token,
+      url.searchParams.get('uid') ?? undefined,
+      userPlaylistOptionsOf(url.searchParams.get('favoriteOffset')),
+    );
+    if (!data) return json(LOGIN_REQUIRED, 401);
+    return json(toUserPlaylistBody(data));
+  },
+
+  '/user/albums': async ({ url, service: getService, token }) => {
+    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '20', 10) || 20),
+    );
+    const data = await (await getService()).getUserAlbums(token, offset, limit);
+    if (!data) return json(LOGIN_REQUIRED, 401);
+    const albums = Array.isArray(data.albumlist) ? data.albumlist : [];
+    const total = typeof data.totalalbum === 'number' ? data.totalalbum : albums.length;
+    return json({
+      code: 200,
+      albums,
+      total,
+      more: Number(data.has_more) === 1 || offset + albums.length < total,
+    });
+  },
+
+  '/user/liked-songs': async ({ url, service: getService, token }) => {
+    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100),
+    );
+    const data = await (await getService()).getUserLikedSongs(token, offset, limit);
+    if (!data) return json(LOGIN_REQUIRED, 401);
+    const songs = Array.isArray(data.songlist) ? data.songlist : [];
+    const total = typeof data.total_song_num === 'number' ? data.total_song_num : songs.length;
+    return json({
+      code: 200,
+      songs,
+      total,
+      more: data.hasmore === true || Number(data.hasmore) === 1 || offset + songs.length < total,
+    });
+  },
+
+  '/user/playlist-detail': async ({ url, service: getService, token }) => {
+    const idOf = (name: string): number => {
+      const value = url.searchParams.get(name) ?? '';
+      return /^\d+$/.test(value) ? Number(value) : 0;
+    };
+    const disstid = idOf('tid');
+    const dirid = idOf('dirid');
+    if (!disstid && !dirid) return json({ code: 400, message: 'tid or dirid is required' }, 400);
+    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100),
+    );
+    const data = await (await getService()).getOwnedPlaylistSongs(token, {
+      disstid,
+      dirid,
+      offset,
+      limit,
+    });
+    if (!data) return json(LOGIN_REQUIRED, 401);
+    const songs = Array.isArray(data.songlist) ? data.songlist : [];
+    const total = typeof data.total_song_num === 'number' ? data.total_song_num : songs.length;
+    return json({
+      code: 200,
+      songs,
+      total,
+      more: data.hasmore === true || Number(data.hasmore) === 1 || offset + songs.length < total,
+    });
   },
 } satisfies Record<string, LegacyRouteHandler>;

@@ -7,6 +7,9 @@ import { toLegacyErrorMessage } from '../util/safeError';
 // serverless 路由共用的两件事：把内容写成 JSON 回应，以及路由抛出异常时怎么回。
 // 单独放一个文件，是为了让入口以外的路由实现（还有测试）也用同一份，不各写一套。
 
+export const AUTH_COOKIE_NAME = 'qqmusic_session';
+export const LOGIN_REQUIRED = { code: 401, message: 'Login required' };
+
 export const json = (body: unknown, status = 200, headers: Record<string, string> = {}): Response =>
   new Response(JSON.stringify(body), {
     status,

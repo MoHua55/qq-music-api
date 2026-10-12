@@ -172,6 +172,23 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
     expect(legs.host).toEqual(legs.legacy);
   });
 
+  if (runtime === 'serverless')
+    it('没有提供密钥时真实宿主仍回配置 501，不被测试服务绕过', async () => {
+      const legs = await detailParity(runtime, '/user/detail', mockUpstream.calls, {
+        ...options(),
+        env: {},
+      });
+      expect(legs.legacy.status).toBe(200);
+      expect(legs.operation).toEqual(legs.legacy);
+      expect(legs.host.status).toBe(501);
+      expect(legs.host.calls).toEqual([]);
+      expect(legs.host.body).toEqual({
+        code: 501,
+        message:
+          'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.',
+      });
+    });
+
   it('登出前每条腿重建会话，并比较实际清除 Cookie 的标头', async () => {
     const logoutSpy = jest.fn();
     const legs = await logoutParity(runtime, '/logout', mockUpstream.calls, {

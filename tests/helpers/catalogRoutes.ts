@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../../src/app';
-import { handleRequest } from '../../src/serverless';
+import { handleRequest, type ServerlessEnv } from '../../src/serverless';
 import {
   getLegacyHttpTransport,
   type LegacyHttpTransport,
@@ -20,7 +20,33 @@ export type CatalogRuntimeName = 'node' | 'serverless';
 export interface RouteResult {
   status: number;
   body: unknown;
+  /** 只有请求指定要比较的标头才收集，旧曲库案例保持原来的结果形状。 */
+  headers?: Record<string, string[]>;
 }
+
+export interface RouteCallOptions {
+  headers?: Record<string, string>;
+  env?: ServerlessEnv;
+  responseHeaders?: readonly string[];
+}
+
+export const selectedHeaders = (
+  names: readonly string[] | undefined,
+  read: (name: string) => string | string[] | undefined | null,
+): Pick<RouteResult, 'headers'> =>
+  names === undefined
+    ? {}
+    : {
+        headers: Object.fromEntries(
+          names.map((name) => {
+            const value = read(name);
+            return [
+              name.toLowerCase(),
+              value == null ? [] : Array.isArray(value) ? value : [value],
+            ];
+          }),
+        ),
+      };
 
 export interface UpstreamCall {
   endpoint: string;
@@ -126,13 +152,31 @@ const server = app.callback();
 export const callRoute = async (
   runtime: CatalogRuntimeName,
   path: string,
+  options: RouteCallOptions = {},
 ): Promise<RouteResult> => {
   if (runtime === 'node') {
-    const response = await request(server).get(path);
-    return { status: response.status, body: response.body };
+    const response = await request(server)
+      .get(path)
+      .set(options.headers ?? {});
+    return {
+      status: response.status,
+      body: response.body,
+      ...selectedHeaders(options.responseHeaders, (name) => response.headers[name.toLowerCase()]),
+    };
   }
-  const response = await handleRequest(new Request(`https://worker.invalid${path}`), {});
-  return { status: response.status, body: await response.json() };
+  const response = await handleRequest(
+    new Request(`https://worker.invalid${path}`, { headers: options.headers }),
+    options.env ?? {},
+  );
+  return {
+    status: response.status,
+    body: await response.json(),
+    ...selectedHeaders(options.responseHeaders, (name) =>
+      name.toLowerCase() === 'set-cookie'
+        ? response.headers.getSetCookie()
+        : response.headers.get(name),
+    ),
+  };
 };
 
 export const CATALOG_RUNTIMES: CatalogRuntimeName[] = ['node', 'serverless'];

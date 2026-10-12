@@ -27,12 +27,13 @@ import {
 } from '../services/recommend/recommendPlaylists';
 import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
-import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
+
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
+import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
-import { failureResponse, json } from './response';
+import { AUTH_COOKIE_NAME, failureResponse, json, LOGIN_REQUIRED } from './response';
 import { createRouter } from './router';
 import { openQrState, type SealedQrDeviceStateV1, sealQrState } from './sealedQrState';
 import { createSealedSessionResolver } from './sealedResolver';
@@ -81,7 +82,6 @@ export interface ServerlessOptions {
   qqRelay?: QqQrRelay;
 }
 
-const AUTH_COOKIE_NAME = 'qqmusic_session';
 const AUTH_HEADER_NAME = 'x-qq-session';
 /** A single invocation may observe a pull channel this long before it has to answer. */
 const CHECK_BUDGET_MS = 20_000;
@@ -146,8 +146,6 @@ const serviceErrorResponse = (error: unknown): Response => {
   }
   throw error;
 };
-
-const LOGIN_REQUIRED = { code: 401, message: 'Login required' };
 
 /** 新路由的结果已经带好状态码与 header，这里只负责写成 Response。 */
 const fromResult = (result: NewRouteResult): Response =>
@@ -435,24 +433,11 @@ const routes: Record<string, RouteHandler> = {
   },
 
   // ---- Session ----------------------------------------------------------------------------
-  '/login/status': async ({ service: getService, token }) => {
-    // §5.3 #3: never 401 here. Folia decides by whether `data.profile` exists.
-    const profile = await (await getService()).getLoginStatus(token);
-    return json({ code: 200, data: profile ? { profile } : {} });
-  },
+  '/login/status': legacyRoutes['/login/status'],
 
-  '/logout': async ({ service: getService, token }) => {
-    // 🔴 Under `sealed` this cannot delete anything: the session lives in the token the client
-    // holds. `revoke()` is a documented no-op and logout means the client discarding it. The
-    // expired cookie below is what actually ends the session for a same-origin caller.
-    await (await getService()).logout(token);
-    return json({ code: 200 }, 200, { 'set-cookie': `${AUTH_COOKIE_NAME}=; Max-Age=0; Path=/` });
-  },
+  '/logout': legacyRoutes['/logout'],
 
-  '/user/detail': async ({ service: getService, token }) => {
-    const profile = await (await getService()).getUserDetail(token);
-    return profile ? json({ code: 200, profile }) : json(LOGIN_REQUIRED, 401);
-  },
+  '/user/detail': legacyRoutes['/user/detail'],
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
     fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
@@ -469,83 +454,15 @@ const routes: Record<string, RouteHandler> = {
     );
   },
 
-  '/user/playlist': async ({ url, service: getService, token }) => {
-    const data = await (await getService()).getUserPlaylists(
-      token,
-      url.searchParams.get('uid') ?? undefined,
-      userPlaylistOptionsOf(url.searchParams.get('favoriteOffset')),
-    );
-    if (!data) return json(LOGIN_REQUIRED, 401);
-    return json(toUserPlaylistBody(data));
-  },
+  '/user/playlist': legacyRoutes['/user/playlist'],
 
-  '/user/albums': async ({ url, service: getService, token }) => {
-    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '20', 10) || 20),
-    );
-    const data = await (await getService()).getUserAlbums(token, offset, limit);
-    if (!data) return json(LOGIN_REQUIRED, 401);
-    const albums = Array.isArray(data.albumlist) ? data.albumlist : [];
-    const total = typeof data.totalalbum === 'number' ? data.totalalbum : albums.length;
-    return json({
-      code: 200,
-      albums,
-      total,
-      more: Number(data.has_more) === 1 || offset + albums.length < total,
-    });
-  },
+  '/user/albums': legacyRoutes['/user/albums'],
 
-  '/user/liked-songs': async ({ url, service: getService, token }) => {
-    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100),
-    );
-    const data = await (await getService()).getUserLikedSongs(token, offset, limit);
-    if (!data) return json(LOGIN_REQUIRED, 401);
-    const songs = Array.isArray(data.songlist) ? data.songlist : [];
-    const total = typeof data.total_song_num === 'number' ? data.total_song_num : songs.length;
-    return json({
-      code: 200,
-      songs,
-      total,
-      more: data.hasmore === true || Number(data.hasmore) === 1 || offset + songs.length < total,
-    });
-  },
+  '/user/liked-songs': legacyRoutes['/user/liked-songs'],
 
   // A playlist the user owns, read with their credential. It must stay in this section: the
   // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
-  '/user/playlist-detail': async ({ url, service: getService, token }) => {
-    const idOf = (name: string): number => {
-      const value = url.searchParams.get(name) ?? '';
-      return /^\d+$/.test(value) ? Number(value) : 0;
-    };
-    const disstid = idOf('tid');
-    const dirid = idOf('dirid');
-    if (!disstid && !dirid) return json({ code: 400, message: 'tid or dirid is required' }, 400);
-    const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100),
-    );
-    const data = await (await getService()).getOwnedPlaylistSongs(token, {
-      disstid,
-      dirid,
-      offset,
-      limit,
-    });
-    if (!data) return json(LOGIN_REQUIRED, 401);
-    const songs = Array.isArray(data.songlist) ? data.songlist : [];
-    const total = typeof data.total_song_num === 'number' ? data.total_song_num : songs.length;
-    return json({
-      code: 200,
-      songs,
-      total,
-      more: data.hasmore === true || Number(data.hasmore) === 1 || offset + songs.length < total,
-    });
-  },
+  '/user/playlist-detail': legacyRoutes['/user/playlist-detail'],
 
   '/getMusicPlay/:songmid?': async ({ url, params, service: getService, token }) => {
     const songmid = (params.songmid ?? url.searchParams.get('songmid') ?? '').trim();

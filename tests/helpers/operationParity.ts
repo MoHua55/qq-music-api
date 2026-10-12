@@ -13,7 +13,9 @@ import { withControllerLogging } from '../../src/util/observability';
 import {
   type CatalogRuntimeName,
   callRoute,
+  type RouteCallOptions,
   type RouteResult,
+  selectedHeaders,
   type UpstreamCall,
 } from './catalogRoutes';
 
@@ -32,7 +34,21 @@ import {
 
 type KoaController = (ctx: Koa.Context) => Promise<unknown> | unknown;
 type FetchRoute = (context: OperationRouteContext) => Promise<Response>;
-type Leg = (path: string) => Promise<RouteResult>;
+type Leg = (path: string, options: ParityCallOptions) => Promise<RouteResult>;
+
+export interface ParityCallOptions {
+  /** 以 X-QQ-Session 发给最小宿主与真实宿主；不传就是本次请求没有 token。 */
+  token?: string;
+  env?: RouteCallOptions['env'];
+  /** 只供最小 serverless 宿主使用；真实入口仍按自己的 env 现建服务。 */
+  service?: () => Promise<QrLoginService>;
+  responseHeaders?: readonly string[];
+  /** 登出等会改变会话；每条腿之前重建测试会话，避免前一条腿影响后一条。 */
+  beforeEachLeg?: () => void | Promise<void>;
+}
+
+const requestHeaders = (options: ParityCallOptions): Record<string, string> =>
+  options.token === undefined ? {} : { 'X-QQ-Session': options.token };
 
 export interface ParityRoute {
   /** 包日志用的 controller 名字，和 `src/controllers/index.ts` 一致。 */
@@ -51,15 +67,15 @@ export interface ParityImplementations {
   operation: OperationHandler;
 }
 
-export interface ParityLeg extends RouteResult {
+export interface ParityLeg<Call = UpstreamCall> extends RouteResult {
   /** 这一轮送到上游的请求。 */
-  calls: UpstreamCall[];
+  calls: Call[];
 }
 
-export interface ParityResult {
-  legacy: ParityLeg;
-  operation: ParityLeg;
-  host: ParityLeg;
+export interface ParityResult<Call = UpstreamCall> {
+  legacy: ParityLeg<Call>;
+  operation: ParityLeg<Call>;
+  host: ParityLeg<Call>;
 }
 
 const koaHost = (route: ParityRoute, controller: KoaController): Leg => {
@@ -68,9 +84,13 @@ const koaHost = (route: ParityRoute, controller: KoaController): Leg => {
   router.get(route.node, withControllerLogging(route.name, controller));
   host.use(router.routes());
   const callback = host.callback();
-  return async (path) => {
-    const response = await request(callback).get(path);
-    return { status: response.status, body: response.body };
+  return async (path, options) => {
+    const response = await request(callback).get(path).set(requestHeaders(options));
+    return {
+      status: response.status,
+      body: response.body,
+      ...selectedHeaders(options.responseHeaders, (name) => response.headers[name.toLowerCase()]),
+    };
   };
 };
 
@@ -79,7 +99,7 @@ const noService = (): Promise<QrLoginService> =>
 
 const fetchHost = (route: ParityRoute, handler: FetchRoute): Leg => {
   const match = createRouter({ [route.serverless]: handler });
-  return async (path) => {
+  return async (path, options) => {
     const url = new URL(`https://parity.invalid${path}`);
     const matched = match(url.pathname);
     if (!matched) throw new Error(`${path} does not match ${route.serverless}`);
@@ -89,13 +109,21 @@ const fetchHost = (route: ParityRoute, handler: FetchRoute): Leg => {
       response = await matched.handler({
         url,
         params: matched.params,
-        token: undefined,
-        service: noService,
+        token: options.token,
+        service: options.service ?? noService,
       });
     } catch (error) {
       response = failureResponse(error);
     }
-    return { status: response.status, body: await response.json() };
+    return {
+      status: response.status,
+      body: await response.json(),
+      ...selectedHeaders(options.responseHeaders, (name) =>
+        name.toLowerCase() === 'set-cookie'
+          ? response.headers.getSetCookie()
+          : response.headers.get(name),
+      ),
+    };
   };
 };
 
@@ -111,19 +139,36 @@ export const createParityRunner = (route: ParityRoute, implementations: ParityIm
     },
   };
 
-  const run = async (leg: Leg, path: string, calls: UpstreamCall[]): Promise<ParityLeg> => {
+  const run = async <Call>(
+    leg: Leg,
+    path: string,
+    calls: Call[],
+    options: ParityCallOptions,
+  ): Promise<ParityLeg<Call>> => {
+    await options.beforeEachLeg?.();
     calls.length = 0;
-    const result = await leg(path);
+    const result = await leg(path, options);
     return { ...result, calls: calls.slice() };
   };
 
-  return async (
+  return async <Call = UpstreamCall>(
     runtime: CatalogRuntimeName,
     path: string,
-    calls: UpstreamCall[],
-  ): Promise<ParityResult> => ({
-    legacy: await run(legs[runtime].legacy, path, calls),
-    operation: await run(legs[runtime].operation, path, calls),
-    host: await run((target) => callRoute(runtime, target), path, calls),
+    calls: Call[],
+    options: ParityCallOptions = {},
+  ): Promise<ParityResult<Call>> => ({
+    legacy: await run(legs[runtime].legacy, path, calls, options),
+    operation: await run(legs[runtime].operation, path, calls, options),
+    host: await run(
+      (target, context) =>
+        callRoute(runtime, target, {
+          headers: requestHeaders(context),
+          env: context.env,
+          responseHeaders: context.responseHeaders,
+        }),
+      path,
+      calls,
+      options,
+    ),
   });
 };
