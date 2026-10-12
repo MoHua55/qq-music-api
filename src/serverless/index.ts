@@ -1,4 +1,3 @@
-import getAlbumInfoService from '../services/album/getAlbumInfo';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
@@ -26,12 +25,11 @@ import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
 import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
-import { AuthCredentialRejectedError } from '../util/authError';
-import { RequestRejectedError } from '../util/requestError';
-import { toLegacyErrorMessage } from '../util/safeError';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
+import { legacyRoutes } from './legacyRoutes';
+import { failureResponse, json } from './response';
 import { createRouter } from './router';
 import { openQrState, type SealedQrDeviceStateV1, sealQrState } from './sealedQrState';
 import { createSealedSessionResolver } from './sealedResolver';
@@ -84,12 +82,6 @@ const AUTH_COOKIE_NAME = 'qqmusic_session';
 const AUTH_HEADER_NAME = 'x-qq-session';
 /** A single invocation may observe a pull channel this long before it has to answer. */
 const CHECK_BUDGET_MS = 20_000;
-
-const json = (body: unknown, status = 200, headers: Record<string, string> = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json; charset=utf-8', ...headers },
-  });
 
 const tokenFromCookieString = (cookie: string): string | undefined => {
   for (const entry of cookie.split(';')) {
@@ -610,16 +602,7 @@ const routes: Record<string, RouteHandler> = {
     return json({ response: response.data });
   },
 
-  '/getAlbumInfo': async ({ url }) => {
-    const albummid = url.searchParams.get('albummid');
-    if (!albummid) return json({ data: { message: 'no albummid' } }, 400);
-    const { status, body } = await getAlbumInfoService({
-      method: 'get',
-      params: { albummid },
-      options: {},
-    });
-    return json(body, status);
-  },
+  '/getAlbumInfo': legacyRoutes['/getAlbumInfo'],
 
   '/getSingerAlbum': async ({ url }) => {
     const singermid = url.searchParams.get('singermid');
@@ -775,11 +758,7 @@ export const handleRequest = async (
       options,
     });
   } catch (error) {
-    // Same split the Koa error middleware applies: an upstream credential rejection is a 401 the
-    // client can act on, everything else is a 500.
-    if (error instanceof AuthCredentialRejectedError || error instanceof RequestRejectedError)
-      return json({ code: error.httpStatus, message: error.message }, error.httpStatus);
-    return json({ error: toLegacyErrorMessage(error) }, 500);
+    return failureResponse(error);
   }
 };
 
