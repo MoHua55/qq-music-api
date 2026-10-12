@@ -217,12 +217,12 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     await call(`/login/qr/cancel?key=${encodeURIComponent(qr.body.data.unikey)}`, false);
   });
 
-  // This is a baseline for the current global rule, not evidence that 2001 means rate limiting.
-  it('records the current recommendation 2001 projection without retries or session removal', async () => {
+  // 2001 不再一律当成限流（按调用和层级分类）：推荐路由回 502，只发一次上游，会话不受影响。
+  it('answers recommendation 2001 as an unclassified rejection without retries or session removal', async () => {
     mockUpstream.state.recommendCode = 2001;
     expect(await call('/user/guess-you-like')).toMatchObject({
-      status: 429,
-      body: { errorKey: 'upstream.rate-limited' },
+      status: 502,
+      body: { kind: 'upstream-business', errorKey: 'upstream.unknown', upstreamCode: 2001 },
     });
     expect(mockUpstream.calls.filter((rpc) => rpc.method === 'get_radio_track')).toHaveLength(1);
     expect((await call('/user/detail')).status).toBe(200);

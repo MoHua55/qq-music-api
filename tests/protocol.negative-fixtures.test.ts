@@ -50,14 +50,21 @@ describe('synthetic protocol observations through the real musicu decoder', () =
         module: 'music.musicasset.PlaylistDetailWrite',
         method: 'DelSonglist',
         param: { dirId: 10, tid: 70001, bFmtUtf8: true, v_songInfo: [{ songId: 42, songType: 0 }] },
-        operation: 'playlist-write',
+        operation: 'playlist.del-songs',
         readOnly: false,
       })
       .catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(QqApiError);
-    expect(failure).toMatchObject({ upstreamCode: 2001, upstreamGlobalCode: 0, retryable: false });
+    // 删歌时见过的 2001 只登记为「见过、意思未知」：不是成功，也不是限流。
+    expect(failure).toMatchObject({
+      kind: 'upstream-business',
+      errorKey: 'upstream.unknown',
+      evidence: 'observed-response',
+      upstreamCode: 2001,
+      upstreamGlobalCode: 0,
+      retryable: false,
+    });
     expect(failure).not.toHaveProperty('retryAfterMs', expect.any(Number));
     expect(http).toHaveBeenCalledTimes(1);
-    // The existing table still calls 2001 rate-limited. Its correction belongs to integration.
   });
 });

@@ -7,7 +7,6 @@ import {
   PLAYBACK_RESTRICTION_RULES,
   type PlaybackRestrictionRule,
   playbackQualityOf,
-  playbackUnavailableLogOf,
 } from '../src/protocol/playbackRestriction';
 import { PLAYBACK_OBSERVATIONS, VIP_OBSERVATIONS } from './fixtures/protocol/negativeResponses';
 
@@ -200,27 +199,6 @@ describe('observePlaybackAuthorization', () => {
         codes: { result: 104003 },
       },
     });
-  });
-});
-
-describe('playbackUnavailableLogOf', () => {
-  it('只记阶段、位置、音质和单曲数字', () => {
-    const observation = observePlaybackAuthorization(
-      { songmid: 'fixture-song-b', purl: '', result: 104003, vkey: 'fixture-vkey' },
-      false,
-      AUTHENTICATED_FLAC,
-    );
-    const log = playbackUnavailableLogOf(observation, {
-      phase: 'get-music-play',
-      index: 1,
-    });
-    expect(log).toEqual({
-      phase: 'get-music-play',
-      index: 1,
-      quality: 'flac',
-      entryCodes: { result: 104003 },
-    });
-    expect(JSON.stringify(log)).not.toMatch(/fixture-song-b|fixture-vkey/);
   });
 });
 

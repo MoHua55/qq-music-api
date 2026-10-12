@@ -135,16 +135,5 @@ export const observePlaybackAuthorization = (
   };
 };
 
-/**
- * `playback.url-unavailable` 开发日志（debug）的内容。不带 songmid、链接、文件名、提示文字或凭证：
- * 只保留阶段、请求里的位置、音质和白名单数字。
- */
-export const playbackUnavailableLogOf = (
-  observation: PlaybackAuthorizationObservation,
-  where: { phase: 'get-music-play' | 'get-music-play-anonymous'; index: number },
-): Record<string, unknown> => ({
-  phase: where.phase,
-  index: where.index,
-  quality: observation.quality,
-  entryCodes: { ...observation.entryCodes },
-});
+// `playback.url-unavailable` 开发日志的内容由 `playbackDiagnostics.ts` 的 `playbackUnavailableLogOf` 产生，
+// 这里不再另写一份。
