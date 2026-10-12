@@ -1,3 +1,4 @@
+import { loggableSongmid, playbackFailureCodesOf } from '../../protocol/playbackDiagnostics';
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import { RequestRejectedError } from '../../util/requestError';
@@ -953,11 +954,23 @@ const getAuthenticatedPlayUrls = async (
   domain ??= DEFAULT_STREAM_DOMAIN;
   const playUrl: Dictionary = {};
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
-  for (const entry of entries) {
+  const loggedQuality = MUSIC_FILE_TYPES[qualityKey] ? qualityKey : '128';
+  for (const [index, entry] of entries.entries()) {
     const item = dictionaryOf(entry);
     const mid = identifierOf(item.songmid);
     if (!mid) continue;
     const purl = stringOf(item.purl);
+    // 开发日志（debug）：没链接的那首记下位置、songmid 和白名单里的数字，留作判断原因的证据。
+    if (!purl) {
+      const songmidForLog = loggableSongmid(mid);
+      logger.debug('playback.url-unavailable', {
+        phase: 'get-music-play',
+        index,
+        ...(songmidForLog ? { songmid: songmidForLog } : {}),
+        quality: loggedQuality,
+        ...playbackFailureCodesOf(item),
+      });
+    }
     playUrl[mid] = {
       url: purl ? `${domain}${purl}` : '',
       error: purl ? false : '暂无播放链接',
