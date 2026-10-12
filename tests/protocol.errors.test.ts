@@ -1,84 +1,170 @@
 import path from 'node:path';
 import Koa from 'koa';
 import request from 'supertest';
-import { lookupBusinessCode } from '../src/protocol/businessCodes';
+import {
+  lookupUpstreamCode,
+  UPSTREAM_CODES,
+  UPSTREAM_OPERATIONS,
+} from '../src/protocol/businessCodes';
 import { normalizeQqFailure, QqApiError, toNewRouteErrorResponse } from '../src/protocol/errors';
 import { inspectRuntimeClosure } from './helpers/runtimeClosure';
 
+const CREDENTIAL_CODES = [1000, 104400, 104401] as const;
+
+const LOGIN_EXCHANGE = [
+  'login.qq.credential-exchange',
+  'login.wechat.credential-exchange',
+  'login.wechat.credential-refresh',
+] as const;
+
+const LOGIN_CODES = [
+  [20279, 'device-limit', 'auth.device-limit'],
+  [20277, 'account-restricted', 'auth.account-restricted'],
+  [20278, 'account-restricted', 'auth.account-restricted'],
+  [20450, 'account-banned', 'auth.account-banned'],
+  [20272, 'account-binding', 'auth.account-binding'],
+  [20274, 'account-binding', 'auth.account-binding'],
+  [20261, 'login-rejected', 'auth.login-rejected'],
+] as const;
+
 describe('scoped upstream error meanings', () => {
-  it.each([1000, 104400, 104401])('keeps existing credential code %i on 401', (code) => {
-    const error = normalizeQqFailure({ source: 'business', upstreamCode: code });
-    expect(error.kind).toBe('credential-invalid');
-    expect(error.errorKey).toBe('auth.credential-invalid');
-    expect(toNewRouteErrorResponse(error).status).toBe(401);
-    expect(error.retryable).toBe(false);
+  // 1000 这几个码只在登记过的带凭证读取里表示凭证失效；没给调用或换一个调用都不推断。
+  it.each([
+    'session.authenticated-read',
+    'recommend.guess-you-like',
+    'recommend.playlists',
+  ] as const)('maps credential codes to 401 only for the registered call %s', (operation) => {
+    for (const code of CREDENTIAL_CODES) {
+      const error = normalizeQqFailure({ source: 'business', upstreamCode: code }, { operation });
+      expect(error.kind).toBe('credential-invalid');
+      expect(error.errorKey).toBe('auth.credential-invalid');
+      expect(error.evidence).toBe('existing-behavior');
+      expect(toNewRouteErrorResponse(error).status).toBe(401);
+      expect(error.retryable).toBe(false);
+    }
   });
 
   it.each([
-    [20279, 'device-limit', 'auth.device-limit'],
-    [20277, 'account-restricted', 'auth.account-restricted'],
-    [20278, 'account-restricted', 'auth.account-restricted'],
-    [20450, 'account-banned', 'auth.account-banned'],
-    [20272, 'account-binding', 'auth.account-binding'],
-    [20274, 'account-binding', 'auth.account-binding'],
-    [20261, 'login-rejected', 'auth.login-rejected'],
-  ] as const)('classifies login code %i without clearing a session', (code, kind, key) => {
-    const error = normalizeQqFailure(
-      { source: 'business', upstreamCode: code },
-      { operation: 'login' },
-    );
-    expect(error.kind).toBe(kind);
-    expect(error.errorKey).toBe(key);
-    expect(error.evidence).toBe('protocol-reference');
-    expect(toNewRouteErrorResponse(error).status).toBe(502);
-    expect(error.retryable).toBe(false);
+    undefined,
+    'login.qq.fallback-validation',
+    'playlist.authenticated-detail',
+    'playlist.del-songs',
+  ] as const)('does not turn credential codes into 401 for call %p', (operation) => {
+    for (const code of CREDENTIAL_CODES) {
+      const error = normalizeQqFailure({ source: 'business', upstreamCode: code }, { operation });
+      expect(error.kind).toBe('upstream-business');
+      expect(error.upstreamCode).toBe(code);
+      expect(toNewRouteErrorResponse(error).status).toBe(502);
+    }
+  });
+
+  it.each(
+    LOGIN_EXCHANGE,
+  )('classifies login codes on %s without clearing a session', (operation) => {
+    for (const [code, kind, key] of LOGIN_CODES) {
+      const error = normalizeQqFailure({ source: 'business', upstreamCode: code }, { operation });
+      expect(error.kind).toBe(kind);
+      expect(error.errorKey).toBe(key);
+      expect(error.evidence).toBe('protocol-reference');
+      expect(toNewRouteErrorResponse(error).status).toBe(502);
+      expect(error.retryable).toBe(false);
+    }
   });
 
   it.each([
-    20279, 20277, 20278, 20450, 20272, 20274, 20261, 104604,
-  ])('does not apply login code %i to playlists', (code) => {
-    const error = normalizeQqFailure(
-      { source: 'business', upstreamCode: code },
-      { operation: 'playlist-read' },
-    );
-    expect(error.kind).toBe('upstream-business');
-    expect(error.errorKey).toBe('upstream.unknown');
-    expect(error.upstreamCode).toBe(code);
-    expect(error.evidence).toBeUndefined();
+    'login.qq.fallback-validation',
+    'session.authenticated-read',
+    'playlist.authenticated-detail',
+    'recommend.guess-you-like',
+  ] as const)('does not apply login codes to %s', (operation) => {
+    for (const code of [20279, 20277, 20278, 20450, 20272, 20274, 20261, 104604]) {
+      const error = normalizeQqFailure({ source: 'business', upstreamCode: code }, { operation });
+      expect(error.kind).toBe('upstream-business');
+      expect(error.errorKey).toBe('upstream.unknown');
+      expect(error.upstreamCode).toBe(code);
+      expect(error.evidence).toBeUndefined();
+    }
   });
 
-  it.each([2001, 104604])('does not invent a cooldown for a business rate limit %i', (code) => {
+  it.each(
+    LOGIN_EXCHANGE,
+  )('keeps 104604 on %s as a rate limit without inventing a cooldown', (operation) => {
     const error = normalizeQqFailure(
-      { source: 'business', upstreamCode: code },
-      { operation: 'login', readOnly: true },
+      { source: 'business', upstreamCode: 104604 },
+      { operation, readOnly: true },
     );
     expect(error.kind).toBe('rate-limited');
+    expect(error.errorKey).toBe('auth.rate-limited');
     expect(error.retryable).toBe(false);
     expect(toNewRouteErrorResponse(error)).toMatchObject({ status: 429, headers: {} });
     expect(error.retryAfterMs).toBeUndefined();
   });
 
+  // 2001 不再一律当成限流：网页实测删歌单里的歌时回过 2001（retCode 0），意思还没确定。
+  it.each([
+    undefined,
+    'recommend.guess-you-like',
+    'recommend.playlists',
+    'session.authenticated-read',
+    'login.wechat.credential-exchange',
+  ] as const)('does not treat 2001 as a rate limit for call %p', (operation) => {
+    const error = normalizeQqFailure(
+      { source: 'business', upstreamCode: 2001 },
+      { operation, readOnly: true },
+    );
+    expect(error.kind).toBe('upstream-business');
+    expect(error.upstreamCode).toBe(2001);
+    expect(error.retryable).toBe(false);
+    expect(toNewRouteErrorResponse(error)).toMatchObject({ status: 502, headers: {} });
+  });
+
+  it('records 2001 on a playlist song removal as observed but unclassified', () => {
+    expect(lookupUpstreamCode('playlist.del-songs', 'business', 2001)).toMatchObject({
+      kind: 'upstream-business',
+      errorKey: 'upstream.unknown',
+      evidence: 'observed-response',
+    });
+    const error = normalizeQqFailure(
+      { source: 'business', upstreamCode: 2001 },
+      { operation: 'playlist.del-songs', readOnly: false },
+    );
+    expect(error).toMatchObject({
+      kind: 'upstream-business',
+      errorKey: 'upstream.unknown',
+      evidence: 'observed-response',
+      retryable: false,
+    });
+    expect(toNewRouteErrorResponse(error)).toMatchObject({ status: 502, headers: {} });
+  });
+
   it('keeps playlist not-found distinct from an absent route', () => {
     const error = normalizeQqFailure(
       { source: 'business', upstreamCode: 10004 },
-      { operation: 'playlist-read' },
+      { operation: 'playlist.authenticated-detail' },
     );
     expect(error.kind).toBe('not-found');
     expect(toNewRouteErrorResponse(error)).toMatchObject({
       status: 422,
       body: { code: 422, errorKey: 'playlist.not-found' },
     });
-    expect(lookupBusinessCode(10004, 'login')).toBeUndefined();
+    expect(lookupUpstreamCode('session.authenticated-read', 'business', 10004)).toBeUndefined();
   });
 
   it.each([
-    [10, 'playlist-read', 'playlist.anonymous-unreadable', 'observed-response'],
-    [80120, 'playlist-read', 'playlist.authentication-unverified', 'observed-response'],
-    [50006, 'login', 'upstream.unknown', 'observed-response'],
-    [22006, 'recommendation-read', 'recommendation.rejected', 'observed-response'],
-    [80000, 'album-read', 'album.endpoint-unavailable', 'observed-response'],
-    [40000, 'album-read', 'album.endpoint-unavailable', 'observed-response'],
-    [80105, 'playlist-write', 'playlist.write-rejected', 'third-party-report'],
+    [10, 'playlist.anonymous-detail', 'playlist.anonymous-unreadable', 'observed-response'],
+    [
+      80120,
+      'playlist.authenticated-detail',
+      'playlist.authentication-unverified',
+      'observed-response',
+    ],
+    [50006, 'login.qq.credential-exchange', 'upstream.unknown', 'observed-response'],
+    [1000, 'login.qq.fallback-validation', 'upstream.unknown', 'observed-response'],
+    [22006, 'recommend.guess-you-like', 'recommendation.rejected', 'observed-response'],
+    [500003, 'recommend.web-daily-candidate', 'upstream.unknown', 'observed-response'],
+    [80000, 'library.favorite-albums', 'album.endpoint-unavailable', 'observed-response'],
+    [40000, 'library.favorite-albums', 'album.endpoint-unavailable', 'observed-response'],
+    [80105, 'playlist.add-songs', 'playlist.write-rejected', 'third-party-report'],
   ] as const)('keeps scoped observed code %i conservative', (code, operation, key, evidence) => {
     const error = normalizeQqFailure({ source: 'business', upstreamCode: code }, { operation });
     expect(error.kind).toBe('upstream-business');
@@ -88,40 +174,95 @@ describe('scoped upstream error meanings', () => {
     expect(error.retryable).toBe(false);
   });
 
-  it('records an idempotency candidate without treating a failed write as success', () => {
-    expect(lookupBusinessCode(80092, 'playlist-write')).toMatchObject({
+  it('does not reuse the guess-you-like rejection for other recommendations', () => {
+    expect(lookupUpstreamCode('recommend.playlists', 'business', 22006)).toBeUndefined();
+  });
+
+  it.each([
+    'playlist.add-songs',
+    'playlist.del-songs',
+  ] as const)('records an idempotency candidate on %s without treating a failed write as success', (operation) => {
+    expect(lookupUpstreamCode(operation, 'business', 80092)).toMatchObject({
       disposition: 'idempotent-candidate',
       evidence: 'protocol-reference',
     });
-    expect(lookupBusinessCode(80092, 'playlist-read')).toBeUndefined();
-    const error = normalizeQqFailure(
-      { source: 'business', upstreamCode: 80092 },
-      { operation: 'playlist-write' },
-    );
+    const error = normalizeQqFailure({ source: 'business', upstreamCode: 80092 }, { operation });
     expect(toNewRouteErrorResponse(error).status).toBe(502);
     expect(error.retryable).toBe(false);
   });
 
-  it('scopes verification-code rejection to phone login', () => {
-    expect(lookupBusinessCode(20271, 'phone-login')?.errorKey).toBe('auth.verification-rejected');
-    expect(lookupBusinessCode(20271, 'login')).toBeUndefined();
+  it('keeps the write idempotency candidate out of reads', () => {
+    expect(lookupUpstreamCode('playlist.authenticated-detail', 'business', 80092)).toBeUndefined();
   });
 
-  it('does not promote a gateway code into credential rejection', () => {
+  it('only knows subcode and song-entry numbers at their own layer', () => {
+    expect(
+      lookupUpstreamCode('recommend.web-daily-candidate', 'business-subcode', 860100005)?.evidence,
+    ).toBe('observed-response');
+    expect(
+      lookupUpstreamCode('recommend.web-daily-candidate', 'business', 860100005),
+    ).toBeUndefined();
+    expect(lookupUpstreamCode('playback.authenticated-url', 'song-entry', 104003)?.evidence).toBe(
+      'observed-response',
+    );
+    expect(lookupUpstreamCode('playback.authenticated-url', 'business', 104003)).toBeUndefined();
+  });
+
+  it('does not promote a gateway code into credential rejection or a global meaning', () => {
     for (const code of [1000, 500003, -30002]) {
-      const error = normalizeQqFailure({ source: 'gateway', upstreamGlobalCode: code });
-      expect(error.kind).toBe('upstream-gateway');
-      expect(error.upstreamGlobalCode).toBe(code);
-      expect(toNewRouteErrorResponse(error).status).toBe(502);
+      for (const operation of [undefined, 'recommend.playlists'] as const) {
+        const error = normalizeQqFailure(
+          { source: 'gateway', upstreamGlobalCode: code },
+          { operation },
+        );
+        expect(error.kind).toBe('upstream-gateway');
+        expect(error.upstreamGlobalCode).toBe(code);
+        expect(error.evidence).toBeUndefined();
+        expect(toNewRouteErrorResponse(error).status).toBe(502);
+      }
     }
-    expect(lookupBusinessCode(500003, 'generic', 'gateway')?.evidence).toBe('third-party-report');
-    expect(lookupBusinessCode(500003, 'generic')).toBeUndefined();
+    expect(lookupUpstreamCode('recommend.playlists', 'gateway', 500003)).toBeUndefined();
+  });
+
+  it('registers every meaning against exactly one call and one layer', () => {
+    const seen = new Set<string>();
+    for (const entry of UPSTREAM_CODES) {
+      expect(UPSTREAM_OPERATIONS).toContain(entry.operation);
+      expect(['gateway', 'business', 'business-subcode', 'song-entry']).toContain(
+        entry.sourceLayer,
+      );
+      expect(Number.isSafeInteger(entry.upstreamCode) && entry.upstreamCode !== 0).toBe(true);
+      expect(entry.note.length).toBeGreaterThan(0);
+      const id = `${entry.operation}|${entry.sourceLayer}|${entry.upstreamCode}`;
+      expect(seen.has(id)).toBe(false);
+      seen.add(id);
+    }
+  });
+
+  it('only lets registered credential codes invalidate a session', () => {
+    for (const entry of UPSTREAM_CODES) {
+      const invalidates = entry.kind === 'credential-invalid';
+      if (invalidates) {
+        expect(CREDENTIAL_CODES).toContain(entry.upstreamCode);
+        expect(entry.sourceLayer).toBe('business');
+      }
+      expect(entry.invalidatesSession === true).toBe(invalidates);
+    }
+  });
+
+  it('hands out a copy that cannot change the registry', () => {
+    const entry = lookupUpstreamCode('session.authenticated-read', 'business', 1000);
+    expect(entry).toBeDefined();
+    if (entry) (entry as { kind: string }).kind = 'upstream-business';
+    expect(lookupUpstreamCode('session.authenticated-read', 'business', 1000)?.kind).toBe(
+      'credential-invalid',
+    );
   });
 
   it.each([987654, -30002])('preserves unknown business code %i as an opaque number', (code) => {
     const error = normalizeQqFailure(
       { source: 'business', upstreamCode: code },
-      { operation: 'login' },
+      { operation: 'login.wechat.credential-exchange' },
     );
     expect(error.errorKey).toBe('upstream.unknown');
     expect(error.upstreamCode).toBe(code);
@@ -348,7 +489,7 @@ describe('safe new-route error projection', () => {
   it.each(['node', 'fetch'])('projects the same failure through a %s host', async (host) => {
     const error = normalizeQqFailure(
       { source: 'business', upstreamCode: 10004 },
-      { operation: 'playlist-read' },
+      { operation: 'playlist.authenticated-detail' },
     );
     const projected = toNewRouteErrorResponse(error);
     let status: number;

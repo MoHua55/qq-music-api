@@ -10,7 +10,7 @@ const descriptor = (overrides: Partial<MusicuDescriptor> = {}): MusicuDescriptor
   method: 'Read',
   param: { id: 'synthetic-id' },
   readOnly: true,
-  operation: 'playlist-read',
+  operation: 'playlist.authenticated-detail',
   ...overrides,
 });
 const envelope = (data: unknown = { songs: [] }) => ({ code: 0, req_0: { code: 0, data } });
@@ -101,7 +101,7 @@ describe('musicu request and response contracts', () => {
     const results = await api.executeBatch([
       descriptor(),
       descriptor(),
-      descriptor({ operation: 'login' }),
+      descriptor({ operation: 'login.wechat.credential-exchange' }),
     ]);
     expect(results[0]).toEqual({ ok: true, code: 0, data: [] });
     expect(results[1]).toMatchObject({
@@ -120,12 +120,12 @@ describe('musicu request and response contracts', () => {
     );
     expect(
       await client(http).execute(
-        descriptor({ operation: 'playlist-write', readOnly: false, allowedCodes: [80092] }),
+        descriptor({ operation: 'playlist.add-songs', readOnly: false, allowedCodes: [80092] }),
       ),
     ).toEqual({ applied: true });
     expect(
       await caught(
-        client(http).execute(descriptor({ operation: 'playlist-write', readOnly: false })),
+        client(http).execute(descriptor({ operation: 'playlist.add-songs', readOnly: false })),
       ),
     ).toMatchObject({
       kind: 'upstream-business',

@@ -364,14 +364,19 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
   // 新的推荐路由出错时，不能顺带清掉会话或让扫码进入冷却。
   it.each([
     [{ recommendCode: 1000 }, 401],
-    [{ recommendCode: 2001 }, 429],
+    [{ recommendCode: 2001 }, 502],
     [{ recommendCode: 22006 }, 502],
+    [{ recommendHttpStatus: 429 }, 429],
     [{ recommendEmpty: true }, 422],
   ] as const)('keeps the session and QR login usable after a new route answers %p', async (failure, status) => {
     Object.assign(mockUpstream.state, failure);
     expect((await call('/user/guess-you-like', { token })).status).toBe(status);
     expect((await call('/recommend/playlists', { token })).status).toBe(status);
-    Object.assign(mockUpstream.state, { recommendCode: 0, recommendEmpty: false });
+    Object.assign(mockUpstream.state, {
+      recommendCode: 0,
+      recommendEmpty: false,
+      recommendHttpStatus: 0,
+    });
 
     const detail = await call('/user/detail', { token });
     expect(detail.status).toBe(200);

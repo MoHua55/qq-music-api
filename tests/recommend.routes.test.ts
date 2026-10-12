@@ -283,13 +283,35 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
       });
     });
 
-    it('answers 429 for the upstream rate-limit code without inventing a cooldown', async () => {
-      replies.get_radio_track = { code: 2001 };
+    it('answers 429 for an upstream HTTP 429 without inventing a cooldown', async () => {
+      replies.get_radio_track = { httpStatus: 429 };
 
       const result = await call('/user/guess-you-like', { token });
 
       expect(result.status).toBe(429);
       expect(result.body).toMatchObject({ code: 429, errorKey: 'upstream.rate-limited' });
+      expect(result.body).not.toHaveProperty('retryAfterMs');
+      expect(result.headers['retry-after']).toBeUndefined();
+    });
+
+    // 2001 的意思还没确定（网页删歌时也回过），不能当成限流，也不能顺带给冷却时间。
+    it.each([
+      '/user/guess-you-like',
+      '/recommend/playlists',
+    ])('answers 502 for business code 2001 on %s instead of a rate limit', async (path) => {
+      replies.get_radio_track = { code: 2001 };
+      replies.GetRecommendFeed = { code: 2001 };
+
+      const result = await call(path, { token });
+
+      expect(result.status).toBe(502);
+      expect(result.body).toMatchObject({
+        code: 502,
+        kind: 'upstream-business',
+        errorKey: 'upstream.unknown',
+        upstreamCode: 2001,
+        retryable: false,
+      });
       expect(result.body).not.toHaveProperty('retryAfterMs');
       expect(result.headers['retry-after']).toBeUndefined();
     });
@@ -513,8 +535,9 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
     });
 
     it.each([
-      ['429', { code: 2001 }],
+      ['429', { httpStatus: 429 }],
       ['502', { httpStatus: 403 }],
+      ['502', { code: 2001 }],
     ])('keeps %s as one warning without a duplicate diagnostic', async (_status, reply) => {
       replies.get_radio_track = reply;
 

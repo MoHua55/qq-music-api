@@ -46,6 +46,8 @@ export const createContractUpstream = () => {
     wechatCode: 408,
     recommendCode: 0,
     recommendEmpty: false,
+    /** 推荐请求整个回这个 HTTP 状态（0 表示正常回应）。 */
+    recommendHttpStatus: 0,
     /** 按 songmid 覆盖 UrlGetVkey 的单曲条目，用来模拟部分歌曲取不到链接。 */
     vkeyItems: {} as Record<string, Record<string, unknown>>,
   };
@@ -120,6 +122,15 @@ export const createContractUpstream = () => {
     }
     if (url.pathname === '/cgi-bin/musicu.fcg' && url.hostname === 'u.y.qq.com') {
       const payload = JSON.parse(url.searchParams.get('data') ?? (await request.text()));
+      const asksRecommendation = Object.values(payload).some((descriptor) =>
+        ['get_radio_track', 'GetRecommendFeed'].includes(
+          String((descriptor as { method?: unknown } | null)?.method ?? ''),
+        ),
+      );
+      if (asksRecommendation && state.recommendHttpStatus >= 400)
+        return new Response('fixture-private-upstream-body', {
+          status: state.recommendHttpStatus,
+        });
       const response: Record<string, unknown> = { code: 0 };
       for (const [key, descriptor] of Object.entries(payload)) {
         if (key === 'comm' || typeof descriptor !== 'object' || !descriptor) continue;
