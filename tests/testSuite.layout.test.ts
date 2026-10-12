@@ -115,7 +115,7 @@ describe('default test suite layout', () => {
 });
 
 describe('legacy route commands', () => {
-  it('runs the kept tests with the network blocked', () => {
+  it('keeps the reserved legacy command offline and allows an empty directory', () => {
     const config = loadConfig('jest.legacy-routes.config.js');
 
     expect(config.testMatch).toEqual([`${LEGACY_PATTERN}**/*.test.ts`]);
@@ -126,7 +126,7 @@ describe('legacy route commands', () => {
     );
   });
 
-  it('probes the real upstream only through its own command', () => {
+  it('reserves unguarded probes for their own explicit command', () => {
     const config = loadConfig('jest.legacy-routes.live.config.js');
 
     expect(config.testMatch).toEqual([`${LEGACY_PATTERN}**/*.test.ts`]);

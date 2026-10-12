@@ -9,6 +9,7 @@ import {
   playbackQualityOf,
   playbackUnavailableLogOf,
 } from '../src/protocol/playbackRestriction';
+import { PLAYBACK_OBSERVATIONS, VIP_OBSERVATIONS } from './fixtures/protocol/negativeResponses';
 
 describe('playbackEntryCodesOf', () => {
   it('只收白名单字段里的安全整数，纯数字字符串换成整数', () => {
@@ -220,5 +221,46 @@ describe('playbackUnavailableLogOf', () => {
       entryCodes: { result: 104003 },
     });
     expect(JSON.stringify(log)).not.toMatch(/fixture-song-b|fixture-vkey/);
+  });
+});
+
+describe('synthetic playback observations', () => {
+  it.each(PLAYBACK_OBSERVATIONS)('classifies each entry independently for $name', (fixture) => {
+    for (const entry of fixture.response.req_0.data.midurlinfo) {
+      const observation = observePlaybackAuthorization(entry, entry.purl.length > 0, {
+        quality: 'm4a',
+        authenticated: true,
+      });
+      expect(observation.entryCodes).toEqual({ result: entry.result, subcode: 0 });
+      if (entry.purl) expect(observation).not.toHaveProperty('restriction');
+      else
+        expect(observation.restriction).toEqual({
+          key: 'url_unavailable',
+          evidence: 'observed-response',
+          codes: { result: entry.result, subcode: 0 },
+        });
+    }
+  });
+
+  it.each(VIP_OBSERVATIONS)('does not infer entitlement from $name flags', (fixture) => {
+    const membership = fixture.response.req_0.data.infoMap['10000'];
+    const rejected = observePlaybackAuthorization(
+      { result: 104003, purl: '', membership, pay: { pay_play: 0 } },
+      false,
+      AUTHENTICATED_FLAC,
+    );
+    const granted = observePlaybackAuthorization(
+      { result: 0, purl: 'fixture.flac', membership, pay: { pay_play: 1 } },
+      true,
+      AUTHENTICATED_FLAC,
+    );
+    expect(rejected.restriction).toEqual({
+      key: 'url_unavailable',
+      evidence: 'observed-response',
+      codes: { result: 104003 },
+    });
+    expect(granted).not.toHaveProperty('restriction');
+    expect(rejected.entryCodes).toEqual({ result: 104003 });
+    expect(granted.entryCodes).toEqual({ result: 0 });
   });
 });

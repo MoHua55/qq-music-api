@@ -108,7 +108,7 @@ export const classifyPlaybackRestriction = (
 
 /**
  * 播放授权这一层的观测：这个账号、这个音质、这一次请求，上游有没有发链接。
- * 它不代表账号的会员身份，也不代表拿到链接之后 CDN 能不能真的播（见 `playbackEvidenceModel.ts`）。
+ * 它不代表账号的会员身份，也不代表拿到链接之后 CDN 能不能真的播；这些需要分别观测。
  */
 export interface PlaybackAuthorizationObservation extends PlaybackAttemptContext {
   granted: boolean;
