@@ -111,6 +111,10 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
   let token: string;
   let recorded: Recorded[];
   let replies: Record<string, Reply>;
+  let debug: jest.SpyInstance;
+  let warn: jest.SpyInstance;
+  const logged = (spy: jest.SpyInstance, event: string) =>
+    spy.mock.calls.filter(([name]) => name === event).map(([, meta]) => meta);
   let call: (
     path: string,
     options?: { token?: string; env?: ServerlessEnv },
@@ -137,7 +141,8 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
 
   beforeEach(async () => {
     jest.spyOn(Date, 'now').mockReturnValue(CONTRACT_NOW);
-    jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    debug = jest.spyOn(logger, 'debug').mockImplementation(() => undefined);
+    warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
     jest.spyOn(logger, 'error').mockImplementation(() => undefined);
     jest.spyOn(global, 'fetch').mockImplementation(upstream);
     recorded = [];
@@ -425,6 +430,21 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
       expect(result.body.playlists[0]).toMatchObject({ tid: 80003, picurl: 'b.jpg' });
       expect(result.body.playlists[0]).not.toHaveProperty('play_cnt');
       expect(result.body.playlists[0]).not.toHaveProperty('songnum');
+      // 部分可用照样 200，被跳过的条数写进开发诊断
+      expect(logged(debug, 'recommend.request-diagnostic')).toEqual([
+        { phase: 'get-recommend-playlists', status: 200, receivedEntries: 5, skippedEntries: 4 },
+      ]);
+    });
+
+    it('answers 502 invalid-response when every entry lacks a usable tid', async () => {
+      replies.GetRecommendFeed = {
+        data: { List: [feedEntry(0), feedEntry('80001'), { WhereFrom: 'fixture' }], HasMore: true },
+      };
+
+      const result = await call('/recommend/playlists');
+
+      expect(result.status).toBe(502);
+      expect(result.body).toMatchObject({ code: 502, errorKey: 'upstream.invalid-response' });
     });
 
     it('answers 422 not-found when no playlist is usable', async () => {
@@ -452,6 +472,81 @@ describe.each(['node', 'serverless'] as const)('recommendation routes: %s', (run
 
       expect(result.status).toBe(502);
       expect(result.body).toMatchObject({ errorKey: 'upstream.unknown', upstreamCode: 1101 });
+    });
+  });
+
+  describe('diagnostic logs', () => {
+    it('writes a debug diagnostic for 401 without a session, and no warning', async () => {
+      await call('/user/guess-you-like');
+
+      expect(logged(debug, 'recommend.request-diagnostic')).toEqual([
+        { phase: 'get-guess-you-like', status: 401, errorKey: 'auth.required' },
+      ]);
+      expect(logged(warn, 'recommend.request-failed')).toEqual([]);
+    });
+
+    it('keeps the upstream numbers for a rejected credential', async () => {
+      replies.GetRecommendFeed = { code: 1000 };
+
+      await call('/recommend/playlists', { token });
+
+      expect(logged(debug, 'recommend.request-diagnostic')).toEqual([
+        {
+          phase: 'get-recommend-playlists',
+          status: 401,
+          errorKey: 'auth.credential-invalid',
+          upstreamCode: 1000,
+          upstreamGlobalCode: 0,
+        },
+      ]);
+      expect(logged(warn, 'recommend.request-failed')).toEqual([]);
+    });
+
+    it('writes a debug diagnostic for 422', async () => {
+      replies.get_radio_track = { data: { id: 99, tracks: [] } };
+
+      await call('/user/guess-you-like', { token });
+
+      expect(logged(debug, 'recommend.request-diagnostic')).toEqual([
+        { phase: 'get-guess-you-like', status: 422, errorKey: 'resource.not-found' },
+      ]);
+    });
+
+    it.each([
+      ['429', { code: 2001 }],
+      ['502', { httpStatus: 403 }],
+    ])('keeps %s as one warning without a duplicate diagnostic', async (_status, reply) => {
+      replies.get_radio_track = reply;
+
+      await call('/user/guess-you-like', { token });
+
+      expect(logged(warn, 'recommend.request-failed')).toHaveLength(1);
+      expect(logged(debug, 'recommend.request-diagnostic')).toEqual([]);
+    });
+
+    it('logs nothing for a clean success', async () => {
+      await call('/user/guess-you-like', { token });
+      await call('/recommend/playlists', { token });
+
+      expect(logged(debug, 'recommend.request-diagnostic')).toEqual([]);
+      expect(logged(warn, 'recommend.request-failed')).toEqual([]);
+    });
+
+    it('never writes credentials, account ids, tokens or upstream content', async () => {
+      replies.get_radio_track = { code: 1000 };
+      await call('/user/guess-you-like', { token });
+      replies.get_radio_track = { httpStatus: 403 };
+      await call('/user/guess-you-like', { token });
+      replies.GetRecommendFeed = { data: { List: [], HasMore: false, Msg: 'fixture-private-msg' } };
+      await call('/recommend/playlists', { token });
+
+      const text = JSON.stringify([...debug.mock.calls, ...warn.mock.calls]);
+      expect(text).not.toContain('fixture-private');
+      expect(text).not.toContain(CONTRACT_CREDENTIAL.str_musicid);
+      expect(text).not.toContain(CONTRACT_CREDENTIAL.encryptUin);
+      expect(text).not.toContain(token);
+      expect(text).not.toContain('qqmusic_key');
+      expect(text).not.toContain('u.y.qq.com');
     });
   });
 
