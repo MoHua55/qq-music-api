@@ -21,6 +21,9 @@ test-results/
 .claude/
 .skills/
 
+# Folia 接入清单只留在本地开发文档，不入库
+/docs/folia-integration.md
+
 # §8.4 wrangler dev / vercel dev 人工验收用的一次性 harness，不是 S5 的真实部署配置，不进仓库
 .gate-probe/
 .vercel/
