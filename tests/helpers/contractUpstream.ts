@@ -39,7 +39,14 @@ export const createContractUpstream = () => {
   const closed: string[] = [];
   let events: QrEvent[] = [];
   let onEvent: ((event: QrEvent) => void) | undefined;
-  const state = { credentialCode: 0, catalogCode: 0, bootstrapStatus: 200, wechatCode: 408 };
+  const state = {
+    credentialCode: 0,
+    catalogCode: 0,
+    bootstrapStatus: 200,
+    wechatCode: 408,
+    recommendCode: 0,
+    recommendEmpty: false,
+  };
 
   const rpcData = ({ method, param }: RpcCall): unknown => {
     switch (method) {
@@ -76,6 +83,13 @@ export const createContractUpstream = () => {
         return { list: CONTRACT_ALBUMS };
       case 'get_singer_detail_info':
         return { songlist: CONTRACT_SONGS };
+      case 'get_radio_track':
+        return { tracks: state.recommendEmpty ? [] : CONTRACT_SONGS.slice(0, 2) };
+      case 'GetRecommendFeed':
+        return {
+          List: state.recommendEmpty ? [] : [{ Playlist: { basic: { tid: 70002, title: 'R' } } }],
+          HasMore: false,
+        };
       default:
         throw new Error(`Unstubbed contract RPC: ${method}`);
     }
@@ -114,7 +128,9 @@ export const createContractUpstream = () => {
                 rpc.method,
               )
             ? state.credentialCode
-            : 0;
+            : ['get_radio_track', 'GetRecommendFeed'].includes(rpc.method)
+              ? state.recommendCode
+              : 0;
         response[key] = { code, data: code ? {} : rpcData(call) };
       }
       return Response.json(response);

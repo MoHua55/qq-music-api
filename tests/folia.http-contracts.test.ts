@@ -297,6 +297,24 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     expect(status.body).toEqual({ code: 200, data: {} });
   });
 
+  // 新的推荐路由出错时，不能顺带清掉会话或让扫码进入冷却。
+  it.each([
+    [{ recommendCode: 1000 }, 401],
+    [{ recommendCode: 2001 }, 429],
+    [{ recommendCode: 22006 }, 502],
+    [{ recommendEmpty: true }, 422],
+  ] as const)('keeps the session and QR login usable after a new route answers %p', async (failure, status) => {
+    Object.assign(mockUpstream.state, failure);
+    expect((await call('/user/guess-you-like', { token })).status).toBe(status);
+    expect((await call('/recommend/playlists', { token })).status).toBe(status);
+    Object.assign(mockUpstream.state, { recommendCode: 0, recommendEmpty: false });
+
+    const detail = await call('/user/detail', { token });
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({ code: 200, profile: CONTRACT_PROFILE });
+    await startQr('wechat');
+  });
+
   it('keeps an unfamiliar upstream business failure out of 401 and 404', async () => {
     mockUpstream.state.credentialCode = 20279;
     const result = await call('/user/detail', { token });
