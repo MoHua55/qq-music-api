@@ -2,7 +2,7 @@ import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
 import type { AuthSession } from '../auth/qrLogin';
 import { type Dictionary, dictionaryOf, isDictionary, stringOf } from '../auth/values';
-import { failureResult, type NewRouteResult, okResult } from './newRouteResult';
+import { diagnose, failureResult, type NewRouteResult, okResult } from './newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionMusicu';
 
 // src/services/recommend/recommendPlaylists.ts
@@ -82,7 +82,8 @@ const toPlaylist = (entry: unknown): Dictionary | null => {
 
 /**
  * 会话解不开时由宿主传 `null`，这里就匿名读；解得开但上游拒绝凭证时回 401，让前端清掉坏会话。
- * 没有一张可用的歌单回 422。`more` 原样反映上游的 HasMore，只是提示，不代表读完。
+ * 上游给空列表回 422；给了条目但一张都读不出来回 502；部分能读照样 200，跳过的条数写进诊断。
+ * `more` 原样反映上游的 HasMore，只是提示，不代表读完。
  */
 export const recommendPlaylistsResult = async (
   session: AuthSession | null,
@@ -91,8 +92,16 @@ export const recommendPlaylistsResult = async (
 ): Promise<NewRouteResult> => {
   try {
     const data = await createSessionMusicuClient(session, options).execute(recommendFeed(limit));
+    // 上游真的给了空列表才是「没有数据」；给了条目却一张都读不出来，是格式变了。
+    if (!data.list.length) throw new QqApiError('not-found');
     const playlists = data.list.map(toPlaylist).filter((item) => item !== null);
-    if (!playlists.length) throw new QqApiError('not-found');
+    if (!playlists.length) throw new QqApiError('invalid-response');
+    if (playlists.length < data.list.length)
+      diagnose('get-recommend-playlists', {
+        status: 200,
+        receivedEntries: data.list.length,
+        skippedEntries: data.list.length - playlists.length,
+      });
     return okResult({ playlists, more: data.hasMore });
   } catch (error) {
     return failureResult('get-recommend-playlists', error);
