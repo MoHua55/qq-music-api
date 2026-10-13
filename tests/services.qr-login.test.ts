@@ -971,7 +971,7 @@ describe('QQ native QR login service', () => {
     const retryError = await harness.service.createSession().catch((error: unknown) => error);
     expect(retryError).toBeInstanceOf(QrLoginServiceError);
     expect(retryError).toEqual(expect.objectContaining({ httpStatus: 429 }));
-    expect((retryError as QrLoginServiceError).retryAfterMs).toBeGreaterThan(29000);
+    expect((retryError as QrLoginServiceError).retryAfterMs).toBeGreaterThan(14000);
   });
 
   it('should report a safe MQTT failure after the QR was scanned', async () => {

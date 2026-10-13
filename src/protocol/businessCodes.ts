@@ -167,7 +167,7 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
     kind: 'rate-limited',
     errorKey: 'auth.rate-limited',
     evidence: 'protocol-reference',
-    note: '公开协议资料：登录操作过于频繁；本项目未实测。只是分类，不改变现有的扫码冷却',
+    note: '公开协议资料：登录操作过于频繁；本项目未实测。扫码冷却遇到它是 30 秒（其他失败 15 秒）',
     suggestedAction: 'wait',
     invalidatesSession: false,
   }),

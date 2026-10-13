@@ -74,9 +74,16 @@ import {
 
 export const QR_TTL_MS = 3 * 60 * 1000;
 
-export const BACKOFF_BASE_MS = 30 * 1000;
+/** Every failure cools the next QR down by the same amount; repeated failures never double it. */
+export const QR_COOLDOWN_MS = 15 * 1000;
 
-export const BACKOFF_MAX_MS = 15 * 60 * 1000;
+/** The upstream explicitly said "too frequent" (login 104604 or an upstream HTTP 429). */
+export const QR_RATE_LIMITED_COOLDOWN_MS = 30 * 1000;
+
+const LOGIN_RATE_LIMITED_CODE = 104604;
+
+const isRateLimitedFailure = (details: QrFailureDetails): boolean =>
+  details.upstreamCode === LOGIN_RATE_LIMITED_CODE || details.upstreamHttpStatus === 429;
 
 export class QrLoginServiceImpl implements QrLoginService {
   private readonly http: AuthHttpClient;
@@ -92,7 +99,6 @@ export class QrLoginServiceImpl implements QrLoginService {
   private readonly sessionResolver: SessionResolver;
   private readonly deviceStore: DeviceContextStore;
   private creatingSession = false;
-  private failureCount = 0;
   private nextQrAllowedAt = 0;
   private lastQrFailure?: QrFailureDetails;
 
@@ -175,8 +181,9 @@ export class QrLoginServiceImpl implements QrLoginService {
     details: QrFailureDetails = { failureStage: 'qr-event', failureReason: 'qr-timeout' },
   ): number {
     this.lastQrFailure = failureDetailsOf(details);
-    this.failureCount += 1;
-    const delay = Math.min(BACKOFF_BASE_MS * 2 ** (this.failureCount - 1), BACKOFF_MAX_MS);
+    const delay = isRateLimitedFailure(this.lastQrFailure)
+      ? QR_RATE_LIMITED_COOLDOWN_MS
+      : QR_COOLDOWN_MS;
     this.nextQrAllowedAt = this.now() + delay;
     return delay;
   }
@@ -321,7 +328,6 @@ export class QrLoginServiceImpl implements QrLoginService {
     session.failureReason = undefined;
     session.state = 'confirmed';
     this.qrSessionStore.persist();
-    this.failureCount = 0;
     this.nextQrAllowedAt = 0;
     this.lastQrFailure = undefined;
     logger.info('qq-auth.login-confirmed', {
