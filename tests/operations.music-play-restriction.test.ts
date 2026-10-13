@@ -4,7 +4,7 @@ import { getMusicPlay } from '../src/routes/operations/getMusicPlay';
 import { logger } from '../src/util/logger';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
-import { useSessionUpstream } from './helpers/sessionRoutes';
+import { type SessionCall, useSessionUpstream } from './helpers/sessionRoutes';
 
 // 取不到链接的那首歌多一个可选的 restriction：没有受控证据之前一律是 url_unavailable，
 // codes 只收单曲条目里的安全整数。拿到链接的那首一个字都不变。
@@ -16,6 +16,9 @@ const parity = createParityRunner(
   },
 );
 const uuid = '00000000-0000-4000-8000-000000000001';
+/** 原因没有验证过的规则可用时，不为挑提示多查单曲详情。 */
+const methodsOf = (calls: SessionCall[]) =>
+  calls.flatMap((call) => call.rpc.map((rpc) => rpc.method));
 
 const MIXED_ENTRIES = [
   { songmid: 'fixture-a', purl: 'fixture.mp3', result: 0 },
@@ -40,7 +43,7 @@ const EXPECTED_PLAY_URL = {
       key: 'url_unavailable',
       evidence: 'observed-response',
       codes: { result: 104003, subcode: 1 },
-      hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
+      hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
     },
   },
   'fixture-c': {
@@ -49,7 +52,7 @@ const EXPECTED_PLAY_URL = {
     restriction: {
       key: 'url_unavailable',
       evidence: 'observed-response',
-      hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
+      hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
     },
   },
 };
@@ -70,6 +73,7 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 的 restriction（%s）', (runtim
     expect(legs.operation.body).toEqual({ data: { playUrl: EXPECTED_PLAY_URL } });
     expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
     expect(legs.host).toEqual(legs.operation);
+    expect(methodsOf(upstream.calls)).not.toContain('get_song_detail_yqq');
   });
 
   it('带会话：全部拿到链接时没有任何 restriction', async () => {
@@ -105,6 +109,7 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 的 restriction（%s）', (runtim
       expect(legs.operation.status).toBe(200);
       expect(legs.operation.body).toEqual({ data: { playUrl: EXPECTED_PLAY_URL } });
       expect(legs.host).toEqual(legs.operation);
+      expect(methodsOf(upstream.calls)).not.toContain('get_song_detail_yqq');
     });
 
     it('匿名 resType=raw：整份上游回应照旧，只有 playUrl 多了 restriction', async () => {

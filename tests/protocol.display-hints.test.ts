@@ -1,8 +1,12 @@
 import { LOGIN_HINT_MESSAGES, loginFailureHintOf } from '../src/protocol/loginHints';
-import { PLAYBACK_HINT_MESSAGES, playbackHintOf } from '../src/protocol/playbackHints';
+import {
+  PLAYBACK_HINT_MESSAGES,
+  PLAYBACK_HINT_RULES,
+  playbackHintOf,
+} from '../src/protocol/playbackHints';
 
-// 给使用者看的原因只是提示：从单曲详情的候选讯号（或登录失败的码）挑一句英文预设文案，
-// 不改 restriction.key、不改证据等级。顺序：地区 > 付费音乐包 > 会员 > 兜底「可能已下架」。
+// 给使用者看的原因只是提示，不改 restriction.key、不改证据等级。播放原因不能猜：只有受控对照下验证过的规则
+// 才能说会员、付费音乐包、地区或下架，其他一律是「原因尚未确认」那一句。登录失败按码挑一句英文预设文案。
 
 const track = (overrides: { pay?: object; action?: object; ov?: unknown } = {}) => ({
   mid: 'fixture-song',
@@ -11,37 +15,61 @@ const track = (overrides: { pay?: object; action?: object; ov?: unknown } = {}) 
   ...(overrides.ov === undefined ? {} : { ov: overrides.ov }),
 });
 
+const UNCONFIRMED = {
+  key: 'playback.reason-unconfirmed',
+  message: "This song can't be played right now. The exact reason isn't confirmed yet.",
+};
+
 describe('playback display hints', () => {
+  it('has no verified rule yet, so nothing needs the song detail', () => {
+    expect(PLAYBACK_HINT_RULES).toEqual([]);
+  });
+
+  // 以前按这些讯号猜原因；没有受控证据之前都只能说原因尚未确认。
   it.each([
-    ['msgid 23', track({ action: { msgid: 23 } }), 'playback.maybe-region-restricted'],
-    ['msgid 18', track({ action: { msgid: 18 } }), 'playback.maybe-region-restricted'],
-    ['msgid 32', track({ action: { msgid: 32 } }), 'playback.maybe-region-restricted'],
-    ['ov 1', track({ ov: 1 }), 'playback.maybe-region-restricted'],
-    [
-      'region beats music pack',
-      track({ ov: 1, action: { alert: 11 } }),
-      'playback.maybe-region-restricted',
-    ],
-    ['alert 11', track({ action: { alert: 11 } }), 'playback.maybe-music-pack'],
-    [
-      'music pack beats membership',
-      track({ action: { alert: 11 }, pay: { pay_play: 1 } }),
-      'playback.maybe-music-pack',
-    ],
-    ['pay_play 1', track({ pay: { pay_play: 1 } }), 'playback.maybe-membership'],
-    ['msgid 13', track({ action: { msgid: 13 } }), 'playback.maybe-membership'],
-    ['msgid 8', track({ action: { msgid: 8 } }), 'playback.maybe-membership'],
-    ['msgid 14 only means download', track({ action: { msgid: 14 } }), 'playback.maybe-taken-down'],
-    ['no signal', track(), 'playback.maybe-taken-down'],
-    ['string numbers', track({ action: { msgid: '23' } }), 'playback.maybe-region-restricted'],
-    ['no track at all', undefined, 'playback.maybe-taken-down'],
-    ['garbage', 'not-a-track', 'playback.maybe-taken-down'],
-    ['null blocks', { pay: null, action: null }, 'playback.maybe-taken-down'],
-  ])('%s → %s', (_label, input, key) => {
-    expect(playbackHintOf(input)).toEqual({
-      key,
-      message: (PLAYBACK_HINT_MESSAGES as Record<string, string>)[key],
+    ['msgid 23', track({ action: { msgid: 23 } })],
+    ['ov 1', track({ ov: 1 })],
+    ['alert 11', track({ action: { alert: 11 } })],
+    ['pay_play 1', track({ pay: { pay_play: 1 } })],
+    ['msgid 8', track({ action: { msgid: 8 } })],
+    ['alert 35', track({ action: { alert: 35 } })],
+    ['no signal', track()],
+    ['no track at all', undefined],
+    ['garbage', 'not-a-track'],
+    ['null blocks', { pay: null, action: null }],
+  ])('%s → the reason is not confirmed', (_label, input) => {
+    expect(playbackHintOf(input)).toEqual(UNCONFIRMED);
+  });
+
+  it('uses the first verified rule that matches, and the unconfirmed line otherwise', () => {
+    const rules = [
+      {
+        key: 'playback.maybe-membership' as const,
+        matches: (trackInfo: unknown) =>
+          (trackInfo as { pay?: { pay_play?: number } } | undefined)?.pay?.pay_play === 1,
+      },
+      { key: 'playback.maybe-taken-down' as const, matches: () => true },
+    ];
+
+    expect(playbackHintOf(track({ pay: { pay_play: 1 } }), rules)).toEqual({
+      key: 'playback.maybe-membership',
+      message: PLAYBACK_HINT_MESSAGES['playback.maybe-membership'],
     });
+    expect(playbackHintOf(track(), rules).key).toBe('playback.maybe-taken-down');
+    expect(playbackHintOf(track(), rules.slice(0, 1))).toEqual(UNCONFIRMED);
+  });
+
+  it('keeps a rule that throws from breaking the answer', () => {
+    const rules = [
+      {
+        key: 'playback.maybe-region-restricted' as const,
+        matches: () => {
+          throw new Error('fixture');
+        },
+      },
+    ];
+
+    expect(playbackHintOf(track(), rules)).toEqual(UNCONFIRMED);
   });
 
   it('keeps every message in plain English without upstream text', () => {

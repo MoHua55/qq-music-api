@@ -107,10 +107,12 @@ it('播放模块保留逐曲失败和原音质文件名', async () => {
         key: 'url_unavailable',
         evidence: 'observed-response',
         codes: { result: 104003 },
-        hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
+        hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
       },
     },
   });
+  // 原因还没有验证过的规则，不为挑提示多查单曲详情。
+  expect(post).toHaveBeenCalledTimes(1);
   expect(
     (post.mock.calls[0] as unknown as [unknown, { req_0: { param: { filename: unknown } } }])[1]
       .req_0.param.filename,

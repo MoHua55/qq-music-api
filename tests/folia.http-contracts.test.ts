@@ -314,7 +314,7 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
               key: 'url_unavailable',
               evidence: 'observed-response',
               codes: { result: 104003, errtype: 3, code: 0 },
-              hint: { key: 'playback.maybe-region-restricted', message: expect.any(String) },
+              hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
             },
           },
           'fixture-song-c': {
@@ -323,7 +323,7 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
             restriction: {
               key: 'url_unavailable',
               evidence: 'observed-response',
-              hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
+              hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
             },
           },
         },
