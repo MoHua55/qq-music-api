@@ -102,7 +102,7 @@ describe('handleRequest', () => {
       const body = await bodyOf(await call('/login/channels'));
 
       // WeChat only: the QQ App channel needs a long-lived MQTT socket an invocation cannot hold.
-      expect(body).toEqual({
+      expect(body).toMatchObject({
         code: 200,
         data: { channels: ['wechat'], sessionMode: 'sealed', configured: true },
       });

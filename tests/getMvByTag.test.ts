@@ -1,21 +1,23 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyCgiContract } from './helpers/legacyCgiContract';
 
-const server = app.callback();
-
-describe('GET /getMvByTag', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getMvByTag');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getMvByTag?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getMvByTag?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
+legacyCgiContract({
+  route: '/getMvByTag',
+  endpoint: '/mv/fcgi-bin/getmv_by_tag',
+  params: {
+    format: 'json',
+    outCharset: 'GB2312',
+    cmd: 'shoubo',
+    lan: 'all',
+  },
+  reply: {
+    code: 0,
+    data: {
+      mvlist: [
+        {
+          vid: 'synthetic-video',
+          name: 'Synthetic MV',
+        },
+      ],
+    },
+  },
 });

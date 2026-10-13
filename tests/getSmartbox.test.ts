@@ -1,21 +1,32 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyCgiContract } from './helpers/legacyCgiContract';
 
-const server = app.callback();
-
-describe('GET /getSmartbox', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getSmartbox');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getSmartbox?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getSmartbox?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
+legacyCgiContract({
+  route: '/getSmartbox',
+  path: '/getSmartbox?key=synthetic',
+  endpoint: '/splcloud/fcgi-bin/smartbox_new.fcg',
+  params: {
+    key: 'synthetic',
+    format: 'json',
+    outCharset: 'utf-8',
+    is_xml: 0,
+  },
+  reply: {
+    code: 0,
+    data: {
+      song: {
+        itemlist: [
+          {
+            mid: 'synthetic-song',
+            name: 'Synthetic Song',
+          },
+        ],
+      },
+    },
+  },
+  missing: {
+    status: 200,
+    body: {
+      response: null,
+    },
+  },
 });

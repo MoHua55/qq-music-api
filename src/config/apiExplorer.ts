@@ -86,6 +86,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'qrCheck', method: 'GET', routePath: '/login/qr/check', category: 'Login' },
   { name: 'qrCancel', method: 'GET', routePath: '/login/qr/cancel', category: 'Login' },
   { name: 'loginStatus', method: 'GET', routePath: '/login/status', category: 'Login' },
+  { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
@@ -96,6 +97,13 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     method: 'GET',
     routePath: '/user/playlist-detail',
     category: 'User',
+  },
+  { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
+  {
+    name: 'getRecommendPlaylists',
+    method: 'GET',
+    routePath: '/recommend/playlists',
+    category: 'Recommend',
   },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
@@ -259,6 +267,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  loginChannels: {
+    description:
+      'List login channels, session mode, configuration status and supported backend methods. No login or upstream request is needed. Feature flags describe implementation; check configured and login status separately.',
+  },
   qrCreate: {
     description: 'Create the PNG QR image for an existing login session.',
     queryParams: [
@@ -299,7 +311,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description: 'Clear the current in-memory QQ Music login session.',
   },
   userDetail: {
-    description: 'Get the current authenticated QQ Music user detail.',
+    description:
+      'Get the current authenticated QQ Music user detail. A gateway and credential-code conflict answers 502 without clearing the session; credential rejection alone remains 401.',
   },
   getUserPlaylist: {
     description:
@@ -308,7 +321,14 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       {
         key: 'uid',
         label: 'User ID',
-        description: 'Defaults to the authenticated QQ Music account.',
+        description:
+          'Defaults to the authenticated QQ Music account. Only that account is supported; another account answers 400.',
+      },
+      {
+        key: 'favoriteOffset',
+        label: 'Favourite offset',
+        description:
+          'Continue reading collected playlists from this position. Use the nextFavoriteOffset of the previous answer; that round returns collected playlists only.',
       },
     ],
   },
@@ -343,6 +363,17 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
       { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
+    ],
+  },
+  getGuessYouLike: {
+    description:
+      "Get a few songs from QQ Music's Guess You Like radio for the authenticated user (usually 5 per call). Songs keep the upstream format; reasons, when given, are in extras. Without a session it answers 401; when the upstream returns no songs it answers 422.",
+  },
+  getRecommendPlaylists: {
+    description:
+      'Get recommended playlists from the QQ Music playlist square. Uses the login session when there is one, otherwise reads anonymously. more only repeats the upstream hint; there is no continuation offset.',
+    queryParams: [
+      { key: 'limit', label: 'Limit', description: 'How many playlists, 25 by default, up to 60.' },
     ],
   },
   getDownloadQQMusic: {

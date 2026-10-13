@@ -1,21 +1,26 @@
-import request from 'supertest';
-import app from '../src/app';
-
-const server = app.callback();
+import { useLegacyRouteUpstream } from './helpers/legacyRouteUpstream';
 
 describe('GET /getImageUrl', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getImageUrl');
-    expect([200, 400, 404, 500]).toContain(response.status);
+  const upstream = useLegacyRouteUpstream();
+  it.each([
+    [
+      '/getImageUrl?id=synthetic-album',
+      'https://y.gtimg.cn/music/photo_new/T002R300x300M000synthetic-album.jpg?max_age=2592000',
+    ],
+    [
+      '/getImageUrl?id=synthetic-album&size=500x500&maxAge=60',
+      'https://y.gtimg.cn/music/photo_new/T002R500x500M000synthetic-album.jpg?max_age=60',
+    ],
+  ])('constructs the image URL locally for %s', async (path, imageUrl) => {
+    const response = await upstream.get(path);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ response: { code: 0, data: { imageUrl } } });
+    expect(upstream.calls).toHaveLength(0);
   });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getImageUrl?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getImageUrl?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
+  it('rejects a missing ID without requesting an image', async () => {
+    const response = await upstream.get('/getImageUrl');
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ response: 'no id~~' });
+    expect(upstream.calls).toHaveLength(0);
   });
 });

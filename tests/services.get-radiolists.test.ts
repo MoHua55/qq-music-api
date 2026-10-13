@@ -86,7 +86,7 @@ describe('services/getRadioLists', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -95,7 +95,7 @@ describe('services/getRadioLists', () => {
         service: 'getRadioLists',
         error: {
           name: 'Error',
-          message: 'radio failed',
+          message: 'Service request failed',
         },
       }),
     );

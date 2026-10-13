@@ -1,21 +1,57 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyCgiContract } from './helpers/legacyCgiContract';
+import { useLegacyRouteUpstream } from './helpers/legacyRouteUpstream';
 
-const server = app.callback();
+legacyCgiContract({
+  route: '/getSongLists',
+  path: '/getSongLists?page=2&limit=3&sortId=4&categoryId=90001',
+  endpoint: '/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg',
+  params: {
+    categoryId: '90001',
+    sortId: '4',
+    sin: 6,
+    ein: 8,
+    picmid: 1,
+    format: 'json',
+    outCharset: 'utf-8',
+  },
+  reply: {
+    code: 0,
+    data: {
+      list: [
+        {
+          dissid: 'synthetic-playlist',
+          dissname: 'Synthetic Playlist',
+        },
+      ],
+    },
+  },
+});
 
-describe('GET /getSongLists', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getSongLists');
-    expect([200, 400, 404, 500]).toContain(response.status);
+describe('GET /getSongLists defaults and JSONP', () => {
+  const upstream = useLegacyRouteUpstream();
+  it.each([
+    '/getSongLists',
+    '/getSongLists?page=0&limit=20',
+  ])('uses the initial inclusive range for %s', async (path) => {
+    const reply = { code: 0, data: { list: [] } };
+    upstream.respond(`MusicJsonCallback(${JSON.stringify(reply)})`);
+    const response = await upstream.get(path);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ response: reply });
+    expect(upstream.calls[0].params).toMatchObject({
+      categoryId: 10000000,
+      sortId: 5,
+      sin: 0,
+      ein: 19,
+    });
   });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getSongLists?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getSongLists?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
+  it('returns a safe error when JSONP contains invalid JSON', async () => {
+    upstream.respond('MusicJsonCallback({invalid})');
+    const response = await upstream.get('/getSongLists');
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: { name: 'SyntaxError', message: 'Service request failed' },
+    });
+    expect(upstream.calls).toHaveLength(1);
   });
 });

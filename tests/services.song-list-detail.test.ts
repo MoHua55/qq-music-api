@@ -87,7 +87,7 @@ describe('services/songListDetail', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -96,7 +96,7 @@ describe('services/songListDetail', () => {
         service: 'songListDetail',
         error: {
           name: 'Error',
-          message: 'song list detail failed',
+          message: 'Service request failed',
         },
       }),
     );
@@ -300,7 +300,10 @@ describe('services/songListDetail：code 10 时用凭据重读', () => {
 
     const result = await songListDetail({ params: { disstid: '211192' }, readWithCredential });
 
-    expect(result).toEqual({ status: 500, body: { error } });
+    expect(result).toEqual({
+      status: 500,
+      body: { error: { name: 'Error', message: 'Service request failed' } },
+    });
     expect(readWithCredential).not.toHaveBeenCalled();
   });
 

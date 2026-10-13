@@ -1,5 +1,6 @@
 import { BaseServiceParams, BaseServiceResponse } from '../../types/core/request';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
+import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
 export interface GetAlbumInfoParams extends BaseServiceParams {}
@@ -39,7 +40,7 @@ export default ({
       return {
         status: 500,
         body: {
-          error,
+          error: toLegacyErrorBody(error),
         },
       };
     });

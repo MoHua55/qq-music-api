@@ -1,42 +1,52 @@
+import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
+import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
+import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
+import { getSongInfo } from '../routes/operations/getSongInfo';
+import { getSongListDetail } from '../routes/operations/getSongListDetail';
+import { getUserAlbums } from '../routes/operations/getUserAlbums';
+import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
+import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
+import { loginChannels } from '../routes/operations/loginChannels';
+import { loginStatus } from '../routes/operations/loginStatus';
+import { qrCancel } from '../routes/operations/qrCancel';
+import { qrCreate } from '../routes/operations/qrCreate';
+import { qrKey } from '../routes/operations/qrKey';
+import { userDetail } from '../routes/operations/userDetail';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
 import cookies from './cookies';
-import getAlbumInfo from './getAlbumInfo';
 import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
+import getGuessYouLike from './getGuessYouLike';
 import getHotKey from './getHotkey';
 import getImageUrl from './getImageUrl';
 import getLyric from './getLyric';
-import getMusicPlay from './getMusicPlay';
 import getMv from './getMv';
 import getMvByTag from './getMvByTag';
 import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
-import getOwnedPlaylistSongs from './getOwnedPlaylistSongs';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
+import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
-import getSingerAlbum from './getSingerAlbum';
 import getSingerDesc from './getSingerDesc';
-import getSingerHotsong from './getSingerHotsong';
 import getSingerList from './getSingerList';
 import getSingerMv from './getSingerMv';
 import getSingerStarNum from './getSingerStarNum';
 import getSmartbox from './getSmartbox';
-import getSongInfo from './getSongInfo';
 import getSongListCategories from './getSongListCategories';
-import getSongListDetail from './getSongListDetail';
 import getSongLists from './getSongLists';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
-import getUserAlbums from './getUserAlbums';
-import getUserLikedSongs from './getUserLikedSongs';
-import getUserPlaylist from './getUserPlaylist';
-import { loginStatus, logout, qrCancel, qrCheck, qrCreate, qrKey, userDetail } from './login';
+import logoutOperationController from './logoutOperation';
+import musicPlayOperationController from './musicPlayOperation';
+import { operationController } from './operation';
+import qrCheckOperationController from './qrCheckOperation';
 
 const { get: getCookie, set: setCookie } = cookies;
 
@@ -50,24 +60,30 @@ export default {
   getSongListCategories: withControllerLogging('getSongListCategories', getSongListCategories),
   getSongLists: withControllerLogging('getSongLists', getSongLists),
   batchGetSongLists: withControllerLogging('batchGetSongLists', batchGetSongLists),
-  getSongInfo: withControllerLogging('getSongInfo', getSongInfo),
+  getSongInfo: withControllerLogging('getSongInfo', operationController(getSongInfo)),
   batchGetSongInfo: withControllerLogging('batchGetSongInfo', batchGetSongInfo),
-  getSongListDetail: withControllerLogging('getSongListDetail', getSongListDetail),
+  getSongListDetail: withControllerLogging(
+    'getSongListDetail',
+    operationController(getSongListDetail),
+  ),
   getNewDisks: withControllerLogging('getNewDisks', getNewDisks),
   getMvByTag: withControllerLogging('getMvByTag', getMvByTag),
   getMv: withControllerLogging('getMv', getMv),
   getSingerList: withControllerLogging('getSingerList', getSingerList),
   getSimilarSinger: withControllerLogging('getSimilarSinger', getSimilarSinger),
-  getSingerAlbum: withControllerLogging('getSingerAlbum', getSingerAlbum),
-  getSingerHotsong: withControllerLogging('getSingerHotsong', getSingerHotsong),
+  getSingerAlbum: withControllerLogging('getSingerAlbum', operationController(getSingerAlbum)),
+  getSingerHotsong: withControllerLogging(
+    'getSingerHotsong',
+    operationController(getSingerHotsong),
+  ),
   getSingerMv: withControllerLogging('getSingerMv', getSingerMv),
   getSingerDesc: withControllerLogging('getSingerDesc', getSingerDesc),
   getSingerStarNum: withControllerLogging('getSingerStarNum', getSingerStarNum),
   getRadioLists: withControllerLogging('getRadioLists', getRadioLists),
   getDigitalAlbumLists: withControllerLogging('getDigitalAlbumLists', getDigitalAlbumLists),
   getLyric: withControllerLogging('getLyric', getLyric),
-  getMusicPlay: withControllerLogging('getMusicPlay', getMusicPlay),
-  getAlbumInfo: withControllerLogging('getAlbumInfo', getAlbumInfo),
+  getMusicPlay: withControllerLogging('getMusicPlay', musicPlayOperationController),
+  getAlbumInfo: withControllerLogging('getAlbumInfo', operationController(getAlbumInfo)),
   getComments: withControllerLogging('getComments', getComments),
   getRecommend: withControllerLogging('getRecommend', getRecommend),
   getMvPlay: withControllerLogging('getMvPlay', getMvPlay),
@@ -75,15 +91,24 @@ export default {
   getRanks: withControllerLogging('getRanks', getRanks),
   getTicketInfo: withControllerLogging('getTicketInfo', getTicketInfo),
   getImageUrl: withControllerLogging('getImageUrl', getImageUrl),
-  qrKey: withControllerLogging('qrKey', qrKey),
-  qrCreate: withControllerLogging('qrCreate', qrCreate),
-  qrCheck: withControllerLogging('qrCheck', qrCheck),
-  qrCancel: withControllerLogging('qrCancel', qrCancel),
-  loginStatus: withControllerLogging('loginStatus', loginStatus),
-  logout: withControllerLogging('logout', logout),
-  userDetail: withControllerLogging('userDetail', userDetail),
-  getUserAlbums: withControllerLogging('getUserAlbums', getUserAlbums),
-  getUserLikedSongs: withControllerLogging('getUserLikedSongs', getUserLikedSongs),
-  getOwnedPlaylistSongs: withControllerLogging('getOwnedPlaylistSongs', getOwnedPlaylistSongs),
-  getUserPlaylist: withControllerLogging('getUserPlaylist', getUserPlaylist),
+  qrKey: withControllerLogging('qrKey', operationController(qrKey)),
+  qrCreate: withControllerLogging('qrCreate', operationController(qrCreate)),
+  qrCheck: withControllerLogging('qrCheck', qrCheckOperationController),
+  qrCancel: withControllerLogging('qrCancel', operationController(qrCancel)),
+  loginStatus: withControllerLogging('loginStatus', operationController(loginStatus)),
+  loginChannels: withControllerLogging('loginChannels', operationController(loginChannels)),
+  logout: withControllerLogging('logout', logoutOperationController),
+  userDetail: withControllerLogging('userDetail', operationController(userDetail)),
+  getUserAlbums: withControllerLogging('getUserAlbums', operationController(getUserAlbums)),
+  getUserLikedSongs: withControllerLogging(
+    'getUserLikedSongs',
+    operationController(getUserLikedSongs),
+  ),
+  getOwnedPlaylistSongs: withControllerLogging(
+    'getOwnedPlaylistSongs',
+    operationController(getOwnedPlaylistSongs),
+  ),
+  getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),
+  getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
+  getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
 };

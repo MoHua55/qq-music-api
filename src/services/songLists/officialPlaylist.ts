@@ -65,6 +65,9 @@ export const firstSongAlbumCoverUrl = (songlist: unknown): string | undefined =>
   return albumCoverUrlOf(dictionaryOf(dictionaryOf(first).album).mid);
 };
 
+const safeIntegerOf = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isSafeInteger(value) ? value : undefined;
+
 /** `numberOf(null)` 是 0；歌曲数缺失时要退回下一个来源，不能当成 0 首。 */
 const countOf = (value: unknown): number | undefined =>
   value === null || value === undefined || value === '' ? undefined : numberOf(value);
@@ -113,6 +116,17 @@ export const toSongListDetailResponse = (data: unknown): SongListDetailResponse 
         cur_song_num: songlist.length,
         songnum: total,
         total_song_num: total,
+        // 这次读取的结论：1 表示停在安全上限、空页或重复页，歌单还没读完。匿名 CGI 的回应不带这个字段。
+        hasmore: data.hasmore === true || numberOf(data.hasmore) === 1 ? 1 : 0,
+        // 播放数与建立者 id 沿用上游字段名。listennum 和匿名 CGI 的 visitnum 是不是同一个统计还没核对过，
+        // 所以不写进 visitnum；上游没给或类型不对就不补，缺失不当成 0。
+        ...(safeIntegerOf(dirinfo.listennum) === undefined
+          ? {}
+          : { listennum: safeIntegerOf(dirinfo.listennum) }),
+        ...(safeIntegerOf(dirinfo.host_uin) === undefined
+          ? {}
+          : { uin: safeIntegerOf(dirinfo.host_uin) }),
+        ...(stringOf(dirinfo.encrypt_uin) ? { encrypt_uin: stringOf(dirinfo.encrypt_uin) } : {}),
         songlist,
       },
     ],

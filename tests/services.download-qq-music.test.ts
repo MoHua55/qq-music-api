@@ -152,7 +152,7 @@ describe('services/downloadQQMusic', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -161,7 +161,7 @@ describe('services/downloadQQMusic', () => {
         service: 'downloadQQMusic',
         error: {
           name: 'Error',
-          message: 'download failed',
+          message: 'Service request failed',
         },
       }),
     );

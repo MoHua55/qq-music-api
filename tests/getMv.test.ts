@@ -1,21 +1,21 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyMusicuContract } from './helpers/legacyMusicuContract';
 
-const server = app.callback();
-
-describe('GET /getMv', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getMv');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getMv?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getMv?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
+legacyMusicuContract({
+  route: '/getMv',
+  path: '/getMv?area_id=1&version_id=2&limit=3&page=2',
+  payload: {
+    comm: { ct: 24 },
+    mv_tag: { module: 'MvService.MvInfoProServer', method: 'GetAllocTag', param: {} },
+    mv_list: {
+      module: 'MvService.MvInfoProServer',
+      method: 'GetAllocMvInfo',
+      param: { start: 3, limit: 3, version_id: '2', area_id: '1', order: 1 },
+    },
+  },
+  reply: {
+    code: 0,
+    mv_tag: { code: 0, data: { area: [{ id: 1 }] } },
+    mv_list: { code: 0, data: { list: [{ vid: 'synthetic-video' }] } },
+  },
+  missing: { response: 'version_id or area_id is null' },
 });

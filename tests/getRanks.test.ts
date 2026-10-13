@@ -1,21 +1,22 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyMusicuContract } from './helpers/legacyMusicuContract';
 
-const server = app.callback();
-
-describe('GET /getRanks', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getRanks');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getRanks?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getRanks?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
+legacyMusicuContract({
+  route: '/getRanks',
+  path: '/getRanks?topId=90001&limit=3&page=4&period=2024-01-08',
+  payload: {
+    comm: expect.objectContaining({
+      ct: 24,
+      cv: 4747474,
+      format: 'json',
+      inCharset: 'utf-8',
+      needNewCode: 1,
+      uin: 0,
+    }),
+    req_1: {
+      module: 'musicToplist.ToplistInfoServer',
+      method: 'GetDetail',
+      param: { topId: 90001, num: 3, offset: 4, period: '2024_2' },
+    },
+  },
+  reply: { code: 0, req_1: { code: 0, data: { song: [{ mid: 'synthetic-song', rank: 1 }] } } },
 });

@@ -1,4 +1,5 @@
 import { logger } from '../../util/logger';
+import { Buffer } from './bytes';
 import type { AuthHttpClient } from './httpClient';
 import type { QrEvent } from './qrLogin';
 

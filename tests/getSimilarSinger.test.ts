@@ -1,21 +1,32 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyCgiContract } from './helpers/legacyCgiContract';
 
-const server = app.callback();
-
-describe('GET /getSimilarSinger', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getSimilarSinger');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getSimilarSinger?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getSimilarSinger?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
+legacyCgiContract({
+  route: '/getSimilarSinger',
+  path: '/getSimilarSinger?singermid=synthetic-singer',
+  endpoint: '/v8/fcg-bin/fcg_v8_simsinger.fcg',
+  params: {
+    singer_mid: 'synthetic-singer',
+    format: 'json',
+    outCharset: 'utf-8',
+    utf8: 1,
+    start: 0,
+    num: 5,
+  },
+  reply: {
+    code: 0,
+    singers: {
+      items: [
+        {
+          mid: 'synthetic-neighbor',
+          name: 'Synthetic Singer',
+        },
+      ],
+    },
+  },
+  missing: {
+    status: 400,
+    body: {
+      response: 'no singermid',
+    },
+  },
 });

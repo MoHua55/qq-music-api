@@ -14,12 +14,17 @@ router.get('/login/qr/create', context.qrCreate);
 router.get('/login/qr/check', context.qrCheck);
 router.get('/login/qr/cancel', context.qrCancel);
 router.get('/login/status', context.loginStatus);
+router.get('/login/channels', context.loginChannels);
 router.get('/logout', context.logout);
 router.get('/user/detail', context.userDetail);
 router.get('/user/playlist', context.getUserPlaylist);
 router.get('/user/albums', context.getUserAlbums);
 router.get('/user/liked-songs', context.getUserLikedSongs);
 router.get('/user/playlist-detail', context.getOwnedPlaylistSongs);
+router.get('/user/guess-you-like', context.getGuessYouLike);
+
+// recommendations; a login session is used when present
+router.get('/recommend/playlists', context.getRecommendPlaylists);
 
 // downloadQQMusic
 router.get('/downloadQQMusic', context.getDownloadQQMusic);

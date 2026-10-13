@@ -135,7 +135,7 @@ describe('services/getSingerStarNum', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -144,7 +144,7 @@ describe('services/getSingerStarNum', () => {
         service: 'getSingerStarNum',
         error: {
           name: 'Error',
-          message: 'singer star num failed',
+          message: 'Service request failed',
         },
       }),
     );

@@ -2,6 +2,7 @@ import { AxiosRequestConfig } from 'axios';
 import { requestConfig } from '../config';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../util/observability';
 import request from '../util/request';
+import { toLegacyErrorBody } from '../util/safeError';
 
 interface DownloadQQMusicParams {
   method?: string;
@@ -52,7 +53,7 @@ export default ({ method = 'get', params = {}, option = {} }: DownloadQQMusicPar
       return {
         status: 500,
         body: {
-          error,
+          error: toLegacyErrorBody(error),
         },
       };
     });

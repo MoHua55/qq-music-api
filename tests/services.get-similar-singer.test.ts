@@ -127,7 +127,7 @@ describe('services/getSimilarSinger', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -136,7 +136,7 @@ describe('services/getSimilarSinger', () => {
         service: 'getSimilarSinger',
         error: {
           name: 'Error',
-          message: 'similar singer failed',
+          message: 'Service request failed',
         },
       }),
     );

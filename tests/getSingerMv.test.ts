@@ -1,21 +1,54 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyCgiContract } from './helpers/legacyCgiContract';
+import { useLegacyRouteUpstream } from './helpers/legacyRouteUpstream';
 
-const server = app.callback();
+legacyCgiContract({
+  route: '/getSingerMv',
+  path: '/getSingerMv?singermid=synthetic-singer&order=time&num=3',
+  endpoint: '/mv/fcgi-bin/fcg_singer_mv.fcg',
+  params: {
+    singermid: 'synthetic-singer',
+    order: 'time',
+    num: '3',
+    cmd: 1,
+    format: 'json',
+    outCharset: 'utf-8',
+    cid: 205360581,
+    begin: 0,
+  },
+  reply: {
+    code: 0,
+    data: {
+      list: [
+        {
+          vid: 'synthetic-video',
+          name: 'Synthetic MV',
+        },
+      ],
+    },
+  },
+  missing: {
+    status: 400,
+    body: {
+      response: 'no singermid',
+    },
+  },
+});
 
-describe('GET /getSingerMv', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getSingerMv');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getSingerMv?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getSingerMv?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
+describe('GET /getSingerMv order', () => {
+  const upstream = useLegacyRouteUpstream();
+  it('keeps the default count and omits cmd for listen order', async () => {
+    upstream.respond({ code: 0, data: { list: [] } });
+    const response = await upstream.get('/getSingerMv?singermid=synthetic-singer&order=listen');
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ response: { code: 0, data: { list: [] } } });
+    expect(upstream.calls[0].params).toEqual({
+      singermid: 'synthetic-singer',
+      order: 'listen',
+      num: 5,
+      format: 'json',
+      outCharset: 'utf-8',
+      cid: 205360581,
+      begin: 0,
+    });
   });
 });

@@ -1,21 +1,45 @@
-import request from 'supertest';
-import app from '../src/app';
+import { legacyCgiContract } from './helpers/legacyCgiContract';
+import { useLegacyRouteUpstream } from './helpers/legacyRouteUpstream';
 
-const server = app.callback();
+legacyCgiContract({
+  route: '/getTopLists',
+  endpoint: '/v8/fcg-bin/fcg_myqq_toplist.fcg',
+  params: {
+    format: 'json',
+    outCharset: 'utf-8',
+    platform: 'h5',
+    needNewCode: 1,
+  },
+  reply: {
+    code: 0,
+    data: {
+      topList: [
+        {
+          id: 90001,
+          topTitle: 'Synthetic Chart',
+        },
+      ],
+    },
+  },
+});
 
-describe('GET /getTopLists', () => {
-  it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getTopLists');
-    expect([200, 400, 404, 500]).toContain(response.status);
+describe('GET /getTopLists JSONP', () => {
+  const upstream = useLegacyRouteUpstream();
+  it('decodes a JSONP chart response', async () => {
+    const reply = { code: 0, data: { topList: [{ id: 90001, topTitle: 'Synthetic Chart' }] } };
+    upstream.respond(`MusicJsonCallback(${JSON.stringify(reply)})`);
+    const response = await upstream.get('/getTopLists');
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ response: reply });
+    expect(upstream.calls).toHaveLength(1);
   });
-
-  it('边界条件: 验证参数为空时的表现', async () => {
-    const response = await request(server).get('/getTopLists?limit=0&page=-1');
-    expect([200, 400, 404, 500]).toContain(response.status);
-  });
-
-  it('异常输入: 传入非法参数', async () => {
-    const response = await request(server).get('/getTopLists?id=invalid_!@#');
-    expect([200, 400, 404, 500]).toContain(response.status);
+  it('returns a safe parse error for invalid JSONP', async () => {
+    upstream.respond('MusicJsonCallback({invalid})');
+    const response = await upstream.get('/getTopLists');
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({
+      error: { name: 'SyntaxError', message: 'Service request failed' },
+    });
+    expect(upstream.calls).toHaveLength(1);
   });
 });

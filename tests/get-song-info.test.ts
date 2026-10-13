@@ -1,36 +1,23 @@
-const mockUCommon = jest.fn();
-
-jest.mock('../src/services', () => {
-  const actual = jest.requireActual('../src/services');
-  return {
-    __esModule: true,
-    default: {
-      ...actual.default,
-      UCommon: mockUCommon,
-    },
-  };
-});
-
 import request from 'supertest';
 import app from '../src/app';
+import { useCatalogUpstream } from './helpers/catalogRoutes';
 
 const server = app.callback();
 
 describe('GET /getSongInfo', () => {
+  // 替换真正的上游传输，路由改为共用 handler 后仍验证原来的 HTTP 行为。
+  const upstream = useCatalogUpstream('node');
   beforeEach(() => {
-    mockUCommon.mockReset();
-    mockUCommon.mockResolvedValue({
-      data: {
-        code: 0,
-        songinfo: {
-          data: { songmid: '0039MnYb0qxYhV' },
-        },
+    upstream.respond({
+      code: 0,
+      songinfo: {
+        data: { songmid: 'fixture-song' },
       },
     });
   });
 
   it('正常流程: 验证接口能否正确返回业务数据', async () => {
-    const response = await request(server).get('/getSongInfo?songmid=0039MnYb0qxYhV');
+    const response = await request(server).get('/getSongInfo?songmid=fixture-song');
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('response');
     expect(response.body.response.code).toBe(0);
@@ -39,8 +26,9 @@ describe('GET /getSongInfo', () => {
   it('reads songmid and songid from the documented path parameters', async () => {
     await request(server).get('/getSongInfo/path-mid/42').expect(200);
 
-    const call = mockUCommon.mock.calls.at(-1)?.[0];
-    const payload = JSON.parse(String(call?.params?.data));
+    const payload = upstream.calls.at(-1)?.payload as {
+      songinfo: { param: Record<string, unknown> };
+    };
     expect(payload.songinfo.param).toMatchObject({ song_mid: 'path-mid', song_id: '42' });
   });
 
@@ -62,7 +50,7 @@ describe('GET /getSongInfo', () => {
 
     for (let batchIndex = 0; batchIndex < batches; batchIndex++) {
       const requests = Array.from({ length: concurrency }, () =>
-        request(server).get('/getSongInfo?songmid=0039MnYb0qxYhV'),
+        request(server).get('/getSongInfo?songmid=fixture-song'),
       );
       const responses = await Promise.all(requests);
       responses.forEach((res) => {
@@ -70,7 +58,7 @@ describe('GET /getSongInfo', () => {
       });
     }
 
-    expect(mockUCommon).toHaveBeenCalledTimes(concurrency * batches);
+    expect(upstream.calls).toHaveLength(concurrency * batches);
   });
 
   it('安全测试: 验证接口是否抵御常见注入或跨站攻击', async () => {

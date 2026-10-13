@@ -1,6 +1,32 @@
-## 未发布
+## [3.2.0](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.5...v3.2.0) (2026-10-13)
 
-暂无。
+### 新功能
+
+- Node 增加 `/login/channels`，可在登录前查询支持的登录通道、会话模式与后端功能。Node 和 serverless 的响应都新增 `data.features`，按接口分组，用布尔值说明已经实现的方法；写入等尚未实现的方法保持 `false`。原有通道、会话模式和 `configured` 的含义不变。
+- `/user/playlist` 的收藏歌单超过 1000 张时可以接着读：响应带 `nextFavoriteOffset`，把它当成 `favoriteOffset` 再请求一次，那一轮只返回收藏歌单。不带参数时请求和响应都和以前一样。
+- 新增 `/user/guess-you-like`（猜你喜欢，要登录，每次拿几首歌）和 `/recommend/playlists`（推荐歌单，有登录就带凭证，没有就匿名读），Node 和 serverless 都能用。出错时用状态码加固定的 `errorKey` 说明原因：没登录或凭证被拒是 `401`、上游没给数据是 `422`、限流是 `429`、上游失败或格式不对是 `502`。设 `LOG_LEVEL=debug` 时，`401`、`422` 的原因也会写进开发日志。`/login/channels` 里的 `getPersonalFm`、`getRecommendedCollections` 改成 `true`。
+- `/getSongListDetail` 带凭证重读官方歌单时，`cdlist[0]` 多了 `listennum`（播放数）、`uin` 和 `encrypt_uin`（建立者），字段名沿用上游。
+
+### 改进
+
+- Cloudflare Workers 等没有全局 `Buffer` 的 Web 宿主现在可以启动扫码流程：协议字节操作改用 Web API 兜底，Node 仍直接使用原来的 Buffer，不增加 npm 或 Node 运行时依赖。
+- 登录态读取中，上游网关码和凭证拒绝码同时出现时，改为返回 `502`，不再误回 `401` 清掉会话；`error` 仍保留原有的安全协议说明。只有网关失败、没有凭证拒绝码时仍沿用原来的 `500`，真正的凭证拒绝仍是 `401`。Folia 会把这个 `502` 当作网络错误，播放时可能触发音源冷却。
+- 旧接口出错返回 `500` 时，不再把原始异常原样带回去。以前响应里可能夹着上游请求地址、请求头、调用栈这类内部信息；现在 `error` 只留固定的说明文字，再加上可以公开的错误码（例如 `ECONNRESET`）和上游 HTTP 状态码。状态码和 `error` 字段都没变。日志也只记录同样的摘要，账号和设备相关的参数值会被遮掉。
+- `/user/playlist` 的收藏歌单没读完时（读到 1000 条上限、上游给了空页或反复给同一页），`more` 改为 `true`，`total` 改为真实总数，不再把截断的列表说成完整的。上限本身不变；上游不理分页时会提早停下，少发几次请求。
+- `/user/playlist` 的 `uid` 只能是登录账号本身：传别人的 uid 改为返回 `400`，不再把对方的自建歌单和自己的收藏混在一起返回。不传 `uid` 的调用（包括 Folia）不受影响。
+- `/getSongListDetail` 带凭证重读官方歌单时，上游反复给同一页不再把重复的歌接上去；`cdlist[0]` 多了 `hasmore`（`1` 表示没读完）。
+- 登录态取播放链接时，某首歌拿不到链接会在开发日志里记一条 `playback.url-unavailable`（要设 `LOG_LEVEL=debug` 才看得到），带上那首歌在请求里的位置、音质和上游给的几个数字码，方便排查为什么播不了。不记歌曲 id、凭证、链接和账号 id；`/getMusicPlay` 的响应不变。
+
+### 内部改进
+
+- Node 和 serverless 原本各写一份的 18 个 Folia 接口，改成共用同一套处理代码，两边只保留很薄的转接；登录认证服务按扫码、会话、带凭证读取、播放链接、MQTT 拆成多个模块，原来的入口和桌面版用到的钩子都保留。每个接口都和 3.1.4、3.1.5 逐一比对过，对外行为除本页列出的改动外不变。
+- 为后续接口增加共用请求核心，支持批次请求、限流、只读重试和整体超时。新增离线测试同时验证 Node 原生 fetch 和 Web Response 的行为。
+- 上游错误码改成按接口和响应层级分别登记，不再全局套用同一张码表。
+- 开发日志更好排查：程序自己的固定错误说明会作为 `reason` 记进日志，对外响应仍是一般化的文字；分页没读完就停下时会记一条 `qq-auth.paging-stopped`，说明原因和读到的数量，不记账号或歌单 id。
+
+### 仓库维护
+
+- 默认测试里不再有只看状态码的旧路由测试：全部改成模拟上游的严格测试，Node 和 serverless 各跑一遍，不连外网。`npm run test:legacy-routes` 与 `npm run probe:legacy-routes` 保留，目前没有测试。
 
 ## [3.1.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.4...v3.1.5) (2026-10-11)
 
@@ -106,7 +132,7 @@
 ### Features
 
 - Migrate the maintained fork to TypeScript and add the local API Explorer.
-- Add native QQ Music App and WeChat QR login, authenticated playback, and cancellable QR sessions.
+- Add native mobile QQ and WeChat QR login, authenticated playback, and cancellable QR sessions.
 - Add runnable JavaScript package output and export the HTTP server handle for npm embedders.
 
 ### Bug fixes

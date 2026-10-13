@@ -137,7 +137,7 @@ describe('services/getTopLists', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -147,7 +147,7 @@ describe('services/getTopLists', () => {
         hasCommonParams: false,
         error: {
           name: 'Error',
-          message: 'toplists failed',
+          message: 'Service request failed',
         },
       }),
     );

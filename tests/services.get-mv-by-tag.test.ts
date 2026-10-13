@@ -85,7 +85,7 @@ describe('services/getMvByTag', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -94,7 +94,7 @@ describe('services/getMvByTag', () => {
         service: 'getMvByTag',
         error: {
           name: 'Error',
-          message: 'mv by tag failed',
+          message: 'Service request failed',
         },
       }),
     );

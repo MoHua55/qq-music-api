@@ -80,7 +80,7 @@ describe('services/songListCategories', () => {
     expect(result).toEqual({
       status: 500,
       body: {
-        error,
+        error: { name: 'Error', message: 'Service request failed' },
       },
     });
     expect(mockedLogger.error).toHaveBeenCalledWith(
@@ -89,7 +89,7 @@ describe('services/songListCategories', () => {
         service: 'songListCategories',
         error: {
           name: 'Error',
-          message: 'song list categories failed',
+          message: 'Service request failed',
         },
       }),
     );

@@ -1,3 +1,4 @@
+import { Buffer } from './bytes';
 import { type Dictionary, identifierOf } from './values';
 
 // Synthetic Android device material and the QIMEI bootstrap request construction.

@@ -7,6 +7,7 @@ import {
   logServiceRequest,
   logServiceSuccess,
 } from '../../util/observability';
+import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
 export interface GetLyricParams extends BaseServiceParams {
@@ -68,7 +69,7 @@ export default ({
       return {
         status: 500,
         body: {
-          error,
+          error: toLegacyErrorBody(error),
         },
       };
     });
