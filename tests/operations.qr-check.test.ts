@@ -4,7 +4,7 @@ import Router from 'koa-router';
 import request from 'supertest';
 import { qrCheck as legacyQrCheck } from '../src/controllers/login';
 import qrCheckOperationController from '../src/controllers/qrCheckOperation';
-import { qrCheck } from '../src/routes/operations/qrCheck';
+import { qrCheck, qrCookieTokenOf } from '../src/routes/operations/qrCheck';
 import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
@@ -19,7 +19,26 @@ const parity = createParityRunner(
     operationNode: qrCheckOperationController,
   },
 );
-const authorized = { type: 'authorized' as const, payload: { code: 'fixture-auth-code' } };
+const authorized = {
+  type: 'authorized' as const,
+  payload: {
+    cookies: {
+      qqmusic_uin: { value: '10000' },
+      qqmusic_key: { value: 'fixture-exchange-token' },
+    },
+  },
+};
+
+it.each([
+  ['', undefined],
+  ['other=value', undefined],
+  ['qqmusic_session=', undefined],
+  ['invalid; qqmusic_session= fixture-token ', 'fixture-token'],
+  ['qqmusic_session=fixture=a=b; other=value', 'fixture=a=b'],
+  ['other=value; qqmusic_session=first; qqmusic_session=second', 'first'],
+] as const)('保留 Cookie token 解析 %s', (cookie, expected) => {
+  expect(qrCookieTokenOf(cookie)).toBe(expected);
+});
 
 describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
@@ -67,8 +86,8 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
     { failPhase: 'exchange' as const, network: true },
     { failPhase: 'exchange' as const, httpStatus: 503 },
   ])('授权后的失败阶段与诊断 %j', async (state) => {
-    Object.assign(upstream.state, state, { events: [authorized] });
-    const options = await upstream.options('check');
+    Object.assign(upstream.state, state, { wechatCode: 405 });
+    const options = await upstream.options('check', { channel: 'wechat' });
     const legs = await parity(
       runtime,
       '/login/qr/check?key=' + encodeURIComponent(options.key),

@@ -100,4 +100,34 @@ export const createServerlessQrOperations = ({
     });
     return service.createQr(key);
   },
+  checkQr: async (key) => {
+    const secrets = secretsOf(env);
+    const payload = await openQrState(key, secrets, Date.now());
+    const { repository: deviceRepository, base } = await qrDeviceRepositoryFor(
+      secrets,
+      payload?.device,
+    );
+    const http = createFetchAuthHttpClient();
+    // A missing, tampered or expired `unikey` leaves the replay repository empty. `checkQr`'s own
+    // catch-all then answers `{code:800}` for "session not found" exactly as it does for the
+    // in-memory store it replaces — no special case needed here.
+    const service = createQrLoginService({
+      http,
+      createSessionHttp: () =>
+        createFetchAuthHttpClient({ initialCookies: payload?.cookies ?? '' }),
+      deviceRepository,
+      sessionResolver: createSealedSessionResolver({ secrets }),
+      // 🔴 Seeded as `waiting` on every invocation, because there is nowhere to remember that a
+      // previous one already saw `scanned`. That is why `QqQrRelay.poll` is specified to answer
+      // with the whole event list rather than a delta: a relay that only reported new events would
+      // leave this record stuck at `waiting`, and `checkQr` would answer 801 for a scanned code.
+      qrSessionRepository: replayQrSessionRepository(
+        payload ? [replayedRecord(key, payload, 'waiting')] : [],
+      ),
+      capabilities: capabilitiesFor(options),
+      drivers: driversFor(options, http, deviceRepository, base),
+      checkBudgetMs: CHECK_BUDGET_MS,
+    });
+    return service.checkQr(key, CHECK_BUDGET_MS);
+  },
 });

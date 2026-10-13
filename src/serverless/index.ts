@@ -10,6 +10,7 @@ import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
+import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { userDetail } from '../routes/operations/userDetail';
@@ -131,7 +132,7 @@ const fromResult = (result: NewRouteResult): Response =>
 const routes: Record<string, RouteHandler> = {
   '/login/qr/key': operationRoute(qrKey),
   '/login/qr/create': operationRoute(qrCreate),
-  '/login/qr/check': legacyRoutes['/login/qr/check'],
+  '/login/qr/check': operationRoute(qrCheck),
   '/login/qr/cancel': legacyRoutes['/login/qr/cancel'],
 
   // ---- Session ----------------------------------------------------------------------------

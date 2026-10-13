@@ -41,10 +41,11 @@ import getSongListCategories from './getSongListCategories';
 import getSongLists from './getSongLists';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
-import { loginChannels, qrCancel, qrCheck } from './login';
+import { loginChannels, qrCancel } from './login';
 import logoutOperationController from './logoutOperation';
 import musicPlayOperationController from './musicPlayOperation';
 import { operationController } from './operation';
+import qrCheckOperationController from './qrCheckOperation';
 
 const { get: getCookie, set: setCookie } = cookies;
 
@@ -91,7 +92,7 @@ export default {
   getImageUrl: withControllerLogging('getImageUrl', getImageUrl),
   qrKey: withControllerLogging('qrKey', operationController(qrKey)),
   qrCreate: withControllerLogging('qrCreate', operationController(qrCreate)),
-  qrCheck: withControllerLogging('qrCheck', qrCheck),
+  qrCheck: withControllerLogging('qrCheck', qrCheckOperationController),
   qrCancel: withControllerLogging('qrCancel', qrCancel),
   loginStatus: withControllerLogging('loginStatus', operationController(loginStatus)),
   loginChannels: withControllerLogging('loginChannels', loginChannels),
