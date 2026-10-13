@@ -65,6 +65,8 @@ export interface ParityImplementations {
   /** `src/serverless/legacyRoutes.ts` 里的旧实现。 */
   legacyServerless: FetchRoute;
   operation: OperationHandler;
+  /** 需要宿主 Cookie API 的薄转接，例如 logout；仍放在同一个最小 Koa 宿主里比。 */
+  operationNode?: KoaController;
 }
 
 export interface ParityLeg<Call = UpstreamCall> extends RouteResult {
@@ -131,7 +133,10 @@ export const createParityRunner = (route: ParityRoute, implementations: ParityIm
   const legs: Record<CatalogRuntimeName, { legacy: Leg; operation: Leg }> = {
     node: {
       legacy: koaHost(route, implementations.legacyNode),
-      operation: koaHost(route, operationController(implementations.operation)),
+      operation: koaHost(
+        route,
+        implementations.operationNode ?? operationController(implementations.operation),
+      ),
     },
     serverless: {
       legacy: fetchHost(route, implementations.legacyServerless),

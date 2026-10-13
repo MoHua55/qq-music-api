@@ -7,6 +7,7 @@ import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginStatus } from '../routes/operations/loginStatus';
+import { logout } from '../routes/operations/logout';
 import { userDetail } from '../routes/operations/userDetail';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
@@ -37,7 +38,6 @@ import songListDetailService from '../services/songLists/songListDetail';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
-import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
 import { AUTH_COOKIE_NAME, failureResponse, json, LOGIN_REQUIRED } from './response';
 import { createRouter } from './router';
@@ -441,7 +441,7 @@ const routes: Record<string, RouteHandler> = {
   // ---- Session ----------------------------------------------------------------------------
   '/login/status': operationRoute(loginStatus),
 
-  '/logout': legacyRoutes['/logout'],
+  '/logout': operationRoute(logout),
 
   '/user/detail': operationRoute(userDetail),
 
