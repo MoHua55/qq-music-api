@@ -8,7 +8,7 @@
 - [API Explorer](#api-explorer)：用表单查看参数和响应。
 - [QQ 音乐原生扫码登录](#qq-音乐原生扫码登录)：扫码流程、会话和用户资料。
 - [查询登录通道与后端能力](#查询登录通道与后端能力)：判断当前部署支持什么。
-- [猜你喜欢与推荐歌单](#猜你喜欢与推荐歌单)：歌曲、歌单和错误响应。
+- [猜你喜欢、电台与推荐歌单](#猜你喜欢与推荐歌单)：歌曲、电台、歌单分类、新歌和错误响应。
 - [API接口](#api接口)：原有曲库、搜索、MV 等路由。
 
 ## 启动服务
@@ -82,6 +82,12 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 手机 QQ 扫码需要持续的 MQTT over WSS 连接。Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`。Vercel Functions 部署只应提供微信通道；没有中继的 Serverless 入口也只提供微信。
 
 Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。轮换时可以暂时保留 `QQ_SESSION_SECRET_PREVIOUS`，等旧会话失效后再移除。
+
+### 部署到 Serverless 前要知道的两件事
+
+**网页版可能有几首歌拿不到链接。** Serverless（Vercel、Cloudflare 这类）是由部署平台的机房去向 QQ 要播放链接，QQ 看到的是机房的网络，不是使用者自己的网络。实际遇到过：同一个账号、同一批歌，桌面版和手机 App 都能播，网页版却有几首拿不到链接。这时回应照样是 `200`，那几首标的是 `url_unavailable`（见[获取歌曲播放链接](#获取歌曲播放链接)），不是服务出错，重试也不会变。原因还没完全确认，最可能和发出请求的网络有关，程序里修不了。想让能播的歌最多，就用 Node、Docker 或 Electron 跑在使用者自己的网络上。
+
+**每个新部署对 QQ 来说都是一台新设备。** Serverless 没有设备文件，设备身份是从 `QQ_SESSION_SECRET` 推导出来的：换一个部署、或者换了密钥，就算一台新设备。账号的登录设备已经满了的话，第一次扫码会失败（`upstreamErrorKey` 是 `auth.device-limit`，`failureHint.key` 是 `login.device-limit`；手机 QQ 扫码时要看 `primaryFailure`，见[扫码失败诊断](#扫码失败诊断)）。先在手机上移除不再使用的登录设备，再扫一次就好。所以密钥定下来以后别随便换；轮换密钥时，也要预期大家下次登录会被当成新设备。
 
 ### 嵌入 Node.js 与 Electron
 
@@ -172,6 +178,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 普通收藏歌单优先沿用 `logo`，为空时看 `albumPicUrl`，补成 `picUrl` / `bigpicUrl`；已有字段不覆盖。官方收藏歌单（`dirType: 2` 或 `3`）使用第一首歌的专辑封面。条目已有可用专辑图时直接生成；缺少时每轮最多为 20 张读取第一首歌，读取失败不影响列表返回。`logo` 与 `albumPicUrl` 的上游原值保留。
 
 `/user/albums` 返回 `albums`、`total` 和 `more`。不要把其他专辑接口的非零码或全零结构当作本路由没有收藏。
+
+<a id="猜你喜欢与推荐歌单"></a>
 
 ## 猜你喜欢、电台与推荐歌单
 
