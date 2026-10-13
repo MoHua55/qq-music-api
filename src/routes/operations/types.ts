@@ -1,5 +1,10 @@
 import type { QrLoginService } from '../../services/auth/qrLogin';
 
+/** 封存 QR 的宿主适配；Node 直接调用原服务，serverless 在每次调用中还原封存状态。 */
+export type QrRouteService = Pick<QrLoginService, 'createSession' | 'createQr' | 'checkQr'> & {
+  cancelSession(key: string): void | Promise<void>;
+};
+
 // src/routes/operations/types.ts
 //
 // 两边共用的路由处理（operation handler）：业务只写一份，不碰 Koa 的 ctx，也不碰 fetch 的 Request。
@@ -26,6 +31,7 @@ export interface OperationRequest {
   readonly sessionConfigured?: boolean;
   /** 登录服务。serverless 每次请求现建，所以只在真的用到时才调用。 */
   service(): Promise<QrLoginService>;
+  readonly qr?: Partial<QrRouteService>;
 }
 
 /** 和新路由的结果同一个形状：状态码、要加的 header、JSON 内容。 */

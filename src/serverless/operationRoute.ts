@@ -1,5 +1,7 @@
 import type { OperationHandler, OperationRequest } from '../routes/operations/types';
 import type { QrLoginService } from '../services/auth/qrLogin';
+import type { ServerlessEnv, ServerlessOptions } from './index';
+import { createServerlessQrOperations } from './qrOperations';
 import { json } from './response';
 
 // src/serverless/operationRoute.ts
@@ -9,7 +11,8 @@ import { json } from './response';
 
 /** 入口路由上下文里转接用得到的部分。 */
 export interface OperationRouteContext {
-  env?: { QQ_SESSION_SECRET?: string };
+  env?: ServerlessEnv;
+  options?: ServerlessOptions;
   url: URL;
   params: Record<string, string>;
   token: string | undefined;
@@ -22,6 +25,7 @@ export const operationRequestOf = ({
   token,
   service,
   env,
+  options,
 }: OperationRouteContext): OperationRequest => ({
   runtime: 'serverless',
   query: (name) => url.searchParams.get(name) ?? undefined,
@@ -31,6 +35,7 @@ export const operationRequestOf = ({
   token,
   sessionConfigured: Boolean(env?.QQ_SESSION_SECRET),
   service,
+  qr: createServerlessQrOperations({ env: env ?? {}, options: options ?? {}, service }),
 });
 
 export const operationRoute =

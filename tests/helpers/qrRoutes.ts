@@ -261,6 +261,13 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
               };
             },
           });
+          if (runtime === 'node') {
+            const createSession = mockNodeService.createSession.bind(mockNodeService);
+            jest.spyOn(mockNodeService, 'createSession').mockImplementation((channel) => {
+              calls.push({ kind: 'service', method: 'createSession', channel });
+              return createSession(channel);
+            });
+          }
           if (setup.backoff)
             (
               mockNodeService as QrLoginService & {
