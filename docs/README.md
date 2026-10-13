@@ -121,6 +121,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `upstreamCode`、`upstreamGlobalCode`、`upstreamSubCode` | 取得的上游安全数字码；不能只凭数字推断原因 |
 | `retryAfterMs` | 需要等待的毫秒数；HTTP 错误响应同时提供 `Retry-After` |
 | `lastFailure` | 本地退避 `429` 的前一次失败摘要；重启或换实例后不保留 |
+| `upstreamErrorKey` | 可选。只有通道、步骤和上游数字码都对得上有出处的登记时才给，例如 `auth.device-limit`（登录设备已满）、`auth.rate-limited`（操作太频繁）、`auth.account-restricted`、`auth.account-banned`、`auth.account-binding`、`auth.login-rejected`；没把握的码不给 |
+| `primaryFailure`、`fallbackAttempted` | 可选，目前只有手机 QQ 扫码会出现。换凭证失败后服务会用扫码票据再验证一次，顶层字段写的是最后这次验证的结果，`primaryFailure` 交出被它盖掉的换凭证结果（`failureStage`、`failureReason`、`upstreamCode`，能分类时还有 `upstreamErrorKey`），`fallbackAttempted` 是 `true`。想知道真正的原因（比如设备已满 `20279`）就看 `primaryFailure` |
 
 本地退避使用 `qr-key` / `local-backoff`，仍在确认中的会话使用 `qr-key` / `session-busy`。没有取得的字段不会出现。上游拒绝时保留安全数字码，但不把未知码解释成设备超限或账号问题。
 

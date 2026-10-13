@@ -141,6 +141,14 @@ export type QrFailureReason =
   | 'qr-timeout'
   | 'unexpected-error';
 
+/** The step a fallback ran after, kept because the fallback's own result replaces it on top. */
+export interface QrPrimaryFailure {
+  failureStage?: QrFailureStage;
+  failureReason?: QrFailureReason;
+  upstreamCode?: number;
+  upstreamErrorKey?: string;
+}
+
 /** Safe failure metadata shared by QR checks and startup errors. */
 export interface QrFailureDetails {
   failureStage?: QrFailureStage;
@@ -149,6 +157,12 @@ export interface QrFailureDetails {
   upstreamCode?: number;
   upstreamGlobalCode?: number;
   upstreamSubCode?: number;
+  /** Only for a code registered with a source for this channel and step; unknown codes get none. */
+  upstreamErrorKey?: string;
+  /** Present only when a fallback ran: what the first attempt failed with. */
+  primaryFailure?: QrPrimaryFailure;
+  /** Present (and `true`) only when a fallback ran after the primary step failed. */
+  fallbackAttempted?: true;
 }
 
 export interface QrFailureDiagnostics extends QrFailureDetails {

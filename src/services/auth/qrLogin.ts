@@ -42,6 +42,7 @@ export {
   type QrFailureDiagnostics,
   type QrLoginChannel,
   type QrLoginService,
+  type QrPrimaryFailure,
   type QrSessionRecord,
   type QrSessionRepository,
   type QrState,

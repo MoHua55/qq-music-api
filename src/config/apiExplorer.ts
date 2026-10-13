@@ -283,7 +283,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     ],
   },
   qrCheck: {
-    description: 'Poll QR state: 800 expired, 801 waiting, 802 scanned, or 803 confirmed.',
+    description:
+      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure.',
     queryParams: [
       {
         key: 'key',

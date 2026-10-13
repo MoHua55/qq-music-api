@@ -29,7 +29,13 @@ import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
 import { createQqQrDriver, createWechatQrDriver } from './qrDrivers';
-import { confirmingState, failureDetailsOf, qrFailureDetailsOf, terminalState } from './qrFailures';
+import {
+  confirmingState,
+  failureDetailsOf,
+  primaryFailureOf,
+  qrFailureDetailsOf,
+  terminalState,
+} from './qrFailures';
 import {
   type AuthSession,
   type AuthSessionRepository,
@@ -82,8 +88,11 @@ export const QR_RATE_LIMITED_COOLDOWN_MS = 30 * 1000;
 
 const LOGIN_RATE_LIMITED_CODE = 104604;
 
+// A fallback's own result replaces the primary one on top, so "too frequent" is looked for in both.
 const isRateLimitedFailure = (details: QrFailureDetails): boolean =>
-  details.upstreamCode === LOGIN_RATE_LIMITED_CODE || details.upstreamHttpStatus === 429;
+  details.upstreamCode === LOGIN_RATE_LIMITED_CODE ||
+  details.upstreamHttpStatus === 429 ||
+  details.primaryFailure?.upstreamCode === LOGIN_RATE_LIMITED_CODE;
 
 export class QrLoginServiceImpl implements QrLoginService {
   private readonly http: AuthHttpClient;
@@ -250,7 +259,7 @@ export class QrLoginServiceImpl implements QrLoginService {
   private failSession(session: QrSessionRecord, error: unknown, stage: QrFailureStage): void {
     if (terminalState(session.state)) return;
     session.state = 'failed';
-    Object.assign(session, qrFailureDetailsOf(error, stage));
+    Object.assign(session, qrFailureDetailsOf(error, stage, session.channel));
     session.retryAfterMs = this.backoff(session);
     this.qrSessionStore.persist();
     logger.warn('qq-auth.session-failed', {
@@ -275,6 +284,9 @@ export class QrLoginServiceImpl implements QrLoginService {
     try {
       return await exchangeCredential(this.http, device, session.qrcodeId, musicid, mqttToken);
     } catch (error) {
+      // The fallback below replaces this failure on top whatever it returns, so it is kept here.
+      session.primaryFailure = primaryFailureOf(error, 'credential-exchange', session.channel);
+      session.fallbackAttempted = true;
       session.failureStage = 'credential-validation';
       const direct = {
         musicid,
@@ -326,6 +338,8 @@ export class QrLoginServiceImpl implements QrLoginService {
     session.authToken = token;
     session.failureStage = undefined;
     session.failureReason = undefined;
+    session.primaryFailure = undefined;
+    session.fallbackAttempted = undefined;
     session.state = 'confirmed';
     this.qrSessionStore.persist();
     this.nextQrAllowedAt = 0;
