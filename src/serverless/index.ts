@@ -1,4 +1,5 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
@@ -466,7 +467,7 @@ const routes: Record<string, RouteHandler> = {
 
   // A playlist the user owns, read with their credential. It must stay in this section: the
   // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
-  '/user/playlist-detail': legacyRoutes['/user/playlist-detail'],
+  '/user/playlist-detail': operationRoute(getOwnedPlaylistSongs),
 
   '/getMusicPlay/:songmid?': async ({ url, params, service: getService, token }) => {
     const songmid = (params.songmid ?? url.searchParams.get('songmid') ?? '').trim();

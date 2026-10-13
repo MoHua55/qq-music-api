@@ -1,4 +1,5 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
@@ -22,7 +23,6 @@ import getMv from './getMv';
 import getMvByTag from './getMvByTag';
 import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
-import getOwnedPlaylistSongs from './getOwnedPlaylistSongs';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
@@ -95,7 +95,10 @@ export default {
     'getUserLikedSongs',
     operationController(getUserLikedSongs),
   ),
-  getOwnedPlaylistSongs: withControllerLogging('getOwnedPlaylistSongs', getOwnedPlaylistSongs),
+  getOwnedPlaylistSongs: withControllerLogging(
+    'getOwnedPlaylistSongs',
+    operationController(getOwnedPlaylistSongs),
+  ),
   getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),
   getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
   getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
