@@ -4,7 +4,7 @@ import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/p
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
-import { type AuthSession } from './qrTypes';
+import { type AuthSession, type PlaybackOptions } from './qrTypes';
 import { StreamCdnSelector } from './streamCdnSelector';
 import { type Dictionary, dictionaryOf, identifierOf, numberOf, stringOf } from './values';
 
@@ -70,6 +70,13 @@ const songDetailForHint = async (
   }
 };
 
+/**
+ * The preview file the official web player asks for when a song only plays as a preview: a single
+ * 14-character segment (the media id when known), unlike the two-segment full-quality names.
+ */
+export const previewFilenameOf = (songmid: string, mediaId: string): string =>
+  `RS02${mediaId || songmid}.mp3`;
+
 export const getAuthenticatedPlayUrls = async (
   http: AuthHttpClient,
   auth: AuthSession,
@@ -77,6 +84,7 @@ export const getAuthenticatedPlayUrls = async (
   songmid: string,
   quality: string | number = 128,
   mediaId?: string,
+  options: PlaybackOptions = {},
 ): Promise<Dictionary> => {
   const songmidList = songmid
     .split(',')
@@ -98,8 +106,10 @@ export const getAuthenticatedPlayUrls = async (
     {
       // filename 一律是两段识别值：`prefix + songmid + media_mid + extension`。media_mid 缺席时
       // 用 songmid 补上第二段；只送一段的文件名在 vkey server 仍会拿到 purl，但 CDN 端会 403。
-      filename: songmidList.map(
-        (mid) => `${fileType.prefix}${mid}${normalizedMediaId || mid}${fileType.extension}`,
+      filename: songmidList.map((mid) =>
+        options.preview
+          ? previewFilenameOf(mid, normalizedMediaId)
+          : `${fileType.prefix}${mid}${normalizedMediaId || mid}${fileType.extension}`,
       ),
       guid,
       songmid: songmidList,
@@ -160,7 +170,11 @@ export const getAuthenticatedPlayUrls = async (
   domain ??= DEFAULT_STREAM_DOMAIN;
   const playUrl: Dictionary = {};
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
-  const loggedQuality = MUSIC_FILE_TYPES[qualityKey] ? qualityKey : '128';
+  const loggedQuality = options.preview
+    ? 'preview'
+    : MUSIC_FILE_TYPES[qualityKey]
+      ? qualityKey
+      : '128';
   const unavailable: Dictionary[] = [];
   for (const [index, entry] of entries.entries()) {
     const item = dictionaryOf(entry);
@@ -179,7 +193,11 @@ export const getAuthenticatedPlayUrls = async (
         }),
       );
     if (purl) {
-      playUrl[mid] = { url: `${domain}${purl}`, error: false };
+      playUrl[mid] = {
+        url: `${domain}${purl}`,
+        error: false,
+        ...(options.preview ? { preview: true } : {}),
+      };
       continue;
     }
     const restriction: Dictionary = {

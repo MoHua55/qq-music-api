@@ -5,6 +5,7 @@ import {
   type PlaybackRestriction,
   playbackQualityOf,
 } from '../../protocol/playbackRestriction';
+import { previewFilenameOf } from '../../services/auth/playback';
 import UCommon from '../../services/UCommon/UCommon';
 import { logger } from '../../util/logger';
 import type { OperationHandler } from './types';
@@ -24,6 +25,7 @@ const fileType = {
 interface AnonymousPlayEntry {
   url: string;
   error: string | boolean;
+  preview?: true;
   restriction?: PlaybackRestriction & { hint?: PlaybackHint };
 }
 
@@ -67,14 +69,27 @@ export const createGetMusicPlay =
     if (!songmid) return { status: 400, headers: {}, body: { data: { message: 'no songmid' } } };
     const quality = request.queryRaw('quality') ?? '128';
     const mediaId = request.queryRaw('mediaId');
+    // 只认明确的 1／true；其他写法（含重复参数）都当成一般请求，回应和以前一样。
+    const preview = ['1', 'true'].includes(String(request.queryRaw('preview') ?? ''));
     const token = request.token;
     if (token) {
-      const playUrl = await (await request.service()).getMusicPlay(
-        token,
-        songmid,
-        quality as string,
-        mediaId as string | undefined,
-      );
+      const service = await request.service();
+      const playUrl = preview
+        ? await service.getMusicPlay(
+            token,
+            songmid,
+            quality as string,
+            mediaId as string | undefined,
+            {
+              preview: true,
+            },
+          )
+        : await service.getMusicPlay(
+            token,
+            songmid,
+            quality as string,
+            mediaId as string | undefined,
+          );
       return playUrl ? { status: 200, headers: {}, body: { data: { playUrl } } } : loginRequired;
     }
     if (request.runtime === 'serverless') return loginRequired;
@@ -83,7 +98,11 @@ export const createGetMusicPlay =
     const justPlayUrl = (request.queryRaw('resType') || 'play') === 'play';
     const songmidList = songmid.split(',');
     const fileInfo = fileType[quality as keyof typeof fileType] ?? fileType[128];
-    const file = songmidList.map((mid) => `${fileInfo.s}${mid}${mediaId || mid}${fileInfo.e}`);
+    const file = songmidList.map((mid) =>
+      preview
+        ? previewFilenameOf(mid, typeof mediaId === 'string' ? mediaId : '')
+        : `${fileInfo.s}${mid}${mediaId || mid}${fileInfo.e}`,
+    );
     const data = {
       req_0: {
         module: 'vkey.GetVkeyServer',
@@ -121,11 +140,19 @@ export const createGetMusicPlay =
       sip?.[0];
     const midurlinfo = response?.req_0?.data?.midurlinfo;
     const playUrl: Record<string, AnonymousPlayEntry> = {};
-    const loggedQuality = fileInfo === fileType[128] ? '128' : String(quality);
+    const loggedQuality = preview
+      ? 'preview'
+      : fileInfo === fileType[128]
+        ? '128'
+        : String(quality);
     (midurlinfo === undefined ? [] : midurlinfo).forEach(
       (item: { songmid: string; purl: string }, index: number) => {
         if (item.purl) {
-          playUrl[item.songmid] = { url: `${domain}${item.purl}`, error: false };
+          playUrl[item.songmid] = {
+            url: `${domain}${item.purl}`,
+            error: false,
+            ...(preview ? { preview: true as const } : {}),
+          };
           return;
         }
         // 开发日志（debug）：没链接的那首只记位置、音质和白名单里的数字，不记歌曲 id。

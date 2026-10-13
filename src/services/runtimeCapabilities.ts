@@ -35,6 +35,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
     getSongDetail: true,
     getAudioSource: true,
     getReplacement: false,
+    preview: true,
   },
   search: { searchSongs: runtime === 'node' },
   lyrics: { getLyrics: runtime === 'node', getChorusRanges: false },

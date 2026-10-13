@@ -43,6 +43,7 @@ import {
   type LegacyQrLoginChannel,
   NODE_RUNTIME_CAPABILITIES,
   normalizeLoginChannel,
+  type PlaybackOptions,
   type QqCredential,
   type QrChannelDriver,
   type QrCheckResult,
@@ -655,6 +656,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     songmid: string,
     quality?: string | number,
     mediaId?: string,
+    options?: PlaybackOptions,
   ): Promise<Dictionary | null> {
     const auth = await this.authFor(token);
     return auth
@@ -666,6 +668,7 @@ export class QrLoginServiceImpl implements QrLoginService {
             songmid,
             quality,
             mediaId,
+            options,
           ),
         )
       : null;

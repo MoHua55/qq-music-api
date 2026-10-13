@@ -31,6 +31,7 @@ export {
   type LegacyQrLoginChannel,
   NODE_RUNTIME_CAPABILITIES,
   normalizeLoginChannel,
+  type PlaybackOptions,
   type QqCredential,
   type QrChannelDriver,
   type QrCheckResult,

@@ -307,7 +307,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `auth` | `getLoginStatus`、`logout`、`getQrKey`、`createQr`、`checkQr`、`cancelQr` | — |
 | `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs` | `getCloudCollection` |
 | `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums` | `getPlaylistDetail`、`getCloudTracks`、`getSubscriptionStatus` |
-| `playback` | `getSongDetail`、`getAudioSource` | `getReplacement` |
+| `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
@@ -436,6 +436,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 | `resType` | `play` 只取播放结果，`all` 保留完整结果；默认 `play` |
 | `quality` | `m4a`、`128`、`320`、`ape`、`flac`；默认 `128` |
 | `mediaId` | 可选，使用歌曲详情的 `file.media_mid`；它可能与 `songmid` 不同 |
+| `preview` | 可选，`1` 表示要试听文件（免费账号听 VIP 歌时官方也是这样做）；这时忽略 `quality` |
 | 会话 | 登录后优先使用当前扫码会话凭证；没有 opaque session 时保留原有行为 |
 
 <a id="获取单个播放链接"></a>
@@ -465,6 +466,8 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 - `hint` 是给使用者看的原因，只是「可能」：服务会用同一个会话（匿名播放就匿名）再查一次这首歌的详情，从里面的限制讯号挑一句。`key` 有 `playback.maybe-region-restricted`（可能是地区限制）、`playback.maybe-music-pack`（可能要付费音乐包）、`playback.maybe-membership`（可能要会员）、`playback.maybe-taken-down`（看不出原因，或详情读不到时的兜底：可能已下架）。`message` 是英文预设文案，前端可以直接显示，也可以按 `key` 换成自己的文字。`hint` 不会改变 `key` 和 `evidence`。
 - 因为要查详情，有歌拿不到链接时会多一个上游请求（一次最多查 10 首）。
 - 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
+
+**试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`，大小是 `file.size_try`），播完算正常结束，不是错误。这首歌没有试听文件时照旧回 `url_unavailable`，不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。
 
 用 `LOG_LEVEL=debug` 启动 Node 服务后，没拿到链接的条目会记录 `playback.url-unavailable`。日志只留 `phase`、`index`、`quality` 和 `entryCodes` 中的安全整数，不记录歌曲 id、凭证或播放链接。上游数字的含义没确认时不替它命名。
 

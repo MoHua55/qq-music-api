@@ -308,6 +308,11 @@ export interface QrLoginDependencies {
   randomBytes?: (size: number) => Buffer;
 }
 
+/** `preview`: ask for the preview file (`RS02…mp3`) instead of the chosen quality. */
+export interface PlaybackOptions {
+  preview?: boolean;
+}
+
 export interface QrCheckResult extends QrFailureDetails {
   code: 800 | 801 | 802 | 803;
   message: string;
@@ -349,6 +354,7 @@ export interface QrLoginService {
     songmid: string,
     quality?: string | number,
     mediaId?: string,
+    options?: PlaybackOptions,
   ): Promise<Dictionary | null>;
   /** 新路由用：解析会话并交给共用实现建自己的上游客户端。解不开、过期都返回 `null`。 */
   resolveSession(token?: string): Promise<AuthSession | null>;
