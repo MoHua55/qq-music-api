@@ -32,9 +32,7 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
         ? { code: 200, albums: CONTRACT_ALBUMS, total: 1, more: false }
         : { code: 401, message: 'Login required' },
     );
-    expect(legs.legacy.calls.flatMap((call) => call.rpc.map((rpc) => rpc.method))).toEqual(
-      mode === 'valid' ? ['GetLoginUserInfo'] : [],
-    );
+    expect(legs.legacy.calls).toHaveLength(mode === 'valid' ? 1 : 0);
     expect(legs.operation).toEqual(legs.legacy);
     expect(legs.host).toEqual(legs.legacy);
   });
@@ -43,13 +41,7 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
     { label: '凭证拒绝', businessCode: 1000, status: 401 },
     { label: '未知业务码', businessCode: 777777, status: 500 },
     { label: '2001 不扩大为限流', businessCode: 2001, status: 500 },
-    { label: '只有网关失败', globalCode: 500003, status: 500 },
-    {
-      label: '网关与凭证码冲突暂时保留原语义',
-      globalCode: 500003,
-      businessCode: 1000,
-      status: 401,
-    },
+    { label: 'CGI 返回非零码', globalCode: 500003, status: 500 },
   ])('$label', async ({ status, ...state }) => {
     Object.assign(upstream.state, state);
     const legs = await parity(

@@ -2,6 +2,7 @@ import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
+import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { userDetail } from '../routes/operations/userDetail';
 import { withControllerLogging } from '../util/observability';
@@ -37,7 +38,6 @@ import getSongListDetail from './getSongListDetail';
 import getSongLists from './getSongLists';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
-import getUserAlbums from './getUserAlbums';
 import getUserLikedSongs from './getUserLikedSongs';
 import { loginChannels, loginStatus, logout, qrCancel, qrCheck, qrCreate, qrKey } from './login';
 import { operationController } from './operation';
@@ -90,7 +90,7 @@ export default {
   loginChannels: withControllerLogging('loginChannels', loginChannels),
   logout: withControllerLogging('logout', logout),
   userDetail: withControllerLogging('userDetail', operationController(userDetail)),
-  getUserAlbums: withControllerLogging('getUserAlbums', getUserAlbums),
+  getUserAlbums: withControllerLogging('getUserAlbums', operationController(getUserAlbums)),
   getUserLikedSongs: withControllerLogging('getUserLikedSongs', getUserLikedSongs),
   getOwnedPlaylistSongs: withControllerLogging('getOwnedPlaylistSongs', getOwnedPlaylistSongs),
   getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),

@@ -2,6 +2,7 @@ import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
+import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { userDetail } from '../routes/operations/userDetail';
 import type { AndroidDevice } from '../services/auth/androidDevice';
@@ -458,7 +459,7 @@ const routes: Record<string, RouteHandler> = {
 
   '/user/playlist': operationRoute(getUserPlaylist),
 
-  '/user/albums': legacyRoutes['/user/albums'],
+  '/user/albums': operationRoute(getUserAlbums),
 
   '/user/liked-songs': legacyRoutes['/user/liked-songs'],
 
