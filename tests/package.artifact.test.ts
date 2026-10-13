@@ -274,7 +274,7 @@ describe('published artifact', () => {
       metadata: {
         failureStage: 'device-bootstrap',
         failureReason: 'unexpected-error',
-        retryAfterMs: 30000,
+        retryAfterMs: 15000,
       },
     });
   });
@@ -343,7 +343,7 @@ describe('published artifact', () => {
       code: 800,
       failureStage: 'mqtt-listener',
       failureReason: 'mqtt-handshake-failed',
-      retryAfterMs: 30000,
+      retryAfterMs: 15000,
     });
     expect(observed.log).toMatchObject({
       event: 'qq-auth.session-failed',

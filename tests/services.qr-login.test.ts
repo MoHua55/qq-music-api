@@ -553,7 +553,7 @@ describe('QQ QR session teardown', () => {
 
       await expect(harness.service.createSession()).rejects.toMatchObject({
         httpStatus: 429,
-        retryAfterMs: 30000,
+        retryAfterMs: 15000,
         diagnostics: {
           failureReason: 'local-backoff',
           lastFailure: { failureStage: 'qr-event', failureReason: 'qr-timeout' },
@@ -963,7 +963,7 @@ describe('QQ native QR login service', () => {
       expect.objectContaining({
         code: 800,
         upstreamCode: 50006,
-        retryAfterMs: 30000,
+        retryAfterMs: 15000,
         failureStage: 'credential-validation',
         failureReason: 'upstream-rejected',
       }),
@@ -1539,7 +1539,7 @@ describe('QQ native QR login service', () => {
 
     expect(failure).toBeInstanceOf(QrLoginServiceError);
     expect(failure).toEqual(
-      expect.objectContaining({ httpStatus: 502, retryAfterMs: 30000, upstreamCode: -30002 }),
+      expect.objectContaining({ httpStatus: 502, retryAfterMs: 15000, upstreamCode: -30002 }),
     );
     expect(repeated).toEqual(expect.objectContaining({ httpStatus: 429 }));
     expect(harness.calls).toEqual(['GetQimei']);
@@ -1975,7 +1975,7 @@ describe('QQ login channel routing', () => {
     await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
 
     expect(await harness.service.checkQr(key)).toEqual(
-      expect.objectContaining({ code: 800, upstreamCode: 500, retryAfterMs: 30000 }),
+      expect.objectContaining({ code: 800, upstreamCode: 500, retryAfterMs: 15000 }),
     );
   });
 

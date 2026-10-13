@@ -3,6 +3,7 @@ import { createMemoryDeviceContextRepository } from '../src/services/auth/device
 import type { AuthHttpClient } from '../src/services/auth/httpClient';
 import {
   createQrLoginService,
+  QqProtocolError,
   type QrChannelDriver,
   type QrEvent,
   QrLoginServiceError,
@@ -92,7 +93,7 @@ const errorOf = async (operation: Promise<unknown>): Promise<QrLoginServiceError
   return error as QrLoginServiceError;
 };
 
-describe('existing QR backoff boundaries', () => {
+describe('QR cooldown boundaries', () => {
   beforeEach(() => {
     for (const level of ['debug', 'info', 'warn', 'error'] as const)
       jest.spyOn(logger, level).mockImplementation(() => undefined);
@@ -146,7 +147,7 @@ describe('existing QR backoff boundaries', () => {
     'canceled',
     'timeout',
     'loginFailed',
-  ] as const)('counts mobile %s once and doubles only the next distinct failure', async (type) => {
+  ] as const)('counts mobile %s once and keeps the next distinct failure at fifteen seconds', async (type) => {
     const h = harness();
     const key = await h.start();
     const event = { type, payload: null };
@@ -162,38 +163,39 @@ describe('existing QR backoff boundaries', () => {
     expect(await h.service.checkQr(key)).toMatchObject({
       code: 800,
       failureReason,
-      retryAfterMs: 30000,
+      retryAfterMs: 15000,
     });
-    expect(await h.service.checkQr(key)).toMatchObject({ retryAfterMs: 30000 });
+    expect(await h.service.checkQr(key)).toMatchObject({ retryAfterMs: 15000 });
     expect(await errorOf(h.service.createSession())).toMatchObject({
       httpStatus: 429,
-      retryAfterMs: 30000,
+      retryAfterMs: 15000,
       diagnostics: { lastFailure: { failureReason } },
     });
-    h.advance(30000);
+    h.advance(15000);
     await h.start();
     h.listeners[1].emit(event);
-    expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(60000);
+    expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(15000);
   });
 
   it('does not count repeated create attempts on the same failed session twice', async () => {
     const h = harness();
     const key = await h.start(false);
     h.failCreate(new Error('MQTT WebSocket error'));
-    expect((await errorOf(h.service.createQr(key))).retryAfterMs).toBe(30000);
+    expect((await errorOf(h.service.createQr(key))).retryAfterMs).toBe(15000);
     expect((await errorOf(h.service.createQr(key))).httpStatus).toBe(409);
-    expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(30000);
+    expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(15000);
   });
 
   it.each([
-    429, 503,
-  ])('keeps bootstrap HTTP %i as 502 followed by local 429 with its original failure', async (status) => {
+    [429, 30000],
+    [503, 15000],
+  ])('keeps bootstrap HTTP %i as 502 followed by local 429 for %i ms', async (status, cooldown) => {
     const h = harness();
     h.failBootstrap(Object.assign(new Error('Fixture HTTP failure'), { response: { status } }));
     const first = await errorOf(h.service.createSession());
     expect(first).toMatchObject({
       httpStatus: 502,
-      retryAfterMs: 30000,
+      retryAfterMs: cooldown,
       diagnostics: {
         failureStage: 'session-bootstrap',
         upstreamHttpStatus: status,
@@ -206,7 +208,7 @@ describe('existing QR backoff boundaries', () => {
       const retry = await errorOf(h.service.createSession());
       expect(retry).toMatchObject({
         httpStatus: 429,
-        retryAfterMs: 30000 - 501 * (index + 1),
+        retryAfterMs: cooldown - 501 * (index + 1),
         diagnostics: { failureReason: 'local-backoff', lastFailure: first.diagnostics },
       });
       expect(h.post).toHaveBeenCalledTimes(calls);
@@ -217,7 +219,7 @@ describe('existing QR backoff boundaries', () => {
     const h = harness();
     await h.start();
     h.listeners[0].emit({ type: 'loginFailed', payload: null });
-    h.advance(30000);
+    h.advance(15000);
     const successful = await h.start();
     h.listeners[1].emit({
       type: 'cookies',
@@ -232,7 +234,7 @@ describe('existing QR backoff boundaries', () => {
     await h.start();
     h.listeners[2].emit({ type: 'canceled', payload: null });
     expect(await errorOf(h.service.createSession())).toMatchObject({
-      retryAfterMs: 30000,
+      retryAfterMs: 15000,
       diagnostics: { lastFailure: { failureReason: 'user-canceled' } },
     });
   });
@@ -259,10 +261,10 @@ describe('existing QR backoff boundaries', () => {
     await flush();
     if (createCode) {
       expect(await errorOf(h.service.createSession())).toMatchObject({
-        retryAfterMs: 30000,
+        retryAfterMs: 15000,
         diagnostics: { lastFailure: { failureReason: 'qr-timeout' } },
       });
-      h.advance(30000);
+      h.advance(15000);
     }
     await expect(h.start()).resolves.not.toBe(key);
   });
@@ -280,13 +282,33 @@ describe('existing QR backoff boundaries', () => {
     expect(await h.service.checkQr(key)).toEqual({ code: 800, message: 'QR code expired' });
   });
 
-  it('caps successive failures at fifteen minutes', async () => {
+  it('keeps successive failures at fifteen seconds instead of doubling them', async () => {
     const h = harness();
-    for (const delay of [30000, 60000, 120000, 240000, 480000, 900000, 900000]) {
+    for (let attempt = 0; attempt < 7; attempt++) {
       await h.start();
       h.listeners.at(-1)?.emit({ type: 'loginFailed', payload: null });
-      expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(delay);
-      h.advance(delay);
+      expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(15000);
+      h.advance(15000);
     }
+  });
+
+  it('cools down for thirty seconds when the upstream says logins are too frequent', async () => {
+    const h = harness();
+    h.failBootstrap(new QqProtocolError('GetSession', 104604, 0, 200));
+    expect(await errorOf(h.service.createSession())).toMatchObject({
+      httpStatus: 502,
+      retryAfterMs: 30000,
+      diagnostics: { failureReason: 'upstream-rejected', upstreamCode: 104604 },
+    });
+    h.advance(29999);
+    expect(await errorOf(h.service.createSession())).toMatchObject({
+      httpStatus: 429,
+      retryAfterMs: 1,
+    });
+    h.failBootstrap(undefined);
+    h.advance(1);
+    await h.start();
+    h.listeners[0].emit({ type: 'canceled', payload: null });
+    expect((await errorOf(h.service.createSession())).retryAfterMs).toBe(15000);
   });
 });

@@ -550,10 +550,10 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     mockUpstream.state.bootstrapStatus = 503;
     const result = await call('/login/qr/key?channel=wechat');
     expect(result.status).toBe(502);
-    expect(result.headers['retry-after']).toBe('30');
+    expect(result.headers['retry-after']).toBe('15');
     expect(result.body).toMatchObject({
       code: 502,
-      retryAfterMs: 30000,
+      retryAfterMs: 15000,
       failureStage: 'device-bootstrap',
       failureReason: 'upstream-http-error',
       upstreamHttpStatus: 503,
@@ -562,8 +562,8 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     if (runtime === 'node') {
       const retry = await call('/login/qr/key?channel=wechat');
       expect(retry.status).toBe(429);
-      expect(retry.headers['retry-after']).toBe('30');
-      expect(retry.body.retryAfterMs).toBe(30000);
+      expect(retry.headers['retry-after']).toBe('15');
+      expect(retry.body.retryAfterMs).toBe(15000);
     }
   });
 

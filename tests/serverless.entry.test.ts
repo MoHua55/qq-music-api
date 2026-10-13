@@ -35,7 +35,7 @@ describe('serverless QR startup diagnostics', () => {
         upstreamHttpStatus: 503,
       });
       expect(JSON.stringify(body)).not.toContain('private-body');
-      expect(response.headers.get('retry-after')).toBe('30');
+      expect(response.headers.get('retry-after')).toBe('15');
     } finally {
       fetchSpy.mockRestore();
     }

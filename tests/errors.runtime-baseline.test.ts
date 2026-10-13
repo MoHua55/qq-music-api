@@ -239,15 +239,16 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
   });
 
   it.each([
-    429, 503,
-  ])('keeps bootstrap HTTP %i and per-runtime cooldown lifecycle explicit', async (status) => {
+    [429, 30000],
+    [503, 15000],
+  ])('keeps bootstrap HTTP %i and its %i ms per-runtime cooldown explicit', async (status, cooldown) => {
     mockUpstream.state.bootstrapStatus = status;
     const first = await call('/login/qr/key?channel=qq', false);
     expect(first).toMatchObject({
       status: 502,
-      headers: { 'retry-after': '30' },
+      headers: { 'retry-after': String(cooldown / 1000) },
       body: {
-        retryAfterMs: 30000,
+        retryAfterMs: cooldown,
         failureReason: 'upstream-http-error',
         upstreamHttpStatus: status,
       },
@@ -257,9 +258,9 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     if (runtime === 'node') {
       expect(retry).toMatchObject({
         status: 429,
-        headers: { 'retry-after': '29' },
+        headers: { 'retry-after': String(Math.ceil((cooldown - 1501) / 1000)) },
         body: {
-          retryAfterMs: 28499,
+          retryAfterMs: cooldown - 1501,
           failureReason: 'local-backoff',
           lastFailure: {
             failureStage: 'device-bootstrap',
@@ -272,8 +273,8 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     } else {
       expect(retry).toMatchObject({
         status: 502,
-        headers: { 'retry-after': '30' },
-        body: { retryAfterMs: 30000 },
+        headers: { 'retry-after': String(cooldown / 1000) },
+        body: { retryAfterMs: cooldown },
       });
       expect(mockUpstream.requests).toHaveLength(2);
     }
@@ -295,11 +296,11 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     }[event];
     expect(await call(path, false)).toMatchObject({
       status: 200,
-      body: { code: 800, retryAfterMs: 30000, failureStage: 'qr-event', failureReason },
+      body: { code: 800, retryAfterMs: 15000, failureStage: 'qr-event', failureReason },
     });
     expect(await call(path, false)).toMatchObject({
       status: 200,
-      body: { code: 800, retryAfterMs: 30000 },
+      body: { code: 800, retryAfterMs: 15000 },
     });
     expect((await call('/login/qr/key?channel=qq', false)).status).toBe(
       runtime === 'node' ? 429 : 200,
@@ -329,7 +330,7 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
             message: 'QR code expired',
             failureStage: 'qr-event',
             failureReason: 'qr-timeout',
-            retryAfterMs: 30000,
+            retryAfterMs: 15000,
           },
     );
     expect(mockUpstream.closed).toContain('fixture-qr-id');
