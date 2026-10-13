@@ -491,7 +491,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMusicPlay: {
     description:
-      'Get playable music URL by song MID; an opaque QR session enables authenticated playback.',
+      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A song without a URL adds an optional restriction (currently always url_unavailable, with the safe entry codes).',
   },
   getAlbumInfo: {
     id: 'get-album-info',

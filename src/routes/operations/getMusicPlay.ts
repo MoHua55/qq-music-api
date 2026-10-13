@@ -1,4 +1,11 @@
+import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
+import {
+  classifyPlaybackRestriction,
+  type PlaybackRestriction,
+  playbackQualityOf,
+} from '../../protocol/playbackRestriction';
 import UCommon from '../../services/UCommon/UCommon';
+import { logger } from '../../util/logger';
 import type { OperationHandler } from './types';
 
 interface AnonymousPlaybackDefaults {
@@ -13,6 +20,12 @@ const fileType = {
   ape: { s: 'A000', e: '.ape' },
   flac: { s: 'F000', e: '.flac' },
 };
+interface AnonymousPlayEntry {
+  url: string;
+  error: string | boolean;
+  restriction?: PlaybackRestriction;
+}
+
 const loginRequired = { status: 401, headers: {}, body: { code: 401, message: 'Login required' } };
 
 // Node 的配置由薄转接提供，避免把文件系统配置带进 serverless。匿名分支仍使用旧的 CgiGetVkey；
@@ -71,7 +84,7 @@ export const createGetMusicPlay =
     });
     const response = res.data as {
       req_0?: { data?: { sip?: string[]; midurlinfo?: Array<{ songmid: string; purl: string }> } };
-      playUrl?: Record<string, { url: string; error: string | boolean }>;
+      playUrl?: Record<string, AnonymousPlayEntry>;
     };
     // 只对 undefined 使用旧默认值；null、错误类型仍按原路由抛错交给宿主兜底。
     const sip = response?.req_0?.data?.sip;
@@ -79,12 +92,32 @@ export const createGetMusicPlay =
       (sip === undefined ? [] : sip).find((value: string) => !value.startsWith('http://ws')) ||
       sip?.[0];
     const midurlinfo = response?.req_0?.data?.midurlinfo;
-    const playUrl: Record<string, { url: string; error: string | boolean }> = {};
+    const playUrl: Record<string, AnonymousPlayEntry> = {};
+    const loggedQuality = fileInfo === fileType[128] ? '128' : String(quality);
     (midurlinfo === undefined ? [] : midurlinfo).forEach(
-      (item: { songmid: string; purl: string }) => {
+      (item: { songmid: string; purl: string }, index: number) => {
+        if (item.purl) {
+          playUrl[item.songmid] = { url: `${domain}${item.purl}`, error: false };
+          return;
+        }
+        // 开发日志（debug）：没链接的那首只记位置、音质和白名单里的数字，不记歌曲 id。
+        logger.debug(
+          'playback.url-unavailable',
+          playbackUnavailableLogOf({
+            phase: 'get-music-play-anonymous',
+            index,
+            quality: loggedQuality,
+            entry: item,
+          }),
+        );
         playUrl[item.songmid] = {
-          url: item.purl ? `${domain}${item.purl}` : '',
-          error: !item.purl && '暂无播放链接',
+          url: '',
+          error: '暂无播放链接',
+          restriction: classifyPlaybackRestriction({
+            quality: playbackQualityOf(loggedQuality),
+            authenticated: false,
+            codes: playbackEntryCodesOf(item),
+          }),
         };
       },
     );

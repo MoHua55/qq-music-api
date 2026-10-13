@@ -1,4 +1,5 @@
-import { playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
+import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
+import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/playbackRestriction';
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
@@ -146,10 +147,17 @@ export const getAuthenticatedPlayUrls = async (
           entry: item,
         }),
       );
-    playUrl[mid] = {
-      url: purl ? `${domain}${purl}` : '',
-      error: purl ? false : '暂无播放链接',
-    };
+    playUrl[mid] = purl
+      ? { url: `${domain}${purl}`, error: false }
+      : {
+          url: '',
+          error: '暂无播放链接',
+          restriction: classifyPlaybackRestriction({
+            quality: playbackQualityOf(loggedQuality),
+            authenticated: true,
+            codes: playbackEntryCodesOf(item),
+          }),
+        };
   }
   return playUrl;
 };

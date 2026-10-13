@@ -103,7 +103,11 @@ it('播放模块保留逐曲失败和原音质文件名', async () => {
     [CONTRACT_SONGS[1].mid]: {
       url: '',
       error: '暂无播放链接',
-      restriction: { key: 'url_unavailable', evidence: 'observed-response' },
+      restriction: {
+        key: 'url_unavailable',
+        evidence: 'observed-response',
+        codes: { result: 104003 },
+      },
     },
   });
   expect(

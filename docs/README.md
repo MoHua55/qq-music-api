@@ -404,6 +404,18 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 音质示例：`/getMusicPlay/demo-song-mid?quality=flac`。高音质拿不到链接，不代表低音质也不能播放。上游正常响应但链接为空时，只能确定这一次没有提供音源，不能据此认定下架、会员或地区限制。
 
+没拿到链接的那首会多一个可选的 `restriction`，拿到链接的条目不变：
+
+```json
+{ "url": "", "error": "暂无播放链接",
+  "restriction": { "key": "url_unavailable", "evidence": "observed-response", "codes": { "result": 104003, "subcode": 1 } } }
+```
+
+- `key` 目前只会是 `url_unavailable`（拿不到链接，原因还没确认）。以后有了可靠的对照实验，才会出现 `membership_required`、`region_restricted` 这类更具体的值，所以请把不认识的值也当成「拿不到链接」处理。
+- `evidence` 说明这个判断有多可靠；`url_unavailable` 永远是 `observed-response`（只是看到上游没给链接）。
+- `codes` 只放这首歌条目里的安全整数（`result`、`subcode`、`errtype`、`code`），一个都没有就省略。这些数字的含义还没确认，不要拿来推断原因。
+- 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
+
 用 `LOG_LEVEL=debug` 启动 Node 服务后，没拿到链接的条目会记录 `playback.url-unavailable`。日志只留 `phase`、`index`、`quality` 和 `entryCodes` 中的安全整数，不记录歌曲 id、凭证或播放链接。上游数字的含义没确认时不替它命名。
 
 登录态取链沿用独立的 auth HTTP client。Android 取链返回有效 `purl` 但缺少 `sip` 时，服务会探测可用 CDN；探测失败仍使用默认节点。缓存只保留所选节点，不保存完整签名播放链接，且只存在当前服务实例中。
