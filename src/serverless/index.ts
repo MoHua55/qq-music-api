@@ -3,6 +3,7 @@ import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
 import { getUserAlbums } from '../routes/operations/getUserAlbums';
+import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { userDetail } from '../routes/operations/userDetail';
 import type { AndroidDevice } from '../services/auth/androidDevice';
@@ -461,7 +462,7 @@ const routes: Record<string, RouteHandler> = {
 
   '/user/albums': operationRoute(getUserAlbums),
 
-  '/user/liked-songs': legacyRoutes['/user/liked-songs'],
+  '/user/liked-songs': operationRoute(getUserLikedSongs),
 
   // A playlist the user owns, read with their credential. It must stay in this section: the
   // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.

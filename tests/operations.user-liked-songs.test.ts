@@ -90,7 +90,32 @@ describe.each(CATALOG_RUNTIMES)('/user/liked-songs 新旧实现比对（%s）', 
       await upstream.options(),
     );
     expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.body).toEqual({ code: 200, songs: [], total: 0, more: false });
     expect(legs.legacy.calls).toHaveLength(1);
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+
+  it.each([
+    { data: { songlist: [], hasmore: true }, total: 0, more: true },
+    { data: { songlist: [], hasmore: '1' }, total: 0, more: true },
+    { data: { songlist: [], total_song_num: 3, hasmore: false }, total: 3, more: true },
+    { data: { songlist: null, total_song_num: '3', hasmore: false }, total: 0, more: false },
+  ])('保留 total 与 more 的判断 $more', async (fixture) => {
+    upstream.state.data = fixture.data;
+    const legs = await parity(
+      runtime,
+      '/user/liked-songs',
+      upstream.calls,
+      await upstream.options(),
+    );
+    expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.body).toEqual({
+      code: 200,
+      songs: [],
+      total: fixture.total,
+      more: fixture.more,
+    });
     expect(legs.operation).toEqual(legs.legacy);
     expect(legs.host).toEqual(legs.legacy);
   });
