@@ -31,7 +31,7 @@ const expectedFeatures = (node: boolean) => ({
     getCloudTracks: false,
     getSubscriptionStatus: false,
   },
-  playback: { getSongDetail: true, getAudioSource: true, getReplacement: false },
+  playback: { getSongDetail: true, getAudioSource: true, getReplacement: false, preview: true },
   search: { searchSongs: node },
   lyrics: { getLyrics: node, getChorusRanges: false },
   recommendations: {
