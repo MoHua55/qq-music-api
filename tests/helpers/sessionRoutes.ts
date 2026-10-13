@@ -83,6 +83,8 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     httpStatus?: number;
     anonymousPlaylist?: unknown;
     anonymousPlay?: unknown;
+    /** 单曲详情按 songmid 回 `track_info`；没列到的歌回空的 data。 */
+    songDetails?: Record<string, unknown>;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
@@ -138,6 +140,14 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       if (state.networkError) throw state.networkError;
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });
+      const detail = descriptors.find(([, value]) => value.method === 'get_song_detail_yqq');
+      if (detail && state.songDetails) {
+        const trackInfo = state.songDetails[String(detail[1].param.song_mid)];
+        return Response.json({
+          code: 0,
+          [detail[0]]: { code: 0, data: trackInfo === undefined ? {} : { track_info: trackInfo } },
+        });
+      }
       if (descriptors.some(([, value]) => value.method === 'CgiGetVkey'))
         return Response.json(
           state.anonymousPlay ?? {
