@@ -1,5 +1,5 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
-import { playbackHintOf } from '../../protocol/playbackHints';
+import { PLAYBACK_HINT_RULES, playbackHintOf } from '../../protocol/playbackHints';
 import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/playbackRestriction';
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
@@ -210,9 +210,10 @@ export const getAuthenticatedPlayUrls = async (
     playUrl[mid] = { url: '', error: '暂无播放链接', restriction };
     unavailable.push({ mid, restriction });
   }
+  // 还没有验证过的规则时，挑不出具体原因，不用多查。
   const details = await Promise.all(
     unavailable
-      .slice(0, MAX_PLAYBACK_HINT_LOOKUPS)
+      .slice(0, PLAYBACK_HINT_RULES.length ? MAX_PLAYBACK_HINT_LOOKUPS : 0)
       .map(({ mid }) => songDetailForHint(http, auth, String(mid))),
   );
   for (const [index, { restriction }] of unavailable.entries())

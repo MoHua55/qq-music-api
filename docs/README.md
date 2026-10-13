@@ -459,14 +459,13 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 ```json
 { "url": "", "error": "暂无播放链接",
   "restriction": { "key": "url_unavailable", "evidence": "observed-response", "codes": { "result": 104003, "subcode": 1 },
-    "hint": { "key": "playback.maybe-region-restricted", "message": "This song may not be available in your region." } } }
+    "hint": { "key": "playback.reason-unconfirmed", "message": "This song can't be played right now. The exact reason isn't confirmed yet." } } }
 ```
 
 - `key` 目前只会是 `url_unavailable`（拿不到链接，原因还没确认）。以后有了可靠的对照实验，才会出现 `membership_required`、`region_restricted` 这类更具体的值，所以请把不认识的值也当成「拿不到链接」处理。
 - `evidence` 说明这个判断有多可靠；`url_unavailable` 永远是 `observed-response`（只是看到上游没给链接）。
 - `codes` 只放这首歌条目里的安全整数（`result`、`subcode`、`errtype`、`code`），一个都没有就省略。这些数字的含义还没确认，不要拿来推断原因。
-- `hint` 是给使用者看的原因，只是「可能」：服务会用同一个会话（匿名播放就匿名）再查一次这首歌的详情，从里面的限制讯号挑一句。`key` 有 `playback.maybe-region-restricted`（可能是地区限制）、`playback.maybe-music-pack`（可能要付费音乐包）、`playback.maybe-membership`（可能要会员）、`playback.maybe-taken-down`（看不出原因，或详情读不到时的兜底：可能已下架）。`message` 是英文预设文案，前端可以直接显示，也可以按 `key` 换成自己的文字。`hint` 不会改变 `key` 和 `evidence`。
-- 因为要查详情，有歌拿不到链接时会多一个上游请求（一次最多查 10 首）。
+- `hint` 是给使用者看的原因。原因不靠猜：目前一律是 `playback.reason-unconfirmed`（暂时无法播放，具体原因尚未确认）。以后有了可靠的对照实验，才会出现 `playback.maybe-region-restricted`（可能是地区限制）、`playback.maybe-music-pack`（可能要付费音乐包）、`playback.maybe-membership`（可能要会员）、`playback.maybe-taken-down`（可能已下架）。`message` 是英文预设文案，前端可以直接显示，也可以按 `key` 换成自己的文字；不认识的 `key` 当成「原因尚未确认」就好。`hint` 不会改变 `key` 和 `evidence`。
 - 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
 
 **试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`，大小是 `file.size_try`），播完算正常结束，不是错误。这首歌没有试听文件时照旧回 `url_unavailable`，不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。

@@ -1,5 +1,9 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
-import { type PlaybackHint, playbackHintOf } from '../../protocol/playbackHints';
+import {
+  PLAYBACK_HINT_RULES,
+  type PlaybackHint,
+  playbackHintOf,
+} from '../../protocol/playbackHints';
 import {
   classifyPlaybackRestriction,
   type PlaybackRestriction,
@@ -31,7 +35,7 @@ interface AnonymousPlayEntry {
 
 const MAX_HINT_LOOKUPS = 10;
 
-/** 匿名播放就用匿名读到的单曲详情挑提示；读不到只是提示变成兜底，不影响回应。 */
+/** 匿名播放就用匿名读到的单曲详情挑提示；读不到只是提示变成「原因尚未确认」，不影响回应。 */
 const anonymousSongDetail = async (songmid: string): Promise<unknown> => {
   try {
     const res = await UCommon({
@@ -178,7 +182,9 @@ export const createGetMusicPlay =
     );
     const unavailable = Object.entries(playUrl).filter(([, entry]) => entry.restriction);
     const details = await Promise.all(
-      unavailable.slice(0, MAX_HINT_LOOKUPS).map(([mid]) => anonymousSongDetail(mid)),
+      unavailable
+        .slice(0, PLAYBACK_HINT_RULES.length ? MAX_HINT_LOOKUPS : 0)
+        .map(([mid]) => anonymousSongDetail(mid)),
     );
     unavailable.forEach(([, entry], index) => {
       if (entry.restriction) entry.restriction.hint = playbackHintOf(details[index]);
