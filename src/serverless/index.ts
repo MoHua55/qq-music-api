@@ -25,6 +25,7 @@ import {
 import { setLegacyHttpTransport } from '../services/httpTransport';
 import { guessYouLikeResult } from '../services/recommend/guessYouLike';
 import type { NewRouteResult } from '../services/recommend/newRouteResult';
+import { radioListResult, radioTracksResult } from '../services/recommend/radio';
 import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
@@ -158,6 +159,17 @@ const routes: Record<string, RouteHandler> = {
     );
   },
 
+  '/radio/list': async ({ service: getService, token }) =>
+    fromResult(await radioListResult(await (await getService()).resolveSession(token))),
+
+  '/radio/tracks': async ({ url, service: getService, token }) =>
+    fromResult(
+      await radioTracksResult(
+        await (await getService()).resolveSession(token),
+        url.searchParams.get('id'),
+      ),
+    ),
+
   '/user/playlist': operationRoute(getUserPlaylist),
 
   '/user/albums': operationRoute(getUserAlbums),
@@ -197,6 +209,8 @@ const LOGIN_ROUTES = new Set([
   '/user/liked-songs',
   '/user/playlist-detail',
   '/user/guess-you-like',
+  '/radio/list',
+  '/radio/tracks',
   '/getMusicPlay/:songmid?',
 ]);
 

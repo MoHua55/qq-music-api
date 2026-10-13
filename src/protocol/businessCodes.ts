@@ -26,6 +26,10 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.guess-you-like',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
   'recommend.playlists',
+  /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
+  'recommend.radio-list',
+  /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */
+  'recommend.radio-tracks',
   /** 网页版每日推荐候选接口（目前没有路由用它，只记录观测）。 */
   'recommend.web-daily-candidate',
   /** 匿名的歌单详情 CGI。 */
@@ -192,6 +196,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['recommend.guess-you-like', 'recommend.playlists'],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
+  ),
+  ...credentialRejected(
+    ['recommend.radio-list', 'recommend.radio-tracks'],
+    '电台路由要登录，沿用其他带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
   ),
   ...entries(['recommend.guess-you-like'], 'business', [22006], {
     ...observedUnknown('本项目实测见过（带 song_ids 且 num 改成 10 时被拒），原因没有分离'),

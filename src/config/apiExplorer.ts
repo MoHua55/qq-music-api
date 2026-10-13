@@ -105,6 +105,8 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     routePath: '/recommend/playlists',
     category: 'Recommend',
   },
+  { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
+  { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   {
@@ -376,6 +378,15 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     queryParams: [
       { key: 'limit', label: 'Limit', description: 'How many playlists, 25 by default, up to 60.' },
     ],
+  },
+  getRadioList: {
+    description:
+      'List QQ Music radio stations in groups for the authenticated user. Each radio has id, title, picurl and listenNum when known. Without a session it answers 401.',
+  },
+  getRadioTracks: {
+    description:
+      'Get a few songs from one radio station for the authenticated user. Radio 99 is Guess You Like and may add extras with reasons. Songs keep the upstream format. Without a session it answers 401; a bad id answers 400.',
+    queryParams: [{ key: 'id', label: 'Radio id', description: 'Radio id from /radio/list.' }],
   },
   getDownloadQQMusic: {
     description: 'Get download URL information for QQ Music.',

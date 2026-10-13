@@ -26,6 +26,8 @@ export const UPSTREAM_PHASES = [
   'get-user-liked-songs',
   'get-guess-you-like',
   'get-recommend-playlists',
+  'get-radio-list',
+  'get-radio-tracks',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

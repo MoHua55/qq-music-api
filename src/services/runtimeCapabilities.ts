@@ -46,7 +46,9 @@ const featuresFor = (runtime: BackendRuntime) => ({
     getHistoryDates: false,
     getHistorySongs: false,
     dislikeSong: false,
+    personalFmModes: true,
   },
+  radio: { getRadioList: true, getRadioTracks: true },
   mutations: {
     updatePlaylistTracks: false,
     likeSong: false,

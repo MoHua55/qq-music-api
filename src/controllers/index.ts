@@ -28,6 +28,7 @@ import getMv from './getMv';
 import getMvByTag from './getMvByTag';
 import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
+import { getRadioList, getRadioTracks } from './getRadio';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
@@ -111,4 +112,6 @@ export default {
   getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),
   getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
   getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
+  getRadioList: withControllerLogging('getRadioList', getRadioList),
+  getRadioTracks: withControllerLogging('getRadioTracks', getRadioTracks),
 };

@@ -170,9 +170,9 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `/user/albums` 返回 `albums`、`total` 和 `more`。不要把其他专辑接口的非零码或全零结构当作本路由没有收藏。
 
-## 猜你喜欢与推荐歌单
+## 猜你喜欢、电台与推荐歌单
 
-这两条接口使用同一套错误响应。出错时的响应和旧接口不一样：状态码直接说明结果，响应里带固定的 `errorKey`，前端照它判断就行（见本节最后）。
+这几条接口使用同一套错误响应。出错时的响应和旧接口不一样：状态码直接说明结果，响应里带固定的 `errorKey`，前端照它判断就行（见本节最后）。
 
 ### 猜你喜欢
 
@@ -191,6 +191,31 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - 没登录回 `401`（`errorKey: auth.required`），不会拿未登录的结果冒充个人推荐。
 - 上游说成功但一首歌都没给，回 `422`（`errorKey: resource.not-found`）。
 - Serverless 部署没设 `QQ_SESSION_SECRET` 时回 `501`，和其他要登录的接口一样。
+
+### 电台
+
+两条接口都需要登录，没登录回 `401`；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。
+
+`GET /radio/list` 列出电台，按分组排好：
+
+```json
+{
+  "code": 200,
+  "groups": [
+    { "id": 48, "title": "热门", "radios": [{ "id": 99, "title": "猜你喜欢", "picurl": "https://example.invalid/image.jpg", "listenNum": 1234 }] },
+    { "id": 44, "title": "最近", "radios": [] }
+  ]
+}
+```
+
+- 没有可用 id 的分组或电台会被跳过；分组本身是空的（例如还没听过电台时的「最近」）照样保留。上游没给的数字不出现。
+- 上游给的清单是空的回 `422`；给了分组却一组都读不出来回 `502`（`upstream.invalid-response`）。
+
+`GET /radio/tracks?id=<电台 id>` 从一个电台拿几首歌，回应和猜你喜欢一样是 `{ code, songs, extras? }`：
+
+- `id=99` 就是「猜你喜欢」，和 `/user/guess-you-like` 同一个来源，可能带推荐理由 `extras`；其他电台目前每次约 9 首，没有 `extras`。
+- `id` 必须是正整数，缺了或格式不对回 `400`（`input.invalid`），不会打上游。
+- 上游成功但没给歌回 `422`；凭证被 QQ 拒绝回 `401`。补歌时按歌曲标识去重。
 
 ### 推荐歌单
 
@@ -264,7 +289,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `playback` | `getSongDetail`、`getAudioSource` | `getReplacement` |
 | `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
 | `playbackReports` | — | `reportPlayback` |
 
@@ -482,7 +508,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取电台列表
 
-`GET /getRadioLists` 读取电台分类列表。它只列出电台，不代表当前后端提供分类电台取歌，也不能替代登录后的 `/user/guess-you-like`。
+`GET /getRadioLists` 读取电台分类列表（旧接口，清单比较旧）。新的登录后电台接口见上面的 `/radio/list` 与 `/radio/tracks`。
 
 ### 获取票务信息
 

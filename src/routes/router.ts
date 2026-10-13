@@ -26,6 +26,10 @@ router.get('/user/guess-you-like', context.getGuessYouLike);
 // recommendations; a login session is used when present
 router.get('/recommend/playlists', context.getRecommendPlaylists);
 
+// radio; a login session is required
+router.get('/radio/list', context.getRadioList);
+router.get('/radio/tracks', context.getRadioTracks);
+
 // downloadQQMusic
 router.get('/downloadQQMusic', context.getDownloadQQMusic);
 
