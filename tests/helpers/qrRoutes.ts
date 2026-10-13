@@ -96,6 +96,7 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
     wechatCode?: number;
     events?: QrEvent[];
     relayCloseError?: boolean;
+    deferRelayClose?: boolean;
   } = {};
 
   beforeEach(() => {
@@ -219,6 +220,10 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
         },
         close: async (id: string) => {
           calls.push({ kind: 'relay', method: 'close', id });
+          if (state.deferRelayClose) {
+            await new Promise<void>((resolve) => setImmediate(resolve));
+            calls.push({ kind: 'relay', method: 'close-complete', id });
+          }
           if (state.relayCloseError) throw new Error('fixture-private-close');
         },
       };
