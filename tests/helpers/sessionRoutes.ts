@@ -81,6 +81,8 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     data?: unknown;
     networkError?: Error;
     httpStatus?: number;
+    anonymousPlaylist?: unknown;
+    anonymousPlay?: unknown;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
@@ -118,7 +120,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
         ? JSON.parse(url.searchParams.get('data') ?? (await request.clone().text()))
         : {};
       const descriptors = Object.entries(payload)
-        .filter(([key]) => key !== 'comm')
+        .filter(([key, value]) => key !== 'comm' && typeof value === 'object' && value !== null)
         .map(
           ([key, value]) =>
             [
@@ -131,10 +133,41 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
         rpc: descriptors.map(([, value]) => value),
         params: Object.fromEntries([...url.searchParams].filter(([key]) => key !== 'data')),
       });
+      if (url.pathname.includes('fcg_ucc_getcdinfo_byids') && state.anonymousPlaylist !== undefined)
+        return Response.json(state.anonymousPlaylist);
+      if (descriptors.some(([, value]) => value.method === 'CgiGetVkey'))
+        return Response.json(
+          state.anonymousPlay ?? {
+            code: 0,
+            req_0: {
+              code: 0,
+              data: {
+                sip: ['http://ws.fixture.invalid/', 'https://stream.invalid/'],
+                midurlinfo: (descriptors[0][1].param.songmid as string[]).map((songmid) => ({
+                  songmid,
+                  purl: 'fixture.mp3',
+                })),
+              },
+            },
+          },
+        );
       if (state.networkError) throw state.networkError;
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });
-      const response = await mockUpstream.fetch(request);
+      const response = descriptors.some(([, value]) => value.method === 'uniform_get_Dissinfo')
+        ? Response.json({
+            code: 0,
+            req_0: {
+              code: 0,
+              data: {
+                dirinfo: { id: 70001, title: 'Fixture playlist', songnum: 1 },
+                songlist: [{ mid: 'fixture-song', title: 'Fixture song' }],
+                total_song_num: 1,
+                hasmore: 0,
+              },
+            },
+          })
+        : await mockUpstream.fetch(request);
       if (!musicu && !url.pathname.includes('fcg_get_profile_order_asset')) return response;
       const body = (await response.json()) as Record<string, unknown>;
       if (state.globalCode !== undefined) body.code = state.globalCode;

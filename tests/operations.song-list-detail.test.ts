@@ -1,0 +1,188 @@
+import './helpers/sessionRoutes';
+import legacyGetSongListDetail from '../src/controllers/getSongListDetail';
+import { getSongListDetail } from '../src/routes/operations/getSongListDetail';
+import { legacyRoutes } from '../src/serverless/legacyRoutes';
+import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
+import { createParityRunner } from './helpers/operationParity';
+import { useSessionUpstream } from './helpers/sessionRoutes';
+
+const parity = createParityRunner(
+  {
+    name: 'getSongListDetail',
+    node: '/getSongListDetail/:disstid?',
+    serverless: '/getSongListDetail/:disstid',
+  },
+  {
+    legacyNode: legacyGetSongListDetail,
+    legacyServerless: legacyRoutes['/getSongListDetail/:disstid'],
+    operation: getSongListDetail,
+  },
+);
+const unreadable = { code: 10, cdlist: [] };
+
+describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）', (runtime) => {
+  const upstream = useSessionUpstream(runtime);
+  it.each([
+    'valid',
+    'missing',
+    'invalid',
+    'expired',
+  ] as const)('匿名读成功时会话 %s 不触发重读', async (mode) => {
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options(mode),
+    );
+    expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.calls).toHaveLength(1);
+    expect(legs.legacy.body).toMatchObject({ response: { code: 0 } });
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+  it.each([
+    'valid',
+    'missing',
+    'invalid',
+    'expired',
+  ] as const)('匿名 code 10 时会话 %s', async (mode) => {
+    upstream.state.anonymousPlaylist = unreadable;
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options(mode),
+    );
+    expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.calls).toHaveLength(mode === 'valid' ? 2 : 1);
+    if (mode === 'valid') {
+      expect(legs.legacy.body).toMatchObject({
+        response: {
+          code: 0,
+          cdlist: [{ disstid: '70001', dissname: 'Fixture playlist', total_song_num: 1 }],
+        },
+      });
+      expect(legs.legacy.calls[1].rpc[0]).toMatchObject({
+        method: 'uniform_get_Dissinfo',
+        param: { disstid: 70001, song_begin: 0, song_num: 1000 },
+      });
+    } else expect(legs.legacy.body).toEqual({ response: unreadable });
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+  it.each([
+    { label: '凭证拒绝', businessCode: 1000 },
+    { label: '未知业务码', businessCode: 777777 },
+    { label: '2001', businessCode: 2001 },
+    { label: '网关失败', globalCode: 500003 },
+    { label: '网关与凭证码同时出现', globalCode: 500003, businessCode: 1000 },
+    {
+      label: '连线失败',
+      networkError: Object.assign(new Error('fixture-private-message'), { code: 'ECONNRESET' }),
+    },
+    { label: 'HTTP 503', httpStatus: 503 },
+    { label: '缺少歌单数据', data: {} },
+    {
+      label: '有效空歌单',
+      data: { dirinfo: { id: 70001, title: 'Fixture playlist' }, songlist: [], total_song_num: 0 },
+    },
+  ])('重读$label 仍回匿名结果', async ({ label: _label, ...state }) => {
+    Object.assign(upstream.state, state, { anonymousPlaylist: unreadable });
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options(),
+    );
+    expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.body).toEqual({ response: unreadable });
+    expect(legs.legacy.calls).toHaveLength(2);
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+  it.each([10, '10', 2001, 777777, -1])('匿名业务码 %s 不改变 HTTP 状态', async (code) => {
+    upstream.state.anonymousPlaylist = { code, cdlist: [] };
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options('missing'),
+    );
+    expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.body).toEqual({ response: { code, cdlist: [] } });
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+  it.each(['network', 'http'] as const)('匿名请求 %s 失败保留安全 500', async (kind) => {
+    if (kind === 'network')
+      upstream.state.networkError = Object.assign(new Error('fixture-private-message'), {
+        code: 'ECONNRESET',
+      });
+    else upstream.state.httpStatus = 503;
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail/70001',
+      upstream.calls,
+      await upstream.options(),
+    );
+    expect(legs.legacy.status).toBe(500);
+    expect(legs.legacy.calls).toHaveLength(1);
+    expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+  it.each([
+    '/70001?disstid=70002',
+    '/0',
+    '/invalid',
+    '/%20',
+    '/70001?unused=&unused=b',
+  ])('路径参数 %s 与匿名参数隔离', async (suffix) => {
+    upstream.state.anonymousPlaylist = unreadable;
+    const legs = await parity(
+      runtime,
+      '/getSongListDetail' + suffix,
+      upstream.calls,
+      await upstream.options(),
+    );
+    expect(legs.legacy.status).toBe(200);
+    expect(legs.legacy.calls[0].params).not.toHaveProperty('cookie');
+    expect(legs.legacy.calls[0].params).not.toHaveProperty('musickey');
+    expect(legs.operation).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.legacy);
+  });
+  if (runtime === 'node')
+    it.each([
+      '',
+      '?disstid=',
+      '?disstid=70001',
+      '?disstid=70001&disstid=70002',
+      '?disstid=&disstid=70001',
+    ])('保留 Node 查询形式 %s', async (query) => {
+      upstream.state.anonymousPlaylist = unreadable;
+      const legs = await parity(
+        runtime,
+        '/getSongListDetail' + query,
+        upstream.calls,
+        await upstream.options(),
+      );
+      expect(legs.legacy.status).toBe(200);
+      expect(legs.operation).toEqual(legs.legacy);
+      expect(legs.host).toEqual(legs.legacy);
+    });
+  if (runtime === 'serverless')
+    it.each([undefined, ''])('没设密钥 %s 时不建服务也不重读', async (secret) => {
+      upstream.state.anonymousPlaylist = unreadable;
+      const options = await upstream.options();
+      options.env = { QQ_SESSION_SECRET: secret };
+      const service = jest.fn(options.service);
+      options.service = service;
+      const legs = await parity(runtime, '/getSongListDetail/70001', upstream.calls, options);
+      expect(legs.legacy.status).toBe(200);
+      expect(legs.legacy.body).toEqual({ response: unreadable });
+      expect(legs.legacy.calls).toHaveLength(1);
+      expect(service).not.toHaveBeenCalled();
+      expect(legs.operation).toEqual(legs.legacy);
+      expect(legs.host).toEqual(legs.legacy);
+    });
+});
