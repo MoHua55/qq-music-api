@@ -13,6 +13,7 @@
 export const UPSTREAM_PHASES = [
   'get-music-play',
   'get-playback-hint',
+  'get-preview-detail',
   'get-cdn-dispatch',
   'get-session',
   'create-qr',

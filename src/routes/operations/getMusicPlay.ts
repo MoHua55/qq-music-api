@@ -3,12 +3,18 @@ import {
   PLAYBACK_HINT_RULES,
   type PlaybackHint,
   playbackHintOf,
+  previewUnavailableHint,
 } from '../../protocol/playbackHints';
 import {
   classifyPlaybackRestriction,
   type PlaybackRestriction,
   playbackQualityOf,
 } from '../../protocol/playbackRestriction';
+import {
+  previewMediaIdOf,
+  previewUnavailableRestriction,
+  validMediaIdOf,
+} from '../../protocol/previewFile';
 import { previewFilenameOf } from '../../services/auth/playback';
 import UCommon from '../../services/UCommon/UCommon';
 import { logger } from '../../util/logger';
@@ -35,7 +41,7 @@ interface AnonymousPlayEntry {
 
 const MAX_HINT_LOOKUPS = 10;
 
-/** 匿名播放就用匿名读到的单曲详情挑提示；读不到只是提示变成「原因尚未确认」，不影响回应。 */
+/** 匿名播放就用匿名读到的单曲详情挑提示、判断有没有试听文件；读不到就当没有详情。 */
 const anonymousSongDetail = async (songmid: string): Promise<unknown> => {
   try {
     const res = await UCommon({
@@ -100,11 +106,36 @@ export const createGetMusicPlay =
 
     const { uin, guid } = anonymousDefaults();
     const justPlayUrl = (request.queryRaw('resType') || 'play') === 'play';
-    const songmidList = songmid.split(',');
+    const requestedList = songmid.split(',');
+    // 试听只要确认有试听文件的歌（每首查一次详情，最多 MAX_HINT_LOOKUPS 首）；其他的直接回「试听不可用」。
+    const previewMediaIds = new Map<string, string>();
+    if (preview) {
+      const callerMediaId = validMediaIdOf(mediaId);
+      const looked = [...new Set(requestedList)].slice(0, MAX_HINT_LOOKUPS);
+      const details = await Promise.all(looked.map((mid) => anonymousSongDetail(mid)));
+      looked.forEach((mid, index) => {
+        const media = previewMediaIdOf(details[index], callerMediaId);
+        if (media) previewMediaIds.set(mid, media);
+      });
+    }
+    const songmidList = preview
+      ? requestedList.filter((mid) => previewMediaIds.has(mid))
+      : requestedList;
+    const skipped: Record<string, AnonymousPlayEntry> = Object.fromEntries(
+      requestedList
+        .filter((mid) => preview && !previewMediaIds.has(mid))
+        .map((mid) => [
+          mid,
+          { url: '', error: '暂无播放链接', restriction: previewUnavailableRestriction(false) },
+        ]),
+    );
+    // 全部都不要试听文件时不打取链接的请求，回应只有 playUrl。
+    if (preview && !songmidList.length)
+      return { status: 200, headers: {}, body: { data: { playUrl: skipped } } };
     const fileInfo = fileType[quality as keyof typeof fileType] ?? fileType[128];
     const file = songmidList.map((mid) =>
       preview
-        ? previewFilenameOf(mid, typeof mediaId === 'string' ? mediaId : '')
+        ? previewFilenameOf(previewMediaIds.get(mid) as string)
         : `${fileInfo.s}${mid}${mediaId || mid}${fileInfo.e}`,
     );
     const data = {
@@ -181,14 +212,19 @@ export const createGetMusicPlay =
       },
     );
     const unavailable = Object.entries(playUrl).filter(([, entry]) => entry.restriction);
+    // 试听拿不到链接一律是「试听不可用」；其他的在还没有验证过的规则时挑不出具体原因，不用多查。
     const details = await Promise.all(
       unavailable
-        .slice(0, PLAYBACK_HINT_RULES.length ? MAX_HINT_LOOKUPS : 0)
+        .slice(0, PLAYBACK_HINT_RULES.length && !preview ? MAX_HINT_LOOKUPS : 0)
         .map(([mid]) => anonymousSongDetail(mid)),
     );
     unavailable.forEach(([, entry], index) => {
-      if (entry.restriction) entry.restriction.hint = playbackHintOf(details[index]);
+      if (entry.restriction)
+        entry.restriction.hint = preview
+          ? previewUnavailableHint()
+          : playbackHintOf(details[index]);
     });
+    Object.assign(playUrl, skipped);
     response.playUrl = playUrl;
     return { status: 200, headers: {}, body: { data: justPlayUrl ? { playUrl } : response } };
   };

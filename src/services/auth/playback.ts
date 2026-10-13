@@ -1,6 +1,15 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
-import { PLAYBACK_HINT_RULES, playbackHintOf } from '../../protocol/playbackHints';
+import {
+  PLAYBACK_HINT_RULES,
+  playbackHintOf,
+  previewUnavailableHint,
+} from '../../protocol/playbackHints';
 import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/playbackRestriction';
+import {
+  previewMediaIdOf,
+  previewUnavailableRestriction,
+  validMediaIdOf,
+} from '../../protocol/previewFile';
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
@@ -45,20 +54,21 @@ export const MUSIC_FILE_TYPES = {
 export const MAX_PLAYBACK_HINT_LOOKUPS = 10;
 
 /**
- * The song detail as this same session sees it: the restriction fields are computed per account, so
- * another account's (or an anonymous) copy would hint the wrong reason. Any failure here only costs
- * the hint its precision, never the playback answer.
+ * The song detail as this same session sees it: the restriction and preview fields are computed per
+ * account, so another account's (or an anonymous) copy could be wrong. A failure here reads as no
+ * detail: the hint stays unconfirmed, and a preview is not asked for.
  */
-const songDetailForHint = async (
+const songDetailOf = async (
   http: AuthHttpClient,
   auth: AuthSession,
   songmid: string,
+  phase: 'get-playback-hint' | 'get-preview-detail',
 ): Promise<unknown> => {
   try {
     const data = await callMusicu(
       http,
       auth.device,
-      'get-playback-hint',
+      phase,
       'music.pf_song_detail_svr',
       'get_song_detail_yqq',
       { song_type: 0, song_mid: songmid },
@@ -72,10 +82,32 @@ const songDetailForHint = async (
 
 /**
  * The preview file the official web player asks for when a song only plays as a preview: a single
- * 14-character segment (the media id when known), unlike the two-segment full-quality names.
+ * 14-character media id segment, unlike the two-segment full-quality names. Never the songmid.
  */
-export const previewFilenameOf = (songmid: string, mediaId: string): string =>
-  `RS02${mediaId || songmid}.mp3`;
+export const previewFilenameOf = (mediaId: string): string => `RS02${mediaId}.mp3`;
+
+/**
+ * 试听：每首先查一次单曲详情（并行，最多 `MAX_PLAYBACK_HINT_LOOKUPS` 首，后面的当作查不到），
+ * 回能要试听文件的歌和文件名要用的 media id。
+ */
+const previewMediaIdsOf = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  songmids: string[],
+  mediaId: unknown,
+): Promise<Map<string, string>> => {
+  const callerMediaId = validMediaIdOf(mediaId);
+  const looked = [...new Set(songmids)].slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
+  const details = await Promise.all(
+    looked.map((mid) => songDetailOf(http, auth, mid, 'get-preview-detail')),
+  );
+  const mediaIds = new Map<string, string>();
+  for (const [index, mid] of looked.entries()) {
+    const media = previewMediaIdOf(details[index], callerMediaId);
+    if (media) mediaIds.set(mid, media);
+  }
+  return mediaIds;
+};
 
 export const getAuthenticatedPlayUrls = async (
   http: AuthHttpClient,
@@ -86,10 +118,26 @@ export const getAuthenticatedPlayUrls = async (
   mediaId?: string,
   options: PlaybackOptions = {},
 ): Promise<Dictionary> => {
-  const songmidList = songmid
+  const requestedList = songmid
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  // 试听只要确认有试听文件的歌；其他的直接回「试听不可用」，不去要。
+  const previewMediaIds = options.preview
+    ? await previewMediaIdsOf(http, auth, requestedList, mediaId)
+    : undefined;
+  const songmidList = previewMediaIds
+    ? requestedList.filter((mid) => previewMediaIds.has(mid))
+    : requestedList;
+  const skipped: Dictionary = Object.fromEntries(
+    requestedList
+      .filter((mid) => previewMediaIds && !previewMediaIds.has(mid))
+      .map((mid) => [
+        mid,
+        { url: '', error: '暂无播放链接', restriction: previewUnavailableRestriction(true) },
+      ]),
+  );
+  if (!songmidList.length && previewMediaIds) return skipped;
   const qualityKey = String(quality) as keyof typeof MUSIC_FILE_TYPES;
   const fileType = MUSIC_FILE_TYPES[qualityKey] ?? MUSIC_FILE_TYPES[128];
   // `globalThis.crypto` is the Web Crypto API global: identical on Node ≥20, Electron, Cloudflare
@@ -107,8 +155,8 @@ export const getAuthenticatedPlayUrls = async (
       // filename 一律是两段识别值：`prefix + songmid + media_mid + extension`。media_mid 缺席时
       // 用 songmid 补上第二段；只送一段的文件名在 vkey server 仍会拿到 purl，但 CDN 端会 403。
       filename: songmidList.map((mid) =>
-        options.preview
-          ? previewFilenameOf(mid, normalizedMediaId)
+        previewMediaIds
+          ? previewFilenameOf(previewMediaIds.get(mid) as string)
           : `${fileType.prefix}${mid}${normalizedMediaId || mid}${fileType.extension}`,
       ),
       guid,
@@ -168,7 +216,7 @@ export const getAuthenticatedPlayUrls = async (
     }
   }
   domain ??= DEFAULT_STREAM_DOMAIN;
-  const playUrl: Dictionary = {};
+  const playUrl: Dictionary = { ...skipped };
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
   const loggedQuality = options.preview
     ? 'preview'
@@ -210,13 +258,15 @@ export const getAuthenticatedPlayUrls = async (
     playUrl[mid] = { url: '', error: '暂无播放链接', restriction };
     unavailable.push({ mid, restriction });
   }
-  // 还没有验证过的规则时，挑不出具体原因，不用多查。
+  // 试听拿不到链接一律是「试听不可用」；其他的在还没有验证过的规则时挑不出具体原因，不用多查。
   const details = await Promise.all(
     unavailable
-      .slice(0, PLAYBACK_HINT_RULES.length ? MAX_PLAYBACK_HINT_LOOKUPS : 0)
-      .map(({ mid }) => songDetailForHint(http, auth, String(mid))),
+      .slice(0, PLAYBACK_HINT_RULES.length && !options.preview ? MAX_PLAYBACK_HINT_LOOKUPS : 0)
+      .map(({ mid }) => songDetailOf(http, auth, String(mid), 'get-playback-hint')),
   );
   for (const [index, { restriction }] of unavailable.entries())
-    (restriction as Dictionary).hint = playbackHintOf(details[index]);
+    (restriction as Dictionary).hint = options.preview
+      ? previewUnavailableHint()
+      : playbackHintOf(details[index]);
   return playUrl;
 };
