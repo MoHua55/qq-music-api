@@ -33,11 +33,10 @@ import {
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
 import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
-import songListDetailService from '../services/songLists/songListDetail';
-
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
+import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
 import { AUTH_COOKIE_NAME, failureResponse, json, LOGIN_REQUIRED } from './response';
 import { createRouter } from './router';
@@ -470,42 +469,12 @@ const routes: Record<string, RouteHandler> = {
   // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
   '/user/playlist-detail': operationRoute(getOwnedPlaylistSongs),
 
-  '/getMusicPlay/:songmid?': async ({ url, params, service: getService, token }) => {
-    const songmid = (params.songmid ?? url.searchParams.get('songmid') ?? '').trim();
-    if (!songmid) return json({ data: { message: 'no songmid' } }, 400);
-    // Only the authenticated branch is served here. The Node controller also has an anonymous
-    // fallback that builds a guessed URL from `config.user`, which a serverless deployment has
-    // no configuration file for; without a session there is nothing honest to answer.
-    if (!token) return json(LOGIN_REQUIRED, 401);
-    const playUrl = await (await getService()).getMusicPlay(
-      token,
-      songmid,
-      url.searchParams.get('quality') ?? '128',
-      url.searchParams.get('mediaId') ?? undefined,
-    );
-    return playUrl ? json({ data: { playUrl } }) : json(LOGIN_REQUIRED, 401);
-  },
-
+  '/getMusicPlay/:songmid?': legacyRoutes['/getMusicPlay/:songmid?'],
   // ---- Catalog (no credential) ------------------------------------------------------------
   // Anonymous by default, so it stays usable without a secret. Only when the anonymous CGI cannot
   // read the playlist at all (`code: 10`, QQ's own algorithmic playlists) does a session get used,
   // and only on a deployment that can open one; any failure there keeps the anonymous answer.
-  '/getSongListDetail/:disstid': async ({ url, params, service: getService, token, env }) => {
-    const disstid = params.disstid ?? url.searchParams.get('disstid') ?? undefined;
-    const { status, body } = await songListDetailService({
-      method: 'get',
-      params: { disstid },
-      option: {},
-      ...(token && env.QQ_SESSION_SECRET
-        ? {
-            readWithCredential: async (id: string) =>
-              (await getService()).getAuthenticatedSongListDetail(token, id),
-          }
-        : {}),
-    });
-    return json(body, status);
-  },
-
+  '/getSongListDetail/:disstid': legacyRoutes['/getSongListDetail/:disstid'],
   '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
 
   '/getAlbumInfo': operationRoute(getAlbumInfo),

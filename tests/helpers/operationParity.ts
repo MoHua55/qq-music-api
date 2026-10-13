@@ -33,7 +33,9 @@ import {
  */
 
 type KoaController = (ctx: Koa.Context) => Promise<unknown> | unknown;
-type FetchRoute = (context: OperationRouteContext) => Promise<Response>;
+type FetchRoute = (
+  context: OperationRouteContext & { env: NonNullable<RouteCallOptions['env']> },
+) => Promise<Response>;
 type Leg = (path: string, options: ParityCallOptions) => Promise<RouteResult>;
 
 export interface ParityCallOptions {
@@ -110,6 +112,7 @@ const fetchHost = (route: ParityRoute, handler: FetchRoute): Leg => {
     try {
       response = await matched.handler({
         url,
+        env: options.env ?? {},
         params: matched.params,
         token: options.token,
         service: options.service ?? noService,

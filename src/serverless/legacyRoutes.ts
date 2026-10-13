@@ -1,5 +1,6 @@
 import getAlbumInfoService from '../services/album/getAlbumInfo';
 import type { QrLoginService } from '../services/auth/qrLogin';
+import songListDetailService from '../services/songLists/songListDetail';
 import u_common from '../services/u_common';
 import { toUserPlaylistBody, userPlaylistOptionsOf } from '../services/user/userPlaylistResponse';
 import { AUTH_COOKIE_NAME, json, LOGIN_REQUIRED } from './response';
@@ -11,6 +12,7 @@ import { AUTH_COOKIE_NAME, json, LOGIN_REQUIRED } from './response';
 // 这里的代码只搬不改：要改行为就改新的共用实现。
 
 interface LegacyRouteContext {
+  env?: { QQ_SESSION_SECRET?: string };
   url: URL;
   params: Record<string, string>;
   token: string | undefined;
@@ -20,6 +22,38 @@ interface LegacyRouteContext {
 type LegacyRouteHandler = (context: LegacyRouteContext) => Promise<Response>;
 
 export const legacyRoutes = {
+  '/getSongListDetail/:disstid': async ({ url, params, service: getService, token, env = {} }) => {
+    const disstid = params.disstid ?? url.searchParams.get('disstid') ?? undefined;
+    const { status, body } = await songListDetailService({
+      method: 'get',
+      params: { disstid },
+      option: {},
+      ...(token && env.QQ_SESSION_SECRET
+        ? {
+            readWithCredential: async (id: string) =>
+              (await getService()).getAuthenticatedSongListDetail(token, id),
+          }
+        : {}),
+    });
+    return json(body, status);
+  },
+
+  '/getMusicPlay/:songmid?': async ({ url, params, service: getService, token }) => {
+    const songmid = (params.songmid ?? url.searchParams.get('songmid') ?? '').trim();
+    if (!songmid) return json({ data: { message: 'no songmid' } }, 400);
+    // Only the authenticated branch is served here. The Node controller also has an anonymous
+    // fallback that builds a guessed URL from `config.user`, which a serverless deployment has
+    // no configuration file for; without a session there is nothing honest to answer.
+    if (!token) return json(LOGIN_REQUIRED, 401);
+    const playUrl = await (await getService()).getMusicPlay(
+      token,
+      songmid,
+      url.searchParams.get('quality') ?? '128',
+      url.searchParams.get('mediaId') ?? undefined,
+    );
+    return playUrl ? json({ data: { playUrl } }) : json(LOGIN_REQUIRED, 401);
+  },
+
   '/getAlbumInfo': async ({ url }) => {
     const albummid = url.searchParams.get('albummid');
     if (!albummid) return json({ data: { message: 'no albummid' } }, 400);
