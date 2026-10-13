@@ -187,7 +187,14 @@ describe.each(['node', 'serverless'] as const)('negative HTTP baselines: %s', (r
             item.songmid,
             item.purl
               ? { url: `https://stream.invalid/${item.purl}`, error: false }
-              : { url: '', error: '暂无播放链接' },
+              : {
+                  url: '',
+                  error: '暂无播放链接',
+                  restriction: expect.objectContaining({
+                    key: 'url_unavailable',
+                    evidence: 'observed-response',
+                  }),
+                },
           ]),
         ),
       },

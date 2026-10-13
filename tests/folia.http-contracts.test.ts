@@ -278,8 +278,8 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     );
   });
 
-  // 开发日志：取不到链接的那几首各记一条，只带白名单里的安全整数；对外回应完全不变。
-  it('keeps playback answers unchanged and logs safe numbers for each failed song', async () => {
+  // 开发日志：取不到链接的那几首各记一条，只带白名单里的安全整数；回应只多可选的 restriction。
+  it('adds an optional restriction and logs safe numbers for each failed song', async () => {
     const debug = jest.spyOn(logger, 'debug').mockImplementation(() => undefined);
     mockUpstream.state.vkeyItems = {
       'fixture-song-b': {
@@ -304,8 +304,20 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
       data: {
         playUrl: {
           'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false },
-          'fixture-song-b': { url: '', error: '暂无播放链接' },
-          'fixture-song-c': { url: '', error: '暂无播放链接' },
+          'fixture-song-b': {
+            url: '',
+            error: '暂无播放链接',
+            restriction: {
+              key: 'url_unavailable',
+              evidence: 'observed-response',
+              codes: { result: 104003, errtype: 3, code: 0 },
+            },
+          },
+          'fixture-song-c': {
+            url: '',
+            error: '暂无播放链接',
+            restriction: { key: 'url_unavailable', evidence: 'observed-response' },
+          },
         },
       },
     });
