@@ -1,5 +1,6 @@
 import { logger } from '../../util/logger';
 import { type AndroidDevice, buildQimeiRequest, QIMEI_URL } from './androidDevice';
+import { Buffer } from './bytes';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu, QqDeviceBootstrapError } from './musicuProtocol';
 import {

@@ -1,5 +1,6 @@
 import { logger } from '../../util/logger';
 import { isAndroidDevice } from './androidDevice';
+import { Buffer } from './bytes';
 import type { AuthHttpClient } from './httpClient';
 import {
   type AuthSession,

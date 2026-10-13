@@ -7,6 +7,7 @@ it('Node 继续使用自己的 Buffer', () => {
 
 it.each([
   ['Fixture 你好', 'utf8'],
+  ['\ufeffFixture', 'utf8'],
   ['0011aaff', 'hex'],
   ['0011zaff', 'hex'],
   ['89504e470d0a1a0a01020304', 'hex'],
@@ -49,4 +50,18 @@ it('拼接与补零保留原字节，输出 JSON 不暴露其他属性', () => {
   expect(actual.toJSON()).toEqual({ type: 'Buffer', data: [1, 2, 3, 0, 0] });
   expect(webBuffer.isBuffer(actual)).toBe(true);
   expect(webBuffer.isBuffer(new Uint8Array(2))).toBe(false);
+});
+
+it('长度、共享视图和截断边界与 Node 一致', () => {
+  expect(webBuffer.byteLength('你好')).toBe(Buffer.byteLength('你好'));
+  expect(webBuffer.concat([webBuffer.from([1, 2, 3])], 2).toString('hex')).toBe('0102');
+  expect(webBuffer.concat([]).length).toBe(0);
+  expect(() => webBuffer.alloc(-1)).toThrow(RangeError);
+  expect(() => webBuffer.alloc(1.5)).toThrow(RangeError);
+  const shared = new SharedArrayBuffer(4);
+  const view = webBuffer.from(shared, 1, 2);
+  new Uint8Array(shared)[1] = 7;
+  expect([...view]).toEqual([7, 0]);
+  for (const encoded of ['a', 'AA', 'AAE', 'AAECAw==', 'AAECAw junk'])
+    expect([...webBuffer.from(encoded, 'base64')]).toEqual([...Buffer.from(encoded, 'base64')]);
 });

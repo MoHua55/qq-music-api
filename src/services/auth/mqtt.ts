@@ -1,4 +1,5 @@
 import { randomDigits } from './androidDevice';
+import { Buffer } from './bytes';
 import { type QrEvent, type QrEventListener } from './qrTypes';
 import { type Dictionary, dictionaryOf, numberOf, parseDictionary, stringOf } from './values';
 
