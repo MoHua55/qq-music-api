@@ -135,6 +135,9 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       });
       if (url.pathname.includes('fcg_ucc_getcdinfo_byids') && state.anonymousPlaylist !== undefined)
         return Response.json(state.anonymousPlaylist);
+      if (state.networkError) throw state.networkError;
+      if (state.httpStatus)
+        return new Response('fixture-private-body', { status: state.httpStatus });
       if (descriptors.some(([, value]) => value.method === 'CgiGetVkey'))
         return Response.json(
           state.anonymousPlay ?? {
@@ -151,9 +154,6 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
             },
           },
         );
-      if (state.networkError) throw state.networkError;
-      if (state.httpStatus)
-        return new Response('fixture-private-body', { status: state.httpStatus });
       const response = descriptors.some(([, value]) => value.method === 'uniform_get_Dissinfo')
         ? Response.json({
             code: 0,
