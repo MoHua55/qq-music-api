@@ -41,6 +41,8 @@ export const createContractUpstream = () => {
   let onEvent: ((event: QrEvent) => void) | undefined;
   const state = {
     credentialCode: 0,
+    /** 换凭证（Login）的单项码；0 表示照常换到凭证。 */
+    loginCode: 0,
     catalogCode: 0,
     bootstrapStatus: 200,
     wechatCode: 408,
@@ -147,7 +149,9 @@ export const createContractUpstream = () => {
             ? state.credentialCode
             : ['get_radio_track', 'GetRecommendFeed'].includes(rpc.method)
               ? state.recommendCode
-              : 0;
+              : rpc.method === 'Login'
+                ? state.loginCode
+                : 0;
         response[key] = { code, data: code ? {} : rpcData(call) };
       }
       return Response.json(response);

@@ -11,6 +11,7 @@ import createAuthHttpClient, { type AuthHttpClient } from '../src/services/auth/
 import {
   type AuthSessionRepository,
   createMemoryAuthSessionRepository,
+  createMemoryQrSessionRepository,
   createMqttListenOver,
   createQrLoginService,
   type MqttConnect,
@@ -95,6 +96,16 @@ interface HarnessOptions {
   wechatStatuses?: string[];
   wechatQrPage?: string;
   wechatImage?: Buffer;
+  /** 换凭证（两个通道的 Login，不含刷新）回这个单项码。 */
+  exchangeCode?: number;
+  /** 换凭证回这个网关码（顶层 code）。 */
+  exchangeGlobalCode?: number;
+  /** 换凭证回应的 HTTP 状态。 */
+  exchangeHttpStatus?: number;
+  /** 登录过程里读登录用户（手机 QQ 的回退验证、微信的验证）回这个单项码。 */
+  loginUserCode?: number;
+  /** 微信刷新凭证（loginMode 2）回这个单项码。 */
+  refreshCode?: number;
   /**
    * 让登录之后的鉴权调用带上这个上游码。用来分别验证「凭证被明确拒绝」与「上游因为别的原因失败」
    * 走的是两条不同的路。QQ 通道的登录流程本身不打 GetLoginUserInfo，所以只影响登录后的调用。
@@ -186,6 +197,24 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
       if (method === 'Login' && options.failCredential) {
         return response({ code: 0, req_0: { code: 50006, data: {} } } as T);
       }
+      if (method === 'Login') {
+        const param = dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param);
+        if (param.loginMode === 2 && options.refreshCode !== undefined)
+          return response({ code: 0, req_0: { code: options.refreshCode, data: {} } } as T);
+        if (
+          param.loginMode !== 2 &&
+          (options.exchangeCode !== undefined || options.exchangeGlobalCode !== undefined)
+        )
+          return response(
+            {
+              code: options.exchangeGlobalCode ?? 0,
+              req_0: { code: options.exchangeCode ?? 0, data: {} },
+            } as T,
+            options.exchangeHttpStatus ?? 200,
+          );
+      }
+      if (method === 'GetLoginUserInfo' && options.loginUserCode !== undefined)
+        return response({ code: 0, req_0: { code: options.loginUserCode, data: {} } } as T);
       if (method === 'Login') {
         const param = dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param);
         if (param.loginMode === 2)
@@ -2045,5 +2074,293 @@ describe('QQ auth HTTP client', () => {
     expect(requests[1].headers).toEqual(
       expect.objectContaining({ Cookie: 'sid=session-secret; uin=123; qqmusic_uin=123' }),
     );
+  });
+});
+
+// 扫码失败的两个可选字段：upstreamErrorKey 只在「哪个通道、哪一步、哪一层、哪个数字」都对得上登记表时才给；
+// 手机 QQ 换凭证失败后会改用扫码票据再验证一次，primaryFailure 交出被这次回退盖掉的那一步。
+// 原有的 code／failureStage／failureReason／upstreamCode／upstreamGlobalCode／retryAfterMs 一个都不变。
+describe('QR login failure classification', () => {
+  const MQTT_COOKIES = {
+    cookies: { qqmusic_uin: { value: '123' }, qqmusic_key: { value: 'mqtt-key' } },
+  };
+
+  const failWechatLogin = async (harness: ReturnType<typeof createProtocolHarness>) => {
+    const key = await harness.service.createSession('wechat');
+    await harness.service.createQr(key);
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
+    return harness.service.checkQr(key);
+  };
+
+  const failQqLogin = async (harness: ReturnType<typeof createProtocolHarness>) => {
+    const key = await harness.service.createSession();
+    await harness.service.createQr(key);
+    harness.emit({ type: 'cookies', payload: MQTT_COOKIES });
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
+    return harness.service.checkQr(key);
+  };
+
+  /** 新字段的读取方式：旧的类型里没有它们，旧客户端也照样读得到整个对象。 */
+  const fieldOf = (result: unknown, field: string): unknown =>
+    (result as Record<string, unknown> | undefined)?.[field];
+
+  /** Folia 判断「二维码自然过期」的条件（只看这四个字段），用来确认新字段不影响它。 */
+  const isFoliaNaturalExpiry = (result: Record<string, unknown>): boolean =>
+    result.failureReason === 'qr-timeout' ||
+    ['failureStage', 'failureReason', 'upstreamCode', 'retryAfterMs'].every(
+      (field) => result[field] === undefined,
+    );
+
+  it('微信换凭证回 20279：多一个 auth.device-limit，其余字段和以前一样，也没有回退字段', async () => {
+    const result = await failWechatLogin(createProtocolHarness({ exchangeCode: 20279 }));
+
+    expect(result).toEqual({
+      code: 800,
+      message: 'QR login failed',
+      retryAfterMs: 15000,
+      failureStage: 'credential-exchange',
+      failureReason: 'upstream-rejected',
+      upstreamHttpStatus: 200,
+      upstreamCode: 20279,
+      upstreamGlobalCode: 0,
+      upstreamSubCode: undefined,
+      upstreamErrorKey: 'auth.device-limit',
+    });
+    expect(isFoliaNaturalExpiry(result as unknown as Record<string, unknown>)).toBe(false);
+  });
+
+  it('20279 只是这次扫码失败：已经登录的会话照常可用，不会变成 401', async () => {
+    let current = 1_000_000;
+    const options: HarnessOptions = { now: () => current };
+    const harness = createProtocolHarness(options);
+    const { result } = await login(harness.service, harness.emit);
+    const token = result.cookie?.split('=')[1];
+
+    // 等上一张二维码过了 180 秒的寿命被清掉，再用另一个通道扫一次；登录会话本身还在有效期内。
+    current += 181_000;
+    options.exchangeCode = 20279;
+    expect(fieldOf(await failWechatLogin(harness), 'upstreamErrorKey')).toBe('auth.device-limit');
+
+    await expect(harness.service.getUserDetail(token)).resolves.toMatchObject({ musicid: 123 });
+    await expect(harness.service.getLoginStatus(token)).resolves.not.toBeNull();
+  });
+
+  it('微信刷新凭证回 20279 也认得出来（同一个上游方法）', async () => {
+    const result = await failWechatLogin(
+      createProtocolHarness({ wechatNeedsRefresh: true, refreshCode: 20279 }),
+    );
+
+    expect(result).toMatchObject({
+      code: 800,
+      failureStage: 'credential-validation',
+      upstreamCode: 20279,
+      upstreamErrorKey: 'auth.device-limit',
+    });
+    expect(fieldOf(result, 'primaryFailure')).toBeUndefined();
+  });
+
+  it('手机 QQ 换凭证回 20279、回退验证回 1000：顶层照旧是 1000，被盖掉的 20279 放进 primaryFailure', async () => {
+    const result = await failQqLogin(
+      createProtocolHarness({ exchangeCode: 20279, loginUserCode: 1000 }),
+    );
+
+    expect(result).toMatchObject({
+      code: 800,
+      message: 'QR login failed',
+      failureStage: 'credential-validation',
+      failureReason: 'upstream-rejected',
+      upstreamCode: 1000,
+      retryAfterMs: 15000,
+      primaryFailure: {
+        failureStage: 'credential-exchange',
+        failureReason: 'upstream-rejected',
+        upstreamCode: 20279,
+        upstreamErrorKey: 'auth.device-limit',
+      },
+      fallbackAttempted: true,
+    });
+    expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
+  });
+
+  it('手机 QQ 的 50006 → 1000（实测见过的顺序）：交出 50006，但保持未知、不给 key', async () => {
+    const result = await failQqLogin(
+      createProtocolHarness({ exchangeCode: 50006, loginUserCode: 1000 }),
+    );
+
+    expect(result).toMatchObject({
+      code: 800,
+      upstreamCode: 1000,
+      primaryFailure: {
+        failureStage: 'credential-exchange',
+        failureReason: 'upstream-rejected',
+        upstreamCode: 50006,
+      },
+      fallbackAttempted: true,
+    });
+    expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
+    expect(fieldOf(fieldOf(result, 'primaryFailure'), 'upstreamErrorKey')).toBeUndefined();
+  });
+
+  it('冷却期间的 429 也带着 primaryFailure，前端在网页版也分得出设备超限', async () => {
+    const harness = createProtocolHarness({ exchangeCode: 20279, loginUserCode: 1000 });
+    await failQqLogin(harness);
+
+    const blocked = await harness.service.createSession().catch((error: unknown) => error);
+    expect(blocked).toMatchObject({
+      httpStatus: 429,
+      diagnostics: {
+        failureReason: 'local-backoff',
+        lastFailure: {
+          upstreamCode: 1000,
+          primaryFailure: { upstreamCode: 20279, upstreamErrorKey: 'auth.device-limit' },
+          fallbackAttempted: true,
+        },
+      },
+    });
+  });
+
+  it('回退验证成功就登录成功；之后别的失败不会带上那次的 primaryFailure', async () => {
+    let current = 1_000_000;
+    const options: HarnessOptions = { exchangeCode: 50006, now: () => current };
+    const harness = createProtocolHarness(options);
+    const key = await harness.service.createSession();
+    await harness.service.createQr(key);
+    harness.emit({ type: 'cookies', payload: MQTT_COOKIES });
+    await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+
+    current += 181_000;
+    const next = await harness.service.createSession();
+    await harness.service.createQr(next);
+    harness.emit({ type: 'canceled', payload: null });
+    const canceled = await harness.service.checkQr(next);
+    expect(canceled).toMatchObject({ code: 800, failureReason: 'user-canceled' });
+    expect(fieldOf(canceled, 'primaryFailure')).toBeUndefined();
+    expect(fieldOf(canceled, 'fallbackAttempted')).toBeUndefined();
+  });
+
+  it('手机 QQ 换凭证说操作频繁（104604）时，即使回退把它盖掉也冷却 30 秒', async () => {
+    const result = await failQqLogin(
+      createProtocolHarness({ exchangeCode: 104604, loginUserCode: 1000 }),
+    );
+
+    expect(result).toMatchObject({
+      code: 800,
+      upstreamCode: 1000,
+      retryAfterMs: 30000,
+      primaryFailure: { upstreamCode: 104604, upstreamErrorKey: 'auth.rate-limited' },
+    });
+  });
+
+  it('微信换凭证回 50006：保持未知', async () => {
+    const result = await failWechatLogin(createProtocolHarness({ exchangeCode: 50006 }));
+
+    expect(result).toMatchObject({ code: 800, upstreamCode: 50006 });
+    expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
+  });
+
+  it.each([
+    [20277, 'auth.account-restricted'],
+    [20278, 'auth.account-restricted'],
+    [20450, 'auth.account-banned'],
+    [20272, 'auth.account-binding'],
+    [20274, 'auth.account-binding'],
+    [20261, 'auth.login-rejected'],
+    [104604, 'auth.rate-limited'],
+  ])('微信换凭证回 %d → %s', async (code, key) => {
+    const result = await failWechatLogin(createProtocolHarness({ exchangeCode: code }));
+    expect(result).toMatchObject({ code: 800, upstreamCode: code, upstreamErrorKey: key });
+  });
+
+  it('网关层的 20279 不当成业务码', async () => {
+    const result = await failWechatLogin(
+      createProtocolHarness({ exchangeGlobalCode: 20279, exchangeCode: 0 }),
+    );
+
+    expect(result).toMatchObject({ code: 800, upstreamGlobalCode: 20279, upstreamCode: 0 });
+    expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
+  });
+
+  it('上游 HTTP 失败时即使单项码是 20279 也不给 key', async () => {
+    const result = await failWechatLogin(
+      createProtocolHarness({ exchangeCode: 20279, exchangeHttpStatus: 503 }),
+    );
+
+    expect(result).toMatchObject({
+      code: 800,
+      failureReason: 'upstream-http-error',
+      upstreamHttpStatus: 503,
+      upstreamCode: 20279,
+    });
+    expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
+  });
+
+  it('手机上取消的 800 不带 key，也不带回退字段', async () => {
+    const harness = createProtocolHarness();
+    const key = await harness.service.createSession();
+    await harness.service.createQr(key);
+    harness.emit({ type: 'canceled', payload: null });
+
+    const canceled = await harness.service.checkQr(key);
+    expect(canceled).toMatchObject({ code: 800, failureReason: 'user-canceled' });
+    for (const field of ['upstreamErrorKey', 'primaryFailure', 'fallbackAttempted'])
+      expect(fieldOf(canceled, field)).toBeUndefined();
+  });
+
+  it('还原回来的记录里，没登记的 key 和格式不对的回退字段一律丢掉', async () => {
+    const now = Date.now();
+    const base = {
+      channel: 'qq' as const,
+      state: 'failed' as const,
+      createdAt: now,
+      expiresAt: now + 60_000,
+      failureStage: 'credential-validation' as const,
+      failureReason: 'upstream-rejected' as const,
+      upstreamCode: 1000,
+      retryAfterMs: 15000,
+    };
+    const qrSessionRepository = createMemoryQrSessionRepository([
+      {
+        ...base,
+        key: 'restored-valid',
+        upstreamErrorKey: 'auth.device-limit',
+        primaryFailure: {
+          failureStage: 'credential-exchange',
+          failureReason: 'upstream-rejected',
+          upstreamCode: 20279,
+          upstreamErrorKey: 'auth.device-limit',
+        },
+        fallbackAttempted: true,
+      } as never,
+      {
+        ...base,
+        key: 'restored-forged',
+        upstreamErrorKey: 'auth.made-up',
+        primaryFailure: {
+          failureStage: 'not-a-stage',
+          failureReason: 'not-a-reason',
+          upstreamCode: '20279',
+          upstreamErrorKey: 'auth.made-up',
+          message: 'private upstream text',
+        },
+        fallbackAttempted: 'yes',
+      } as never,
+      { ...base, key: 'restored-unclassified', upstreamErrorKey: 'upstream.unclassified' } as never,
+      { ...base, key: 'restored-not-object', primaryFailure: 'credential-exchange' } as never,
+    ]);
+    const service = createQrLoginService({ qrSessionRepository });
+
+    expect(await service.checkQr('restored-valid')).toMatchObject({
+      upstreamErrorKey: 'auth.device-limit',
+      primaryFailure: { upstreamCode: 20279, upstreamErrorKey: 'auth.device-limit' },
+      fallbackAttempted: true,
+    });
+    const forged = await service.checkQr('restored-forged');
+    expect(fieldOf(forged, 'upstreamErrorKey')).toBeUndefined();
+    expect(fieldOf(forged, 'primaryFailure')).toBeUndefined();
+    expect(fieldOf(forged, 'fallbackAttempted')).toBeUndefined();
+    expect(
+      fieldOf(await service.checkQr('restored-unclassified'), 'upstreamErrorKey'),
+    ).toBeUndefined();
+    expect(fieldOf(await service.checkQr('restored-not-object'), 'primaryFailure')).toBeUndefined();
   });
 });

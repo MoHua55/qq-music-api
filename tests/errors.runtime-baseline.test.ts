@@ -307,6 +307,46 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     );
   });
 
+  // 手机 QQ 换凭证失败后会用扫码票据再验证一次；两步都失败时，顶层照旧是最后那一步，
+  // 被盖掉的换凭证结果放进 primaryFailure，两个宿主一样。
+  it('keeps the fallback failure on top and adds the overwritten exchange failure', async () => {
+    mockUpstream.state.loginCode = 20279;
+    mockUpstream.state.credentialCode = 1000;
+    const key = (await call('/login/qr/key?channel=qq', false)).body.data.unikey;
+    const path = `/login/qr/check?key=${encodeURIComponent(key)}`;
+    await call(`/login/qr/create?key=${encodeURIComponent(key)}`, false);
+    await mockUpstream.observe({
+      type: 'cookies',
+      payload: {
+        cookies: { qqmusic_uin: { value: '10000' }, qqmusic_key: { value: 'fixture-exchange' } },
+      },
+    });
+    let result = await call(path, false);
+    for (let attempt = 0; attempt < 5 && result.body.code !== 800; attempt++) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      result = await call(path, false);
+    }
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        code: 800,
+        message: 'QR login failed',
+        retryAfterMs: 15000,
+        failureStage: 'credential-validation',
+        failureReason: 'upstream-rejected',
+        upstreamCode: 1000,
+        primaryFailure: {
+          failureStage: 'credential-exchange',
+          failureReason: 'upstream-rejected',
+          upstreamCode: 20279,
+          upstreamErrorKey: 'auth.device-limit',
+        },
+        fallbackAttempted: true,
+      },
+    });
+    expect(result.body.upstreamErrorKey).toBeUndefined();
+  });
+
   it('keeps cancellation idempotent while preserving the different QR storage lifecycles', async () => {
     const key = (await call('/login/qr/key?channel=qq', false)).body.data.unikey;
     await call(`/login/qr/create?key=${encodeURIComponent(key)}`, false);
