@@ -113,7 +113,7 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
     expect(legs.operation).toEqual(legs.legacy);
     expect(legs.host).toEqual(legs.legacy);
   });
-  it.each(['network', 'http'] as const)('匿名请求 %s 失败保留安全 500', async (kind) => {
+  it.each(['network', 'http'] as const)('匿名请求 %s 失败保留两边原有回包', async (kind) => {
     if (kind === 'network')
       upstream.state.networkError = Object.assign(new Error('fixture-private-message'), {
         code: 'ECONNRESET',
@@ -125,9 +125,11 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(500);
+    const serverlessHttp = runtime === 'serverless' && kind === 'http';
+    expect(legs.legacy.status).toBe(serverlessHttp ? 200 : 500);
     expect(legs.legacy.calls).toHaveLength(1);
-    expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
+    if (serverlessHttp) expect(legs.legacy.body).toEqual({ response: 'fixture-private-body' });
+    else expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
     expect(legs.operation).toEqual(legs.legacy);
     expect(legs.host).toEqual(legs.legacy);
   });

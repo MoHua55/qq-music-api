@@ -22,6 +22,8 @@ export interface OperationRequest {
   params: Readonly<Record<string, string>>;
   /** 会话 token，两边都是 header、query 里的 cookie、Cookie header 依次取。 */
   readonly token: string | undefined;
+  /** serverless 是否配置了会话密钥，只传能力判断，不传密钥本身。 */
+  readonly sessionConfigured?: boolean;
   /** 登录服务。serverless 每次请求现建，所以只在真的用到时才调用。 */
   service(): Promise<QrLoginService>;
 }

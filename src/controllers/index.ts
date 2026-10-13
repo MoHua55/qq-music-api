@@ -3,6 +3,7 @@ import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSong
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
+import { getSongListDetail } from '../routes/operations/getSongListDetail';
 import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
@@ -36,7 +37,6 @@ import getSingerMv from './getSingerMv';
 import getSingerStarNum from './getSingerStarNum';
 import getSmartbox from './getSmartbox';
 import getSongListCategories from './getSongListCategories';
-import getSongListDetail from './getSongListDetail';
 import getSongLists from './getSongLists';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
@@ -58,7 +58,10 @@ export default {
   batchGetSongLists: withControllerLogging('batchGetSongLists', batchGetSongLists),
   getSongInfo: withControllerLogging('getSongInfo', operationController(getSongInfo)),
   batchGetSongInfo: withControllerLogging('batchGetSongInfo', batchGetSongInfo),
-  getSongListDetail: withControllerLogging('getSongListDetail', getSongListDetail),
+  getSongListDetail: withControllerLogging(
+    'getSongListDetail',
+    operationController(getSongListDetail),
+  ),
   getNewDisks: withControllerLogging('getNewDisks', getNewDisks),
   getMvByTag: withControllerLogging('getMvByTag', getMvByTag),
   getMv: withControllerLogging('getMv', getMv),

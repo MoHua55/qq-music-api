@@ -3,6 +3,7 @@ import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSong
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
+import { getSongListDetail } from '../routes/operations/getSongListDetail';
 import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
@@ -38,7 +39,7 @@ import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
 import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
-import { AUTH_COOKIE_NAME, failureResponse, json, LOGIN_REQUIRED } from './response';
+import { AUTH_COOKIE_NAME, failureResponse, json } from './response';
 import { createRouter } from './router';
 import { openQrState, type SealedQrDeviceStateV1, sealQrState } from './sealedQrState';
 import { createSealedSessionResolver } from './sealedResolver';
@@ -474,7 +475,7 @@ const routes: Record<string, RouteHandler> = {
   // Anonymous by default, so it stays usable without a secret. Only when the anonymous CGI cannot
   // read the playlist at all (`code: 10`, QQ's own algorithmic playlists) does a session get used,
   // and only on a deployment that can open one; any failure there keeps the anonymous answer.
-  '/getSongListDetail/:disstid': legacyRoutes['/getSongListDetail/:disstid'],
+  '/getSongListDetail/:disstid': operationRoute(getSongListDetail),
   '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
 
   '/getAlbumInfo': operationRoute(getAlbumInfo),

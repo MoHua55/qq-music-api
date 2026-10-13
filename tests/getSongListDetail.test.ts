@@ -1,17 +1,18 @@
 const mockSongListDetail = jest.fn();
 const mockGetAuthenticatedSongListDetail = jest.fn();
 
-jest.mock('../src/services', () => {
-  const actual = jest.requireActual('../src/services');
-  return {
-    __esModule: true,
-    default: {
-      ...actual.default,
-      songListDetail: mockSongListDetail,
-      getAuthenticatedSongListDetail: mockGetAuthenticatedSongListDetail,
-    },
-  };
-});
+// 路由改用共用 handler 后，替身跟着实际入口走，原来的参数与认证断言保留。
+jest.mock('../src/services/songLists/songListDetail', () => ({
+  __esModule: true,
+  default: mockSongListDetail,
+}));
+jest.mock('../src/services/auth/qrLogin.node', () => ({
+  __esModule: true,
+  default: {
+    getAuthenticatedSongListDetail: (token: string, disstid: string) =>
+      mockGetAuthenticatedSongListDetail({ token, disstid }),
+  },
+}));
 
 import request from 'supertest';
 import app from '../src/app';

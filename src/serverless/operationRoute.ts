@@ -9,6 +9,7 @@ import { json } from './response';
 
 /** 入口路由上下文里转接用得到的部分。 */
 export interface OperationRouteContext {
+  env?: { QQ_SESSION_SECRET?: string };
   url: URL;
   params: Record<string, string>;
   token: string | undefined;
@@ -20,6 +21,7 @@ export const operationRequestOf = ({
   params,
   token,
   service,
+  env,
 }: OperationRouteContext): OperationRequest => ({
   runtime: 'serverless',
   query: (name) => url.searchParams.get(name) ?? undefined,
@@ -27,6 +29,7 @@ export const operationRequestOf = ({
   queryRaw: (name) => url.searchParams.get(name) ?? undefined,
   params,
   token,
+  sessionConfigured: Boolean(env?.QQ_SESSION_SECRET),
   service,
 });
 
