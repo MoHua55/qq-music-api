@@ -26,6 +26,12 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.guess-you-like',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
   'recommend.playlists',
+  /** 歌单分类（`get_hot_category`），匿名。 */
+  'recommend.categories',
+  /** 分类歌单（`get_playlist_by_category`），匿名。 */
+  'recommend.category-playlists',
+  /** 新歌速递（`get_new_song_info`），匿名。 */
+  'recommend.new-songs',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
   'recommend.radio-list',
   /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */

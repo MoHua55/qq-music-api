@@ -32,6 +32,7 @@ import { getRadioList, getRadioTracks } from './getRadio';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
+import { getCategoryPlaylists, getNewSongs, getPlaylistCategories } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
@@ -114,4 +115,7 @@ export default {
   getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
   getRadioList: withControllerLogging('getRadioList', getRadioList),
   getRadioTracks: withControllerLogging('getRadioTracks', getRadioTracks),
+  getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
+  getCategoryPlaylists: withControllerLogging('getCategoryPlaylists', getCategoryPlaylists),
+  getNewSongs: withControllerLogging('getNewSongs', getNewSongs),
 };

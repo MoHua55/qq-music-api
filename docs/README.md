@@ -245,6 +245,26 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - 会话过期或解不开时当作没登录、匿名读；会话还在但凭证被 QQ 拒绝时回 `401`，前端应清掉这个会话。
 - 上游给的列表是空的回 `422`；给了条目但一张都读不出可用的 `tid`，说明上游格式变了，回 `502`（`upstream.invalid-response`）；只有部分条目读不出来时照样回 `200`，读不出来的直接跳过。
 
+### 歌单分类、分类歌单与新歌速递
+
+这三条读的是公开内容，一律匿名读：带了会话也不会用，Serverless 没设 `QQ_SESSION_SECRET` 也能用。
+
+`GET /recommend/categories` 列出官方歌单的分类：
+
+```json
+{ "code": 200, "groups": [{ "id": 1, "name": "热门", "categories": [{ "id": 8, "name": "示例分类" }] }] }
+```
+
+`GET /recommend/category-playlists?id=<分类 id>&page=1&limit=20` 读一个分类下的歌单。`page` 从 1 开始；`limit` 默认 20、最多 40。歌单字段和 `/recommend/playlists` 一样（`tid`、`title`、`desc`、`picurl`、`play_cnt`、`creator`），拿 `tid` 调 `/getSongListDetail` 就能读歌；另外带上游给的 `total` 和 `more`（这一页之后还有没有）。`id` 缺了或不是正整数回 `400`。
+
+`GET /recommend/new-songs?area=<地区>` 读新歌速递，不给 `area` 就是「最新」（5）。`songs` 保持上游原来的格式；`areas` 列出可选的地区（`id`、`name`），`area` 是这次实际读的地区：
+
+```json
+{ "code": 200, "area": 5, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "areas": [{ "id": 5, "name": "最新" }] }
+```
+
+三条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
+
 ### 出错时的响应
 
 ```json
@@ -289,7 +309,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `playback` | `getSongDetail`、`getAudioSource` | `getReplacement` |
 | `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
 | `playbackReports` | — | `reportPlayback` |

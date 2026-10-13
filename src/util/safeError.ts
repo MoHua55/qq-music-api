@@ -28,6 +28,9 @@ export const UPSTREAM_PHASES = [
   'get-recommend-playlists',
   'get-radio-list',
   'get-radio-tracks',
+  'get-playlist-categories',
+  'get-category-playlists',
+  'get-new-songs',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

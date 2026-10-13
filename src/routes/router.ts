@@ -26,6 +26,11 @@ router.get('/user/guess-you-like', context.getGuessYouLike);
 // recommendations; a login session is used when present
 router.get('/recommend/playlists', context.getRecommendPlaylists);
 
+// public catalog recommendations; always anonymous
+router.get('/recommend/categories', context.getPlaylistCategories);
+router.get('/recommend/category-playlists', context.getCategoryPlaylists);
+router.get('/recommend/new-songs', context.getNewSongs);
+
 // radio; a login session is required
 router.get('/radio/list', context.getRadioList);
 router.get('/radio/tracks', context.getRadioTracks);

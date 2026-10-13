@@ -23,6 +23,11 @@ import {
   type QrLoginService,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import {
+  categoryPlaylistsResult,
+  newSongsResult,
+  playlistCategoriesResult,
+} from '../services/recommend/catalog';
 import { guessYouLikeResult } from '../services/recommend/guessYouLike';
 import type { NewRouteResult } from '../services/recommend/newRouteResult';
 import { radioListResult, radioTracksResult } from '../services/recommend/radio';
@@ -158,6 +163,21 @@ const routes: Record<string, RouteHandler> = {
       ),
     );
   },
+
+  // 公开内容，一律匿名读；没设密钥也能用。
+  '/recommend/categories': async () => fromResult(await playlistCategoriesResult()),
+
+  '/recommend/category-playlists': async ({ url }) =>
+    fromResult(
+      await categoryPlaylistsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        page: url.searchParams.get('page') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/recommend/new-songs': async ({ url }) =>
+    fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),

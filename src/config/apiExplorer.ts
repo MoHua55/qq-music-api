@@ -105,6 +105,19 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     routePath: '/recommend/playlists',
     category: 'Recommend',
   },
+  {
+    name: 'getPlaylistCategories',
+    method: 'GET',
+    routePath: '/recommend/categories',
+    category: 'Recommend',
+  },
+  {
+    name: 'getCategoryPlaylists',
+    method: 'GET',
+    routePath: '/recommend/category-playlists',
+    category: 'Recommend',
+  },
+  { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
   { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
   { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
@@ -377,6 +390,30 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       'Get recommended playlists from the QQ Music playlist square. Uses the login session when there is one, otherwise reads anonymously. more only repeats the upstream hint; there is no continuation offset.',
     queryParams: [
       { key: 'limit', label: 'Limit', description: 'How many playlists, 25 by default, up to 60.' },
+    ],
+  },
+  getPlaylistCategories: {
+    description:
+      'List the official playlist categories in groups (id and name). Read anonymously; no session needed.',
+  },
+  getCategoryPlaylists: {
+    description:
+      'Get official playlists of one category, in the same shape as /recommend/playlists, plus total and more. Read anonymously.',
+    queryParams: [
+      { key: 'id', label: 'Category id', description: 'Category id from /recommend/categories.' },
+      { key: 'page', label: 'Page', description: 'Page number starting at 1.' },
+      { key: 'limit', label: 'Limit', description: 'Playlists per page, 20 by default, up to 40.' },
+    ],
+  },
+  getNewSongs: {
+    description:
+      'Get new songs for one area (latest by default) with the list of areas. Songs keep the upstream format. Read anonymously.',
+    queryParams: [
+      {
+        key: 'area',
+        label: 'Area',
+        description: 'Area id from the areas list; 5 (latest) by default.',
+      },
     ],
   },
   getRadioList: {
