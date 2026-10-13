@@ -8,6 +8,7 @@ import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginStatus } from '../routes/operations/loginStatus';
+import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { userDetail } from '../routes/operations/userDetail';
 import { withControllerLogging } from '../util/observability';
@@ -40,7 +41,7 @@ import getSongListCategories from './getSongListCategories';
 import getSongLists from './getSongLists';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
-import { loginChannels, qrCancel, qrCheck, qrCreate } from './login';
+import { loginChannels, qrCancel, qrCheck } from './login';
 import logoutOperationController from './logoutOperation';
 import musicPlayOperationController from './musicPlayOperation';
 import { operationController } from './operation';
@@ -89,7 +90,7 @@ export default {
   getTicketInfo: withControllerLogging('getTicketInfo', getTicketInfo),
   getImageUrl: withControllerLogging('getImageUrl', getImageUrl),
   qrKey: withControllerLogging('qrKey', operationController(qrKey)),
-  qrCreate: withControllerLogging('qrCreate', qrCreate),
+  qrCreate: withControllerLogging('qrCreate', operationController(qrCreate)),
   qrCheck: withControllerLogging('qrCheck', qrCheck),
   qrCancel: withControllerLogging('qrCancel', qrCancel),
   loginStatus: withControllerLogging('loginStatus', operationController(loginStatus)),

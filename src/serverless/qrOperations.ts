@@ -1,7 +1,7 @@
 import type { QrRouteService } from '../routes/operations/types';
 import type { AuthHttpClient } from '../services/auth/httpClient';
 import type { QrLoginService } from '../services/auth/qrLogin';
-import { createQrLoginService } from '../services/auth/qrLogin';
+import { createQrLoginService, QrLoginServiceError } from '../services/auth/qrLogin';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import type { ServerlessEnv, ServerlessOptions } from './index';
@@ -11,9 +11,11 @@ import {
   capturingQrSessionRepository,
   driversFor,
   qrDeviceRepositoryFor,
+  replayedRecord,
+  replayQrSessionRepository,
   secretsOf,
 } from './qrRuntime';
-import { sealQrState } from './sealedQrState';
+import { openQrState, sealQrState } from './sealedQrState';
 import { createSealedSessionResolver } from './sealedResolver';
 
 interface QrHostContext {
@@ -74,5 +76,28 @@ export const createServerlessQrOperations = ({
       secrets.current,
     );
     return unikey;
+  },
+  createQr: async (key) => {
+    const secrets = secretsOf(env);
+    const payload = await openQrState(key, secrets, Date.now());
+    if (!payload) {
+      throw new QrLoginServiceError('QR session not found or expired', 404);
+    }
+    const { repository: deviceRepository, base } = await qrDeviceRepositoryFor(
+      secrets,
+      payload.device,
+    );
+    const http = createFetchAuthHttpClient();
+    const service = createQrLoginService({
+      http,
+      createSessionHttp: () => createFetchAuthHttpClient({ initialCookies: payload.cookies }),
+      deviceRepository,
+      sessionResolver: createSealedSessionResolver({ secrets }),
+      qrSessionRepository: replayQrSessionRepository([replayedRecord(key, payload, 'created')]),
+      capabilities: capabilitiesFor(options),
+      drivers: driversFor(options, http, deviceRepository, base),
+      checkBudgetMs: CHECK_BUDGET_MS,
+    });
+    return service.createQr(key);
   },
 });
