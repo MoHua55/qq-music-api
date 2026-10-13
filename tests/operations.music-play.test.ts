@@ -1,4 +1,5 @@
 import './helpers/sessionRoutes';
+import { userInfo } from '../src/config';
 import legacyGetMusicPlay from '../src/controllers/getMusicPlay';
 import musicPlayOperationController from '../src/controllers/musicPlayOperation';
 import { getMusicPlay } from '../src/routes/operations/getMusicPlay';
@@ -187,11 +188,32 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       expect(legs.operation).toEqual(legs.legacy);
       expect(legs.host).toEqual({
         status: 501,
-        body: { code: 501, message: 'QQ_SESSION_SECRET is not configured' },
+        body: {
+          code: 501,
+          message:
+            'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.',
+        },
         calls: [],
       });
     });
   if (runtime === 'node') {
+    it('匿名分支沿用 Node 当次配置的 uin', async () => {
+      const original = userInfo.uin;
+      try {
+        userInfo.uin = 'fixture-config-uin';
+        const legs = await parity(
+          runtime,
+          '/getMusicPlay/fixture-song',
+          upstream.calls,
+          await upstream.options('missing'),
+        );
+        expect(legs.legacy.calls[0].rpc[0].param.uin).toBe('fixture-config-uin');
+        expect(legs.operation).toEqual(legs.legacy);
+        expect(legs.host).toEqual(legs.legacy);
+      } finally {
+        userInfo.uin = original;
+      }
+    });
     it.each(['network', 'http'] as const)('匿名播放 %s 失败保留 500', async (kind) => {
       if (kind === 'network')
         upstream.state.networkError = Object.assign(new Error('fixture-private-message'), {

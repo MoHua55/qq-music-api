@@ -20,7 +20,6 @@ import getGuessYouLike from './getGuessYouLike';
 import getHotKey from './getHotkey';
 import getImageUrl from './getImageUrl';
 import getLyric from './getLyric';
-import getMusicPlay from './getMusicPlay';
 import getMv from './getMv';
 import getMvByTag from './getMvByTag';
 import getMvPlay from './getMvPlay';
@@ -42,6 +41,7 @@ import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
 import { loginChannels, qrCancel, qrCheck, qrCreate, qrKey } from './login';
 import logoutOperationController from './logoutOperation';
+import musicPlayOperationController from './musicPlayOperation';
 import { operationController } from './operation';
 
 const { get: getCookie, set: setCookie } = cookies;
@@ -78,7 +78,7 @@ export default {
   getRadioLists: withControllerLogging('getRadioLists', getRadioLists),
   getDigitalAlbumLists: withControllerLogging('getDigitalAlbumLists', getDigitalAlbumLists),
   getLyric: withControllerLogging('getLyric', getLyric),
-  getMusicPlay: withControllerLogging('getMusicPlay', getMusicPlay),
+  getMusicPlay: withControllerLogging('getMusicPlay', musicPlayOperationController),
   getAlbumInfo: withControllerLogging('getAlbumInfo', operationController(getAlbumInfo)),
   getComments: withControllerLogging('getComments', getComments),
   getRecommend: withControllerLogging('getRecommend', getRecommend),

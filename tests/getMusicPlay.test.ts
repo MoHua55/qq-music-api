@@ -1,13 +1,11 @@
 const mockUCommon = jest.fn();
 const mockGetMusicPlay = jest.fn();
 
-jest.mock('../src/services', () => {
-  const actual = jest.requireActual('../src/services');
-  return {
-    __esModule: true,
-    default: { ...actual.default, UCommon: mockUCommon },
-  };
-});
+// 共用 handler 直接使用这个服务，保留原测试的请求与认证断言。
+jest.mock('../src/services/UCommon/UCommon', () => ({
+  __esModule: true,
+  default: mockUCommon,
+}));
 
 // The singleton moved to the Node wrapper when `qrLogin.ts` became runtime-neutral; the mock
 // follows it. What is mocked and what is asserted are unchanged.

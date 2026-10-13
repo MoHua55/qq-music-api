@@ -1,4 +1,5 @@
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getMusicPlay } from '../routes/operations/getMusicPlay';
 import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
@@ -37,7 +38,6 @@ import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
-import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
 import { AUTH_COOKIE_NAME, failureResponse, json } from './response';
 import { createRouter } from './router';
@@ -470,7 +470,7 @@ const routes: Record<string, RouteHandler> = {
   // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
   '/user/playlist-detail': operationRoute(getOwnedPlaylistSongs),
 
-  '/getMusicPlay/:songmid?': legacyRoutes['/getMusicPlay/:songmid?'],
+  '/getMusicPlay/:songmid?': operationRoute(getMusicPlay),
   // ---- Catalog (no credential) ------------------------------------------------------------
   // Anonymous by default, so it stays usable without a secret. Only when the anonymous CGI cannot
   // read the playlist at all (`code: 10`, QQ's own algorithmic playlists) does a session get used,
