@@ -163,6 +163,8 @@ export interface QrFailureDetails {
   primaryFailure?: QrPrimaryFailure;
   /** Present (and `true`) only when a fallback ran after the primary step failed. */
   fallbackAttempted?: true;
+  /** A plain-English hint for people, derived from the fields above; only for recognised failures. */
+  failureHint?: { key: string; message: string };
 }
 
 export interface QrFailureDiagnostics extends QrFailureDetails {

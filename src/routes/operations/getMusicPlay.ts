@@ -1,4 +1,5 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
+import { type PlaybackHint, playbackHintOf } from '../../protocol/playbackHints';
 import {
   classifyPlaybackRestriction,
   type PlaybackRestriction,
@@ -23,8 +24,35 @@ const fileType = {
 interface AnonymousPlayEntry {
   url: string;
   error: string | boolean;
-  restriction?: PlaybackRestriction;
+  restriction?: PlaybackRestriction & { hint?: PlaybackHint };
 }
+
+const MAX_HINT_LOOKUPS = 10;
+
+/** 匿名播放就用匿名读到的单曲详情挑提示；读不到只是提示变成兜底，不影响回应。 */
+const anonymousSongDetail = async (songmid: string): Promise<unknown> => {
+  try {
+    const res = await UCommon({
+      method: 'get',
+      params: {
+        format: 'json',
+        data: JSON.stringify({
+          comm: { ct: 24, cv: 0 },
+          req_0: {
+            module: 'music.pf_song_detail_svr',
+            method: 'get_song_detail_yqq',
+            param: { song_type: 0, song_mid: songmid },
+          },
+        }),
+      },
+      option: {},
+    });
+    const body = res.data as { req_0?: { data?: { track_info?: unknown } } } | undefined;
+    return body?.req_0?.data?.track_info;
+  } catch {
+    return undefined;
+  }
+};
 
 const loginRequired = { status: 401, headers: {}, body: { code: 401, message: 'Login required' } };
 
@@ -121,6 +149,13 @@ export const createGetMusicPlay =
         };
       },
     );
+    const unavailable = Object.entries(playUrl).filter(([, entry]) => entry.restriction);
+    const details = await Promise.all(
+      unavailable.slice(0, MAX_HINT_LOOKUPS).map(([mid]) => anonymousSongDetail(mid)),
+    );
+    unavailable.forEach(([, entry], index) => {
+      if (entry.restriction) entry.restriction.hint = playbackHintOf(details[index]);
+    });
     response.playUrl = playUrl;
     return { status: 200, headers: {}, body: { data: justPlayUrl ? { playUrl } : response } };
   };

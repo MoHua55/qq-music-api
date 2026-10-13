@@ -122,6 +122,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `retryAfterMs` | 需要等待的毫秒数；HTTP 错误响应同时提供 `Retry-After` |
 | `lastFailure` | 本地退避 `429` 的前一次失败摘要；重启或换实例后不保留 |
 | `upstreamErrorKey` | 可选。只有通道、步骤和上游数字码都对得上有出处的登记时才给，例如 `auth.device-limit`（登录设备已满）、`auth.rate-limited`（操作太频繁）、`auth.account-restricted`、`auth.account-banned`、`auth.account-binding`、`auth.login-rejected`；没把握的码不给 |
+| `failureHint` | 可选，给使用者看的原因 `{ key, message }`，只在认得出的失败时给：`login.device-limit`（登录设备已满）、`login.wrong-scan-app`（手机 QQ 扫码换凭证被拒、可能是用 QQ 音乐 App 扫的，建议改用手机 QQ）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。`message` 是英文预设文案，前端可以按 `key` 换成自己的文字；取消、过期、网络错误这类不给 |
 | `primaryFailure`、`fallbackAttempted` | 可选，目前只有手机 QQ 扫码会出现。换凭证失败后服务会用扫码票据再验证一次，顶层字段写的是最后这次验证的结果，`primaryFailure` 交出被它盖掉的换凭证结果（`failureStage`、`failureReason`、`upstreamCode`，能分类时还有 `upstreamErrorKey`），`fallbackAttempted` 是 `true`。想知道真正的原因（比如设备已满 `20279`）就看 `primaryFailure` |
 
 本地退避使用 `qr-key` / `local-backoff`，仍在确认中的会话使用 `qr-key` / `session-busy`。没有取得的字段不会出现。上游拒绝时保留安全数字码，但不把未知码解释成设备超限或账号问题。
@@ -454,12 +455,15 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ```json
 { "url": "", "error": "暂无播放链接",
-  "restriction": { "key": "url_unavailable", "evidence": "observed-response", "codes": { "result": 104003, "subcode": 1 } } }
+  "restriction": { "key": "url_unavailable", "evidence": "observed-response", "codes": { "result": 104003, "subcode": 1 },
+    "hint": { "key": "playback.maybe-region-restricted", "message": "This song may not be available in your region." } } }
 ```
 
 - `key` 目前只会是 `url_unavailable`（拿不到链接，原因还没确认）。以后有了可靠的对照实验，才会出现 `membership_required`、`region_restricted` 这类更具体的值，所以请把不认识的值也当成「拿不到链接」处理。
 - `evidence` 说明这个判断有多可靠；`url_unavailable` 永远是 `observed-response`（只是看到上游没给链接）。
 - `codes` 只放这首歌条目里的安全整数（`result`、`subcode`、`errtype`、`code`），一个都没有就省略。这些数字的含义还没确认，不要拿来推断原因。
+- `hint` 是给使用者看的原因，只是「可能」：服务会用同一个会话（匿名播放就匿名）再查一次这首歌的详情，从里面的限制讯号挑一句。`key` 有 `playback.maybe-region-restricted`（可能是地区限制）、`playback.maybe-music-pack`（可能要付费音乐包）、`playback.maybe-membership`（可能要会员）、`playback.maybe-taken-down`（看不出原因，或详情读不到时的兜底：可能已下架）。`message` 是英文预设文案，前端可以直接显示，也可以按 `key` 换成自己的文字。`hint` 不会改变 `key` 和 `evidence`。
+- 因为要查详情，有歌拿不到链接时会多一个上游请求（一次最多查 10 首）。
 - 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
 
 用 `LOG_LEVEL=debug` 启动 Node 服务后，没拿到链接的条目会记录 `playback.url-unavailable`。日志只留 `phase`、`index`、`quality` 和 `entryCodes` 中的安全整数，不记录歌曲 id、凭证或播放链接。上游数字的含义没确认时不替它命名。

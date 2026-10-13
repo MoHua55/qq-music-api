@@ -38,7 +38,10 @@ describe('playback display hints', () => {
     ['garbage', 'not-a-track', 'playback.maybe-taken-down'],
     ['null blocks', { pay: null, action: null }, 'playback.maybe-taken-down'],
   ])('%s → %s', (_label, input, key) => {
-    expect(playbackHintOf(input)).toEqual({ key, message: PLAYBACK_HINT_MESSAGES[key] });
+    expect(playbackHintOf(input)).toEqual({
+      key,
+      message: (PLAYBACK_HINT_MESSAGES as Record<string, string>)[key],
+    });
   });
 
   it('keeps every message in plain English without upstream text', () => {
@@ -84,7 +87,9 @@ describe('login display hints', () => {
     ['nothing', {}, undefined],
   ])('%s → %s', (_label, details, key) => {
     expect(loginFailureHintOf(details as never)).toEqual(
-      key === undefined ? undefined : { key, message: LOGIN_HINT_MESSAGES[key] },
+      key === undefined
+        ? undefined
+        : { key, message: (LOGIN_HINT_MESSAGES as Record<string, string>)[key as string] },
     );
   });
 

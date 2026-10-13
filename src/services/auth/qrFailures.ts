@@ -1,4 +1,5 @@
 import type { UpstreamOperation } from '../../protocol/businessCodes';
+import { loginFailureHintOf } from '../../protocol/loginHints';
 import {
   exposedUpstreamErrorKeyOf,
   isExposedUpstreamErrorKey,
@@ -188,6 +189,9 @@ export const failureDetailsOf = (source: QrFailureDetails): QrFailureDetails => 
   const primaryFailure = primaryFailureFieldsOf(source.primaryFailure);
   if (primaryFailure) details.primaryFailure = primaryFailure;
   if (source.fallbackAttempted === true) details.fallbackAttempted = true;
+  // Always derived from the validated fields, never copied from a restored record.
+  const failureHint = loginFailureHintOf(details);
+  if (failureHint) details.failureHint = failureHint;
   return details;
 };
 

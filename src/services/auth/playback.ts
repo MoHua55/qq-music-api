@@ -1,4 +1,5 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
+import { playbackHintOf } from '../../protocol/playbackHints';
 import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/playbackRestriction';
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
@@ -39,6 +40,35 @@ export const MUSIC_FILE_TYPES = {
   ape: { prefix: 'A000', extension: '.ape' },
   flac: { prefix: 'F000', extension: '.flac' },
 } as const;
+
+/** One request rarely carries more than a few songs; past this many, failures get the default hint. */
+export const MAX_PLAYBACK_HINT_LOOKUPS = 10;
+
+/**
+ * The song detail as this same session sees it: the restriction fields are computed per account, so
+ * another account's (or an anonymous) copy would hint the wrong reason. Any failure here only costs
+ * the hint its precision, never the playback answer.
+ */
+const songDetailForHint = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  songmid: string,
+): Promise<unknown> => {
+  try {
+    const data = await callMusicu(
+      http,
+      auth.device,
+      'get-playback-hint',
+      'music.pf_song_detail_svr',
+      'get_song_detail_yqq',
+      { song_type: 0, song_mid: songmid },
+      auth.credential,
+    );
+    return data.track_info;
+  } catch {
+    return undefined;
+  }
+};
 
 export const getAuthenticatedPlayUrls = async (
   http: AuthHttpClient,
@@ -131,6 +161,7 @@ export const getAuthenticatedPlayUrls = async (
   const playUrl: Dictionary = {};
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
   const loggedQuality = MUSIC_FILE_TYPES[qualityKey] ? qualityKey : '128';
+  const unavailable: Dictionary[] = [];
   for (const [index, entry] of entries.entries()) {
     const item = dictionaryOf(entry);
     const mid = identifierOf(item.songmid);
@@ -147,17 +178,26 @@ export const getAuthenticatedPlayUrls = async (
           entry: item,
         }),
       );
-    playUrl[mid] = purl
-      ? { url: `${domain}${purl}`, error: false }
-      : {
-          url: '',
-          error: '暂无播放链接',
-          restriction: classifyPlaybackRestriction({
-            quality: playbackQualityOf(loggedQuality),
-            authenticated: true,
-            codes: playbackEntryCodesOf(item),
-          }),
-        };
+    if (purl) {
+      playUrl[mid] = { url: `${domain}${purl}`, error: false };
+      continue;
+    }
+    const restriction: Dictionary = {
+      ...classifyPlaybackRestriction({
+        quality: playbackQualityOf(loggedQuality),
+        authenticated: true,
+        codes: playbackEntryCodesOf(item),
+      }),
+    };
+    playUrl[mid] = { url: '', error: '暂无播放链接', restriction };
+    unavailable.push({ mid, restriction });
   }
+  const details = await Promise.all(
+    unavailable
+      .slice(0, MAX_PLAYBACK_HINT_LOOKUPS)
+      .map(({ mid }) => songDetailForHint(http, auth, String(mid))),
+  );
+  for (const [index, { restriction }] of unavailable.entries())
+    (restriction as Dictionary).hint = playbackHintOf(details[index]);
   return playUrl;
 };

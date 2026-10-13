@@ -299,7 +299,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   qrCheck: {
     description:
-      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure.',
+      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure. A recognised failure adds failureHint with a key and a default English message.',
     queryParams: [
       {
         key: 'key',
@@ -539,7 +539,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMusicPlay: {
     description:
-      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A song without a URL adds an optional restriction (currently always url_unavailable, with the safe entry codes).',
+      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A song without a URL adds an optional restriction (currently always url_unavailable, with the safe entry codes) and a hint with a possible reason in plain English.',
   },
   getAlbumInfo: {
     id: 'get-album-info',
