@@ -45,7 +45,7 @@ describe.each(CATALOG_RUNTIMES)('/login/status 新旧实现比对（%s）', (run
     { label: '2001 不扩大为限流', businessCode: 2001, status: 500 },
     { label: '只有网关失败', globalCode: 500003, status: 500 },
     {
-      label: '网关与凭证码冲突暂时保留原语义',
+      label: '网关与凭证码同时出现时网关优先',
       globalCode: 500003,
       businessCode: 1000,
       status: 200,

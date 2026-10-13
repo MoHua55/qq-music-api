@@ -197,10 +197,20 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     expect((await call('/user/detail')).status).toBe(200);
   });
 
-  // Current legacy mapping only inspects the business number, even with a gateway failure.
-  it('records the existing conflicting gateway and credential-code mapping', async () => {
-    mockFailure = { status: 200, global: 500003, business: 1000 };
-    expect((await call('/user/detail')).status).toBe(401);
+  // 网关和凭证码同时出现时保留会话，不把网关失败当成账号已失效。
+  it.each([
+    1000, 104400, 104401,
+  ])('gives gateway priority over credential code %i without clearing the session', async (business) => {
+    mockFailure = { status: 200, global: 500003, business };
+    const failed = await call('/user/detail');
+    expect(failed.status).toBe(502);
+    expect(failed.body).toEqual({
+      error: `get-login-user failed (HTTP 200, global=500003, code=${business})`,
+    });
+    expect(failed.headers['retry-after']).toBeUndefined();
+    expect((await call('/login/status')).status).toBe(502);
+    mockFailure = undefined;
+    expect((await call('/user/detail')).status).toBe(200);
   });
 
   it.each([

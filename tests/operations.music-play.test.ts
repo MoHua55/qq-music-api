@@ -60,7 +60,12 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
     { label: '未知业务码', businessCode: 777777, status: 500 },
     { label: '2001', businessCode: 2001, status: 500 },
     { label: '网关失败', globalCode: 500003, status: 500 },
-    { label: '网关和凭证码冲突暂留原语义', globalCode: 500003, businessCode: 1000, status: 401 },
+    {
+      label: '网关与凭证码同时出现时网关优先',
+      globalCode: 500003,
+      businessCode: 1000,
+      status: 502,
+    },
     {
       label: '连线失败',
       networkError: Object.assign(new Error('fixture-private-message'), { code: 'ECONNRESET' }),
