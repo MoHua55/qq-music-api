@@ -6,6 +6,7 @@ import { getSongInfo } from '../routes/operations/getSongInfo';
 import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
+import { loginStatus } from '../routes/operations/loginStatus';
 import { userDetail } from '../routes/operations/userDetail';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
@@ -438,7 +439,7 @@ const routes: Record<string, RouteHandler> = {
   },
 
   // ---- Session ----------------------------------------------------------------------------
-  '/login/status': legacyRoutes['/login/status'],
+  '/login/status': operationRoute(loginStatus),
 
   '/logout': legacyRoutes['/logout'],
 
