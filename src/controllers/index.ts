@@ -2,6 +2,7 @@ import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
+import { userDetail } from '../routes/operations/userDetail';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
@@ -38,16 +39,7 @@ import getTopLists from './getTopLists';
 import getUserAlbums from './getUserAlbums';
 import getUserLikedSongs from './getUserLikedSongs';
 import getUserPlaylist from './getUserPlaylist';
-import {
-  loginChannels,
-  loginStatus,
-  logout,
-  qrCancel,
-  qrCheck,
-  qrCreate,
-  qrKey,
-  userDetail,
-} from './login';
+import { loginChannels, loginStatus, logout, qrCancel, qrCheck, qrCreate, qrKey } from './login';
 import { operationController } from './operation';
 
 const { get: getCookie, set: setCookie } = cookies;
@@ -97,7 +89,7 @@ export default {
   loginStatus: withControllerLogging('loginStatus', loginStatus),
   loginChannels: withControllerLogging('loginChannels', loginChannels),
   logout: withControllerLogging('logout', logout),
-  userDetail: withControllerLogging('userDetail', userDetail),
+  userDetail: withControllerLogging('userDetail', operationController(userDetail)),
   getUserAlbums: withControllerLogging('getUserAlbums', getUserAlbums),
   getUserLikedSongs: withControllerLogging('getUserLikedSongs', getUserLikedSongs),
   getOwnedPlaylistSongs: withControllerLogging('getOwnedPlaylistSongs', getOwnedPlaylistSongs),

@@ -2,6 +2,7 @@ import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
 import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
 import { getSongInfo } from '../routes/operations/getSongInfo';
+import { userDetail } from '../routes/operations/userDetail';
 import type { AndroidDevice } from '../services/auth/androidDevice';
 import { type DeviceContextRepository } from '../services/auth/deviceContext';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
@@ -437,7 +438,7 @@ const routes: Record<string, RouteHandler> = {
 
   '/logout': legacyRoutes['/logout'],
 
-  '/user/detail': legacyRoutes['/user/detail'],
+  '/user/detail': operationRoute(userDetail),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
     fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
