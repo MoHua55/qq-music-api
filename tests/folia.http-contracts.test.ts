@@ -294,6 +294,9 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
       },
       'fixture-song-c': { purl: '', result: 1.5, code: 2 ** 60, subcode: 'abc', errtype: { n: 1 } },
     };
+    mockUpstream.state.songDetails = {
+      'fixture-song-b': { mid: 'fixture-song-b', action: { msgid: 23 }, pay: { pay_play: 0 } },
+    };
 
     const result = await call('/getMusicPlay/fixture-song-a,fixture-song-b,fixture-song-c', {
       token,
@@ -311,12 +314,17 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
               key: 'url_unavailable',
               evidence: 'observed-response',
               codes: { result: 104003, errtype: 3, code: 0 },
+              hint: { key: 'playback.maybe-region-restricted', message: expect.any(String) },
             },
           },
           'fixture-song-c': {
             url: '',
             error: '暂无播放链接',
-            restriction: { key: 'url_unavailable', evidence: 'observed-response' },
+            restriction: {
+              key: 'url_unavailable',
+              evidence: 'observed-response',
+              hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
+            },
           },
         },
       },

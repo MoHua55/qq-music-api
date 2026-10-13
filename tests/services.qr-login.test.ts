@@ -2125,6 +2125,7 @@ describe('QR login failure classification', () => {
       upstreamGlobalCode: 0,
       upstreamSubCode: undefined,
       upstreamErrorKey: 'auth.device-limit',
+      failureHint: { key: 'login.device-limit', message: expect.any(String) },
     });
     expect(isFoliaNaturalExpiry(result as unknown as Record<string, unknown>)).toBe(false);
   });
@@ -2178,6 +2179,7 @@ describe('QR login failure classification', () => {
         upstreamErrorKey: 'auth.device-limit',
       },
       fallbackAttempted: true,
+      failureHint: { key: 'login.device-limit', message: expect.any(String) },
     });
     expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
   });
@@ -2196,6 +2198,7 @@ describe('QR login failure classification', () => {
         upstreamCode: 50006,
       },
       fallbackAttempted: true,
+      failureHint: { key: 'login.wrong-scan-app', message: expect.any(String) },
     });
     expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
     expect(fieldOf(fieldOf(result, 'primaryFailure'), 'upstreamErrorKey')).toBeUndefined();
@@ -2248,6 +2251,7 @@ describe('QR login failure classification', () => {
       upstreamCode: 1000,
       retryAfterMs: 30000,
       primaryFailure: { upstreamCode: 104604, upstreamErrorKey: 'auth.rate-limited' },
+      failureHint: { key: 'login.rate-limited', message: expect.any(String) },
     });
   });
 
@@ -2256,6 +2260,7 @@ describe('QR login failure classification', () => {
 
     expect(result).toMatchObject({ code: 800, upstreamCode: 50006 });
     expect(fieldOf(result, 'upstreamErrorKey')).toBeUndefined();
+    expect(fieldOf(result, 'failureHint')).toBeUndefined();
   });
 
   it.each([
@@ -2302,7 +2307,7 @@ describe('QR login failure classification', () => {
 
     const canceled = await harness.service.checkQr(key);
     expect(canceled).toMatchObject({ code: 800, failureReason: 'user-canceled' });
-    for (const field of ['upstreamErrorKey', 'primaryFailure', 'fallbackAttempted'])
+    for (const field of ['upstreamErrorKey', 'primaryFailure', 'fallbackAttempted', 'failureHint'])
       expect(fieldOf(canceled, field)).toBeUndefined();
   });
 
@@ -2353,8 +2358,10 @@ describe('QR login failure classification', () => {
       upstreamErrorKey: 'auth.device-limit',
       primaryFailure: { upstreamCode: 20279, upstreamErrorKey: 'auth.device-limit' },
       fallbackAttempted: true,
+      failureHint: { key: 'login.device-limit', message: expect.any(String) },
     });
     const forged = await service.checkQr('restored-forged');
+    expect(fieldOf(forged, 'failureHint')).toBeUndefined();
     expect(fieldOf(forged, 'upstreamErrorKey')).toBeUndefined();
     expect(fieldOf(forged, 'primaryFailure')).toBeUndefined();
     expect(fieldOf(forged, 'fallbackAttempted')).toBeUndefined();

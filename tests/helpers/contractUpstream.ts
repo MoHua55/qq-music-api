@@ -52,6 +52,8 @@ export const createContractUpstream = () => {
     recommendHttpStatus: 0,
     /** 按 songmid 覆盖 UrlGetVkey 的单曲条目，用来模拟部分歌曲取不到链接。 */
     vkeyItems: {} as Record<string, Record<string, unknown>>,
+    /** 按 songmid 覆盖单曲详情的 track_info，用来模拟不同的限制讯号。 */
+    songDetails: {} as Record<string, Record<string, unknown>>,
   };
 
   const rpcData = ({ method, param }: RpcCall): unknown => {
@@ -88,7 +90,7 @@ export const createContractUpstream = () => {
           })),
         };
       case 'get_song_detail_yqq':
-        return { track_info: CONTRACT_SONGS[0] };
+        return { track_info: state.songDetails[param.song_mid] ?? CONTRACT_SONGS[0] };
       case 'GetAlbumList':
         return { list: CONTRACT_ALBUMS };
       case 'get_singer_detail_info':

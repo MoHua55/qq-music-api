@@ -107,6 +107,7 @@ it('播放模块保留逐曲失败和原音质文件名', async () => {
         key: 'url_unavailable',
         evidence: 'observed-response',
         codes: { result: 104003 },
+        hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
       },
     },
   });

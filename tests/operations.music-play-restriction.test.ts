@@ -40,12 +40,17 @@ const EXPECTED_PLAY_URL = {
       key: 'url_unavailable',
       evidence: 'observed-response',
       codes: { result: 104003, subcode: 1 },
+      hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
     },
   },
   'fixture-c': {
     url: '',
     error: '暂无播放链接',
-    restriction: { key: 'url_unavailable', evidence: 'observed-response' },
+    restriction: {
+      key: 'url_unavailable',
+      evidence: 'observed-response',
+      hint: { key: 'playback.maybe-taken-down', message: expect.any(String) },
+    },
   },
 };
 

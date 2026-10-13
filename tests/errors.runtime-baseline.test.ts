@@ -342,6 +342,7 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
           upstreamErrorKey: 'auth.device-limit',
         },
         fallbackAttempted: true,
+        failureHint: { key: 'login.device-limit', message: expect.any(String) },
       },
     });
     expect(result.body.upstreamErrorKey).toBeUndefined();
