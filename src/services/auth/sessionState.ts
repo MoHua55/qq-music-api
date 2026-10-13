@@ -1,6 +1,7 @@
 import { logger } from '../../util/logger';
 import { isAndroidDevice } from './androidDevice';
 import { Buffer } from './bytes';
+import { authSessionExpiryAt, credentialExpiryAt } from './credentialExpiry';
 import type { AuthHttpClient } from './httpClient';
 import {
   type AuthSession,
@@ -13,7 +14,7 @@ import {
   type QrState,
   type SessionResolver,
 } from './qrTypes';
-import { isDictionary } from './values';
+import { isDictionary, stringOf } from './values';
 
 // src/services/auth/sessionState.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。
@@ -239,12 +240,98 @@ export const unavailableListen = (): QrEventListener => {
 export const randomBytesNeutral = (size: number): Buffer =>
   Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(size)));
 
+/** Refresh this long before the musickey's own expiry; the old key keeps working meanwhile. */
+export const AUTH_REFRESH_EARLY_MS = 6 * 60 * 60 * 1000;
+
+/** After a failed refresh, wait this long before trying again instead of retrying per request. */
+export const AUTH_REFRESH_RETRY_MS = 5 * 60 * 1000;
+
+/**
+ * Only a credential that says when it expires and carries a `refresh_key` can be refreshed. The
+ * mobile QQ fallback credential (the MQTT ticket) has no `refresh_key`, so it is left alone.
+ */
+const shouldRefreshStoredCredential = (credential: QqCredential, now: number): boolean => {
+  const expiresAt = credentialExpiryAt(credential);
+  return (
+    expiresAt !== null &&
+    stringOf(credential.refresh_key).length > 0 &&
+    now > expiresAt - AUTH_REFRESH_EARLY_MS
+  );
+};
+
+/**
+ * The `stored` backend keeps the existing `AuthSessionStore` as the authority for lookup,
+ * persistence, expiry and repository swapping. Its resolver layer owns token lifecycle concerns:
+ * minting the opaque key and, when a host supplies the hook, refreshing a nearly-expired credential
+ * in place under the same token.
+ *
+ * Silent refresh is deliberately absent from sealed mode: there the credential travels inside the
+ * token, so a refresh would have to hand out a new token, which clients cannot take yet.
+ */
 export const createStoredSessionResolver = (options: {
   repository: AuthSessionRepository;
   now: () => number;
   randomBytes: (size: number) => Buffer;
+  /** Stored-only hook: the credential stays server-side and the opaque token never changes. */
+  refreshCredential?: (session: AuthSession) => Promise<QqCredential>;
 }): SessionResolver => {
   const store = createAuthSessionStore(options.repository, options.now);
+  const refreshes = new Map<string, Promise<AuthSession | null>>();
+  const refreshRetryAt = new Map<string, number>();
+
+  const refresh = async (token: string, session: AuthSession): Promise<AuthSession | null> => {
+    try {
+      const credential = await options.refreshCredential?.(cloneAuthSession(session));
+      const live = store.get(token);
+      // Logout may race an in-flight upstream refresh. Never resurrect a revoked token.
+      if (!credential || !live) return null;
+      const refreshed = {
+        ...live,
+        credential,
+        expiresAt: authSessionExpiryAt(credential, options.now()),
+      };
+      store.set(refreshed);
+      refreshRetryAt.delete(token);
+      logger.info('qq-auth.stored-credential-refreshed', {
+        credentialLoginType: credential.loginType,
+      });
+      return store.get(token);
+    } catch (error) {
+      // The old musickey is still usable during the early-refresh window. A transient refresh
+      // failure must not turn the final hours into an outage, nor hammer upstream per call.
+      refreshRetryAt.set(token, options.now() + AUTH_REFRESH_RETRY_MS);
+      logger.warn('qq-auth.stored-credential-refresh-failed', {
+        name: error instanceof Error ? error.name : 'Error',
+      });
+      return store.get(token);
+    }
+  };
+
+  const resolve = async (token: string | undefined): Promise<AuthSession | null> => {
+    if (!token) return null;
+    const session = store.get(token);
+    if (!session) {
+      refreshRetryAt.delete(token);
+      return null;
+    }
+    const current = options.now();
+    if (
+      !options.refreshCredential ||
+      !shouldRefreshStoredCredential(session.credential, current) ||
+      (refreshRetryAt.get(token) ?? 0) > current
+    )
+      return session;
+    const existing = refreshes.get(token);
+    if (existing) return existing;
+    const pending = refresh(token, session);
+    refreshes.set(token, pending);
+    try {
+      return await pending;
+    } finally {
+      if (refreshes.get(token) === pending) refreshes.delete(token);
+    }
+  };
+
   return {
     mode: 'stored',
     issue: async (session) => {
@@ -252,15 +339,20 @@ export const createStoredSessionResolver = (options: {
       store.set({ ...session, token });
       return token;
     },
-    resolve: async (token) => (token ? store.get(token) : null),
+    resolve,
     revoke: async (token) => {
       store.delete(token);
+      refreshRetryAt.delete(token);
     },
     cleanup: () => {
       store.cleanup();
+      for (const token of refreshRetryAt.keys()) {
+        if (!store.get(token)) refreshRetryAt.delete(token);
+      }
     },
     useRepository: (repository) => {
       store.useRepository(repository);
+      refreshRetryAt.clear();
     },
   };
 };

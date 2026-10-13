@@ -15,6 +15,7 @@ import {
   isOwnAccountId,
   type OwnedPlaylistSongsParams,
   positiveIdOf,
+  refreshLoginCredential,
   validateWechatCredential,
   withCredentialRejectionMapped,
 } from './authenticatedReads';
@@ -132,6 +133,8 @@ export class QrLoginServiceImpl implements QrLoginService {
         repository: dependencies.authSessionRepository ?? createMemoryAuthSessionRepository(),
         now: this.now,
         randomBytes: this.random,
+        refreshCredential: (session) =>
+          refreshLoginCredential(this.http, session.device, session.credential),
       });
     this.qrSessionStore = createQrSessionStore(
       dependencies.qrSessionRepository ?? createMemoryQrSessionRepository(),

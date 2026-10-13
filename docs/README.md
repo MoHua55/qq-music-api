@@ -91,6 +91,8 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 
 会话仓库必须由宿主加密。完整凭证不能进入 renderer、浏览器存储、普通 JSON 文件或日志；renderer 只保存 opaque `qqmusic_session`。Electron 可在主进程使用 `safeStorage`，但只有明文后端时不应保存凭证。仓库读写失败会退回内存行为，不阻断重新扫码。
 
+**自动续期**：Node、Electron、Docker 这类把凭证存在服务端的部署（`sessionMode: stored`），会在 QQ 凭证到期前 6 小时内、有请求进来时自动续期一次，`qqmusic_session` 不变，前端不用做任何事。续期失败时继续用还没到期的旧凭证，5 分钟后才再试；登出和续期同时发生时以登出为准。凭证里没有续期材料（例如手机 QQ 扫码走备用验证得到的凭证）就不续。Serverless 部署（`sealed`）目前不自动续期，凭证到期后要重新扫码。
+
 ## QQ 音乐原生扫码登录
 
 Node 支持手机 QQ 和微信扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。扫码登录相关路由都是 GET。
