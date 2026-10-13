@@ -1,4 +1,5 @@
 import { AuthCredentialRejectedError } from '../util/authError';
+import { GatewayCredentialConflictError } from '../util/gatewayCredentialConflictError';
 import { RequestRejectedError } from '../util/requestError';
 import { toLegacyErrorMessage } from '../util/safeError';
 
@@ -23,5 +24,8 @@ export const json = (body: unknown, status = 200, headers: Record<string, string
 export const failureResponse = (error: unknown): Response => {
   if (error instanceof AuthCredentialRejectedError || error instanceof RequestRejectedError)
     return json({ code: error.httpStatus, message: error.message }, error.httpStatus);
-  return json({ error: toLegacyErrorMessage(error) }, 500);
+  return json(
+    { error: toLegacyErrorMessage(error) },
+    error instanceof GatewayCredentialConflictError ? error.responseStatus : 500,
+  );
 };

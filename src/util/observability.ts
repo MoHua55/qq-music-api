@@ -1,5 +1,6 @@
 import type { Context, Next } from 'koa';
 import { AuthCredentialRejectedError } from './authError';
+import { GatewayCredentialConflictError } from './gatewayCredentialConflictError';
 import { logger } from './logger';
 import { RequestRejectedError } from './requestError';
 import { summarizeError, toLegacyErrorMessage } from './safeError';
@@ -174,7 +175,11 @@ const handleControllerError = (
   // 同理。其余异常行为不变。
   const rejected =
     error instanceof AuthCredentialRejectedError || error instanceof RequestRejectedError;
-  const status = rejected ? error.httpStatus : 500;
+  const status = rejected
+    ? error.httpStatus
+    : error instanceof GatewayCredentialConflictError
+      ? error.responseStatus
+      : 500;
   const meta = {
     ...baseMeta,
     status,

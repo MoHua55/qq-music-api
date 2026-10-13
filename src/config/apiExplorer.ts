@@ -311,7 +311,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description: 'Clear the current in-memory QQ Music login session.',
   },
   userDetail: {
-    description: 'Get the current authenticated QQ Music user detail.',
+    description:
+      'Get the current authenticated QQ Music user detail. A gateway and credential-code conflict answers 502 without clearing the session; credential rejection alone remains 401.',
   },
   getUserPlaylist: {
     description:

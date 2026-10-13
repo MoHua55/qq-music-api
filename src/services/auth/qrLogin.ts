@@ -1,5 +1,6 @@
 import { playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
 import { AuthCredentialRejectedError } from '../../util/authError';
+import { GatewayCredentialConflictError } from '../../util/gatewayCredentialConflictError';
 import { logger } from '../../util/logger';
 import { RequestRejectedError } from '../../util/requestError';
 import type { UpstreamPhase } from '../../util/safeError';
@@ -1762,6 +1763,8 @@ const CREDENTIAL_REFRESH_SAFETY_CODES = new Set([1000, 104401, 104400]);
 /** 上游用这几个安全码明确表示「这份凭证我不认」，与超时、限流、协议变动等失败区分开。 */
 const isCredentialRejection = (error: unknown): error is QqProtocolError =>
   error instanceof QqProtocolError &&
+  // 收藏专辑的 CGI 只有一个 code，旧错误对象把它放进两个字段，不是两层网关冲突。
+  (error.globalCode === 0 || error.phase === 'get-user-favorite-albums') &&
   error.upstreamCode !== undefined &&
   CREDENTIAL_REFRESH_SAFETY_CODES.has(error.upstreamCode);
 
@@ -1775,6 +1778,16 @@ const withCredentialRejectionMapped = async <T>(operation: () => Promise<T>): Pr
   try {
     return await operation();
   } catch (error) {
+    if (
+      error instanceof QqProtocolError &&
+      error.phase !== 'get-user-favorite-albums' &&
+      error.globalCode !== 0 &&
+      error.httpStatus >= 200 &&
+      error.httpStatus < 300 &&
+      error.upstreamCode !== undefined &&
+      CREDENTIAL_REFRESH_SAFETY_CODES.has(error.upstreamCode)
+    )
+      throw new GatewayCredentialConflictError(error);
     if (isCredentialRejection(error)) throw new AuthCredentialRejectedError(error.upstreamCode);
     throw error;
   }
