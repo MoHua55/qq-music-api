@@ -321,6 +321,38 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
       expect(result.status).toBe(status);
       expect(result.body.errorKey).toBe(errorKey);
     });
+
+    describe('paging against the observed upstream', () => {
+      // 2026-10 真账号实测：照现在的参数（`curPage` 从 1）要第 2 页，上游给回第 1 页同样的 20 张、同样的顺序，
+      // `total` 照样是 203。这里的假上游只重现这个现象；换参数或换接口时，要照验证过的协议改它。
+      const TOTAL = 203;
+      const tidsOf = (result: HttpResult): number[] =>
+        result.status === 200 ? result.body.playlists.map((item: { tid: number }) => item.tid) : [];
+
+      beforeEach(() => {
+        replies.get_playlist_by_category = {
+          data: {
+            total: TOTAL,
+            v_playlist: Array.from({ length: 20 }, (_, index) => playlist(80001 + index)),
+          },
+        };
+      });
+
+      it('does not serve page 1 again as page 2', async () => {
+        const first = new Set(tidsOf(await call('/recommend/category-playlists?id=8&page=1')));
+        const second = await call('/recommend/category-playlists?id=8&page=2');
+
+        expect(tidsOf(second).filter((tid) => first.has(tid))).toEqual([]);
+      });
+
+      it('only reports more when the next page brings new playlists', async () => {
+        const firstPage = await call('/recommend/category-playlists?id=8&page=1');
+        const first = new Set(tidsOf(firstPage));
+        const second = await call('/recommend/category-playlists?id=8&page=2');
+
+        expect(firstPage.body.more).toBe(tidsOf(second).some((tid) => !first.has(tid)));
+      });
+    });
   });
 
   describe('/recommend/new-songs', () => {
