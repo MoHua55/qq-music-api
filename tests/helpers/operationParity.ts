@@ -34,7 +34,10 @@ import {
 
 type KoaController = (ctx: Koa.Context) => Promise<unknown> | unknown;
 type FetchRoute = (
-  context: OperationRouteContext & { env: NonNullable<RouteCallOptions['env']> },
+  context: OperationRouteContext & {
+    env: NonNullable<RouteCallOptions['env']>;
+    options: NonNullable<RouteCallOptions['options']>;
+  },
 ) => Promise<Response>;
 type Leg = (path: string, options: ParityCallOptions) => Promise<RouteResult>;
 
@@ -42,6 +45,7 @@ export interface ParityCallOptions {
   /** 以 X-QQ-Session 发给最小宿主与真实宿主；不传就是本次请求没有 token。 */
   token?: string;
   env?: RouteCallOptions['env'];
+  options?: RouteCallOptions['options'];
   /** 只供最小 serverless 宿主使用；真实入口仍按自己的 env 现建服务。 */
   service?: () => Promise<QrLoginService>;
   responseHeaders?: readonly string[];
@@ -113,6 +117,7 @@ const fetchHost = (route: ParityRoute, handler: FetchRoute): Leg => {
       response = await matched.handler({
         url,
         env: options.env ?? {},
+        options: options.options ?? {},
         params: matched.params,
         token: options.token,
         service: options.service ?? noService,
@@ -172,6 +177,7 @@ export const createParityRunner = (route: ParityRoute, implementations: ParityIm
         callRoute(runtime, target, {
           headers: requestHeaders(context),
           env: context.env,
+          options: context.options,
           responseHeaders: context.responseHeaders,
         }),
       path,

@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../../src/app';
-import { handleRequest, type ServerlessEnv } from '../../src/serverless';
+import { handleRequest, type ServerlessEnv, type ServerlessOptions } from '../../src/serverless';
 import {
   getLegacyHttpTransport,
   type LegacyHttpTransport,
@@ -27,6 +27,7 @@ export interface RouteResult {
 export interface RouteCallOptions {
   headers?: Record<string, string>;
   env?: ServerlessEnv;
+  options?: ServerlessOptions;
   responseHeaders?: readonly string[];
 }
 
@@ -167,6 +168,7 @@ export const callRoute = async (
   const response = await handleRequest(
     new Request(`https://worker.invalid${path}`, { headers: options.headers }),
     options.env ?? {},
+    options.options ?? {},
   );
   return {
     status: response.status,
