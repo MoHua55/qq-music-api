@@ -8,6 +8,7 @@ import { getSongListDetail } from '../routes/operations/getSongListDetail';
 import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
+import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
 import { qrCancel } from '../routes/operations/qrCancel';
@@ -31,7 +32,6 @@ import {
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
-import { legacyRoutes } from './legacyRoutes';
 import { operationRoute } from './operationRoute';
 import { CHECK_BUDGET_MS, capabilitiesFor, secretsOf } from './qrRuntime';
 import { AUTH_COOKIE_NAME, failureResponse, json } from './response';
@@ -232,7 +232,7 @@ export const handleRequest = async (
   const configured = Boolean(env.QQ_SESSION_SECRET);
 
   if (url.pathname === '/login/channels' || url.pathname === '/login/channels/') {
-    return legacyRoutes['/login/channels']({
+    return operationRoute(loginChannels)({
       url,
       env,
       options,

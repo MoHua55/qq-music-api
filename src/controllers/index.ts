@@ -7,6 +7,7 @@ import { getSongListDetail } from '../routes/operations/getSongListDetail';
 import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
+import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
@@ -42,7 +43,6 @@ import getSongListCategories from './getSongListCategories';
 import getSongLists from './getSongLists';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
-import { loginChannels } from './login';
 import logoutOperationController from './logoutOperation';
 import musicPlayOperationController from './musicPlayOperation';
 import { operationController } from './operation';
@@ -96,7 +96,7 @@ export default {
   qrCheck: withControllerLogging('qrCheck', qrCheckOperationController),
   qrCancel: withControllerLogging('qrCancel', operationController(qrCancel)),
   loginStatus: withControllerLogging('loginStatus', operationController(loginStatus)),
-  loginChannels: withControllerLogging('loginChannels', loginChannels),
+  loginChannels: withControllerLogging('loginChannels', operationController(loginChannels)),
   logout: withControllerLogging('logout', logoutOperationController),
   userDetail: withControllerLogging('userDetail', operationController(userDetail)),
   getUserAlbums: withControllerLogging('getUserAlbums', operationController(getUserAlbums)),

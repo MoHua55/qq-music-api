@@ -2,6 +2,7 @@ import type { OperationHandler, OperationRequest } from '../routes/operations/ty
 import type { QrLoginService } from '../services/auth/qrLogin';
 import type { ServerlessEnv, ServerlessOptions } from './index';
 import { createServerlessQrOperations } from './qrOperations';
+import { capabilitiesFor } from './qrRuntime';
 import { json } from './response';
 
 // src/serverless/operationRoute.ts
@@ -36,6 +37,7 @@ export const operationRequestOf = ({
   sessionConfigured: Boolean(env?.QQ_SESSION_SECRET),
   service,
   qr: createServerlessQrOperations({ env: env ?? {}, options: options ?? {}, service }),
+  capabilities: capabilitiesFor(options ?? {}),
 });
 
 export const operationRoute =

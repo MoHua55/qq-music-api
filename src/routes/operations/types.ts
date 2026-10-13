@@ -1,4 +1,4 @@
-import type { QrLoginService } from '../../services/auth/qrLogin';
+import type { QrLoginService, RuntimeCapabilities } from '../../services/auth/qrLogin';
 
 /** 封存 QR 的宿主适配；Node 直接调用原服务，serverless 在每次调用中还原封存状态。 */
 export type QrRouteService = Pick<QrLoginService, 'createSession' | 'createQr' | 'checkQr'> & {
@@ -32,6 +32,7 @@ export interface OperationRequest {
   /** 登录服务。serverless 每次请求现建，所以只在真的用到时才调用。 */
   service(): Promise<QrLoginService>;
   readonly qr?: Partial<QrRouteService>;
+  readonly capabilities?: RuntimeCapabilities;
 }
 
 /** 和新路由的结果同一个形状：状态码、要加的 header、JSON 内容。 */
