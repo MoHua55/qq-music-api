@@ -29,6 +29,7 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
     if (channel === 'qq')
       expect(legs.legacy.calls).toEqual([
         { kind: runtime === 'node' ? 'listener' : 'relay', method: 'close', id: 'fixture-qr-id' },
+        ...(runtime === 'node' ? [{ kind: 'listener', method: 'close', id: 'fixture-qr-id' }] : []),
       ]);
     expect(legs.operation).toEqual(legs.legacy);
     expect(legs.host).toEqual(legs.legacy);

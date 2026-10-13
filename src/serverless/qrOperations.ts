@@ -27,6 +27,7 @@ interface QrHostContext {
 export const createServerlessQrOperations = ({
   env,
   options,
+  service: getService,
 }: QrHostContext): Partial<QrRouteService> => ({
   createSession: async (channel) => {
     const secrets = secretsOf(env);
@@ -129,5 +130,15 @@ export const createServerlessQrOperations = ({
       checkBudgetMs: CHECK_BUDGET_MS,
     });
     return service.checkQr(key, CHECK_BUDGET_MS);
+  },
+  cancelSession: async (key) => {
+    const relay = options.qqRelay;
+    if (relay) {
+      const payload = await openQrState(key, secretsOf(env), Date.now()).catch(() => null);
+      // Best effort by contract: an unknown, tampered or already-released key is still a success.
+      if (payload?.channel === 'qq') await relay.close(payload.identifier).catch(() => undefined);
+    }
+    // §5.3 #5: always 200. Callers cancel fire-and-forget on dialog close.
+    (await getService()).cancelSession(key);
   },
 });
