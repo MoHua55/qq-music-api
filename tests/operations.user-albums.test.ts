@@ -1,7 +1,5 @@
 import './helpers/sessionRoutes';
-import legacyGetUserAlbums from '../src/controllers/getUserAlbums';
 import { getUserAlbums } from '../src/routes/operations/getUserAlbums';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { CONTRACT_ALBUMS } from './helpers/contractUpstream';
 import { createParityRunner } from './helpers/operationParity';
@@ -11,13 +9,11 @@ import { useSessionUpstream } from './helpers/sessionRoutes';
 const parity = createParityRunner(
   { name: 'getUserAlbums', node: '/user/albums', serverless: '/user/albums' },
   {
-    legacyNode: legacyGetUserAlbums,
-    legacyServerless: legacyRoutes['/user/albums'],
     operation: getUserAlbums,
   },
 );
 
-describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/user/albums 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
   it.each(['valid', 'missing', 'invalid', 'expired'] as const)('会话状态 %s', async (mode) => {
     const legs = await parity(
@@ -26,15 +22,14 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
       upstream.calls,
       await upstream.options(mode),
     );
-    expect(legs.legacy.status).toBe(mode === 'valid' ? 200 : 401);
-    expect(legs.legacy.body).toEqual(
+    expect(legs.operation.status).toBe(mode === 'valid' ? 200 : 401);
+    expect(legs.operation.body).toEqual(
       mode === 'valid'
         ? { code: 200, albums: CONTRACT_ALBUMS, total: 1, more: false }
         : { code: 401, message: 'Login required' },
     );
-    expect(legs.legacy.calls).toHaveLength(mode === 'valid' ? 1 : 0);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.calls).toHaveLength(mode === 'valid' ? 1 : 0);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it.each([
@@ -50,11 +45,10 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(status);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.legacy.calls[0].endpoint).toBe('/fav/fcgi-bin/fcg_get_profile_order_asset.fcg');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(status);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.operation.calls[0].endpoint).toBe('/fav/fcgi-bin/fcg_get_profile_order_asset.fcg');
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it.each(['network', 'http'] as const)('上游 %s 失败', async (kind) => {
@@ -64,10 +58,9 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
       });
     else upstream.state.httpStatus = 503;
     const legs = await parity(runtime, '/user/albums', upstream.calls, await upstream.options());
-    expect(legs.legacy.status).toBe(500);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(500);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it('空的资料字段照旧转交', async () => {
@@ -78,10 +71,9 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it.each([
@@ -103,13 +95,12 @@ describe.each(CATALOG_RUNTIMES)('/user/albums 新旧实现比对（%s）', (runt
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.legacy.calls[0].params).toMatchObject({
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.operation.calls[0].params).toMatchObject({
       sin: String(fixture.offset),
       ein: String(fixture.offset + fixture.limit - 1),
     });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
 });

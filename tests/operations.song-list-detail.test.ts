@@ -1,7 +1,5 @@
 import './helpers/sessionRoutes';
-import legacyGetSongListDetail from '../src/controllers/getSongListDetail';
 import { getSongListDetail } from '../src/routes/operations/getSongListDetail';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useSessionUpstream } from './helpers/sessionRoutes';
@@ -13,14 +11,12 @@ const parity = createParityRunner(
     serverless: '/getSongListDetail/:disstid',
   },
   {
-    legacyNode: legacyGetSongListDetail,
-    legacyServerless: legacyRoutes['/getSongListDetail/:disstid'],
     operation: getSongListDetail,
   },
 );
 const unreadable = { code: 10, cdlist: [] };
 
-describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/getSongListDetail 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
   it.each([
     'valid',
@@ -34,11 +30,10 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       upstream.calls,
       await upstream.options(mode),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.legacy.body).toMatchObject({ response: { code: 0 } });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.operation.body).toMatchObject({ response: { code: 0 } });
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     'valid',
@@ -53,22 +48,21 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       upstream.calls,
       await upstream.options(mode),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls).toHaveLength(mode === 'valid' ? 2 : 1);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(mode === 'valid' ? 2 : 1);
     if (mode === 'valid') {
-      expect(legs.legacy.body).toMatchObject({
+      expect(legs.operation.body).toMatchObject({
         response: {
           code: 0,
           cdlist: [{ disstid: '70001', dissname: 'Fixture playlist', total_song_num: 1 }],
         },
       });
-      expect(legs.legacy.calls[1].rpc[0]).toMatchObject({
+      expect(legs.operation.calls[1].rpc[0]).toMatchObject({
         method: 'uniform_get_Dissinfo',
         param: { disstid: 70001, song_begin: 0, song_num: 1000 },
       });
-    } else expect(legs.legacy.body).toEqual({ response: unreadable });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    } else expect(legs.operation.body).toEqual({ response: unreadable });
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     { label: '凭证拒绝', businessCode: 1000 },
@@ -94,11 +88,10 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual({ response: unreadable });
-    expect(legs.legacy.calls).toHaveLength(2);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({ response: unreadable });
+    expect(legs.operation.calls).toHaveLength(2);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([10, '10', 2001, 777777, -1])('匿名业务码 %s 不改变 HTTP 状态', async (code) => {
     upstream.state.anonymousPlaylist = { code, cdlist: [] };
@@ -108,10 +101,9 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       upstream.calls,
       await upstream.options('missing'),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual({ response: { code, cdlist: [] } });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({ response: { code, cdlist: [] } });
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each(['network', 'http'] as const)('匿名请求 %s 失败保留两边原有回包', async (kind) => {
     if (kind === 'network')
@@ -126,12 +118,11 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       await upstream.options(),
     );
     const serverlessHttp = runtime === 'serverless' && kind === 'http';
-    expect(legs.legacy.status).toBe(serverlessHttp ? 200 : 500);
-    expect(legs.legacy.calls).toHaveLength(1);
-    if (serverlessHttp) expect(legs.legacy.body).toEqual({ response: 'fixture-private-body' });
-    else expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(serverlessHttp ? 200 : 500);
+    expect(legs.operation.calls).toHaveLength(1);
+    if (serverlessHttp) expect(legs.operation.body).toEqual({ response: 'fixture-private-body' });
+    else expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '/70001?disstid=70002',
@@ -147,11 +138,10 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls[0].params).not.toHaveProperty('cookie');
-    expect(legs.legacy.calls[0].params).not.toHaveProperty('musickey');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls[0].params).not.toHaveProperty('cookie');
+    expect(legs.operation.calls[0].params).not.toHaveProperty('musickey');
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'node')
     it.each([
@@ -168,9 +158,8 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
         upstream.calls,
         await upstream.options(),
       );
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(200);
+      expect(legs.host).toEqual(legs.operation);
     });
   if (runtime === 'serverless')
     it.each([undefined, ''])('没设密钥 %s 时不建服务也不重读', async (secret) => {
@@ -180,11 +169,10 @@ describe.each(CATALOG_RUNTIMES)('/getSongListDetail 新旧实现比对（%s）',
       const service = jest.fn(options.service);
       options.service = service;
       const legs = await parity(runtime, '/getSongListDetail/70001', upstream.calls, options);
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.legacy.body).toEqual({ response: unreadable });
-      expect(legs.legacy.calls).toHaveLength(1);
+      expect(legs.operation.status).toBe(200);
+      expect(legs.operation.body).toEqual({ response: unreadable });
+      expect(legs.operation.calls).toHaveLength(1);
       expect(service).not.toHaveBeenCalled();
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.host).toEqual(legs.operation);
     });
 });

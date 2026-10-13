@@ -1,4 +1,13 @@
 import type { AxiosRequestConfig } from 'axios';
+import logoutOperationController from '../src/controllers/logoutOperation';
+import { getOwnedPlaylistSongs } from '../src/routes/operations/getOwnedPlaylistSongs';
+import { getUserAlbums } from '../src/routes/operations/getUserAlbums';
+import { getUserLikedSongs } from '../src/routes/operations/getUserLikedSongs';
+import { getUserPlaylist } from '../src/routes/operations/getUserPlaylist';
+import { loginStatus } from '../src/routes/operations/loginStatus';
+import { logout as logoutOperation } from '../src/routes/operations/logout';
+import { userDetail as userDetailOperation } from '../src/routes/operations/userDetail';
+import { operationRoute } from '../src/serverless/operationRoute';
 import type { QrLoginService } from '../src/services/auth/qrLogin';
 import type { createContractUpstream } from './helpers/contractUpstream';
 
@@ -26,11 +35,9 @@ jest.mock('../src/services/auth/qrLogin.node', () => ({
   ) => mockSessionService.configureAuthSessionRepository(repository),
 }));
 
-import { logout, userDetail } from '../src/controllers/login';
 import type { OperationHandler } from '../src/routes/operations/types';
 import { handleRequest } from '../src/serverless';
 import { createFetchLegacyTransport } from '../src/serverless/fetchLegacyTransport';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { failureResponse } from '../src/serverless/response';
 import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
 import { createMemoryDeviceContextRepository } from '../src/services/auth/deviceContext';
@@ -54,6 +61,16 @@ import {
   createContractUpstream as makeUpstream,
 } from './helpers/contractUpstream';
 import { createParityRunner } from './helpers/operationParity';
+
+const preparedRoutes: Record<string, OperationHandler> = {
+  '/login/status': loginStatus,
+  '/user/detail': userDetailOperation,
+  '/user/playlist': getUserPlaylist,
+  '/user/albums': getUserAlbums,
+  '/user/liked-songs': getUserLikedSongs,
+  '/user/playlist-detail': getOwnedPlaylistSongs,
+  '/logout': logoutOperation,
+};
 
 const STORED_TOKEN = 'a'.repeat(64);
 const session = {
@@ -88,8 +105,6 @@ const detailOperation: OperationHandler = async (request) => {
 const detailParity = createParityRunner(
   { name: 'userDetail', node: '/user/detail', serverless: '/user/detail' },
   {
-    legacyNode: userDetail,
-    legacyServerless: legacyRoutes['/user/detail'],
     operation: detailOperation,
   },
 );
@@ -97,21 +112,8 @@ const detailParity = createParityRunner(
 const logoutParity = createParityRunner(
   { name: 'logout', node: '/logout', serverless: '/logout' },
   {
-    legacyNode: logout,
-    legacyServerless: legacyRoutes['/logout'],
-    operation: async (request) => {
-      await (await request.service()).logout(request.token);
-      return {
-        status: 200,
-        body: { code: 200 },
-        headers: {
-          'set-cookie':
-            request.runtime === 'node'
-              ? 'qqmusic_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; httponly'
-              : 'qqmusic_session=; Max-Age=0; Path=/',
-        },
-      };
-    },
+    operation: logoutOperation,
+    operationNode: logoutOperationController,
   },
 );
 
@@ -141,11 +143,10 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
 
   it('同一会话跑旧实现、测试消费者和真实宿主，每条腿都能读资料', async () => {
     const legs = await detailParity(runtime, '/user/detail', mockUpstream.calls, options());
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual({ code: 200, profile: CONTRACT_PROFILE });
-    expect(legs.legacy.calls.map((call) => call.method)).toEqual(['GetLoginUserInfo']);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({ code: 200, profile: CONTRACT_PROFILE });
+    expect(legs.operation.calls.map((call) => call.method)).toEqual(['GetLoginUserInfo']);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it('同一个 runner 的下一次请求不沿用上次 token', async () => {
@@ -154,22 +155,20 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
       ...options(),
       token: undefined,
     });
-    expect(legs.legacy).toEqual({
+    expect(legs.operation).toEqual({
       status: 401,
       body: { code: 401, message: 'Login required' },
       calls: [],
     });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
 
-  it('上游拒绝凭证的 401 在三条腿里一致', async () => {
+  it('上游拒绝凭证的 401 在共用处理与真实宿主里一致', async () => {
     mockUpstream.state.credentialCode = 1000;
     const legs = await detailParity(runtime, '/user/detail', mockUpstream.calls, options());
-    expect(legs.legacy.status).toBe(401);
-    expect(legs.legacy.calls.map((call) => call.method)).toEqual(['GetLoginUserInfo']);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(401);
+    expect(legs.operation.calls.map((call) => call.method)).toEqual(['GetLoginUserInfo']);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   if (runtime === 'serverless')
@@ -178,8 +177,7 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
         ...options(),
         env: {},
       });
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.operation).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(200);
       expect(legs.host.status).toBe(501);
       expect(legs.host.calls).toEqual([]);
       expect(legs.host.body).toEqual({
@@ -204,12 +202,11 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
         });
       },
     });
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual({ code: 200 });
-    expect(legs.legacy.headers?.['set-cookie']).toHaveLength(1);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
-    expect(logoutSpy).toHaveBeenCalledTimes(runtime === 'node' ? 3 : 2);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({ code: 200 });
+    expect(legs.operation.headers?.['set-cookie']).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
+    expect(logoutSpy).toHaveBeenCalledTimes(runtime === 'node' ? 2 : 1);
   });
 
   const movedCases = [
@@ -243,22 +240,22 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
   ] as const;
 
   if (runtime === 'serverless')
-    it.each(movedCases)('搬出的 $route 与真实入口回包及上游请求一致', async (fixture) => {
+    it.each(movedCases)('共用的 $route 与真实入口回包及上游请求一致', async (fixture) => {
       resetService(runtime);
       setLegacyHttpTransport(createFetchLegacyTransport());
       mockUpstream.calls.length = 0;
-      let legacy: Response;
+      let common: Response;
       try {
-        legacy = await legacyRoutes[fixture.route]({
+        common = await operationRoute(preparedRoutes[fixture.route])({
           url: new URL(`https://fixture.invalid${fixture.path}`),
           params: {},
           token,
           service: async () => mockSessionService,
         });
       } catch (error) {
-        legacy = failureResponse(error);
+        common = failureResponse(error);
       }
-      const legacyBody = await legacy.json();
+      const commonBody = await common.json();
       const calls = mockUpstream.calls.slice();
       mockUpstream.calls.length = 0;
       const host = await handleRequest(
@@ -267,11 +264,11 @@ describe.each(CATALOG_RUNTIMES)('会话路由比对工具准备（%s）', (runti
         }),
         { QQ_SESSION_SECRET: CONTRACT_SECRET },
       );
-      expect(legacy.status).toBe(200);
-      expect(legacyBody).toEqual(fixture.body);
-      expect(host.status).toBe(legacy.status);
-      expect(await host.json()).toEqual(legacyBody);
-      expect(host.headers.get('set-cookie')).toBe(legacy.headers.get('set-cookie'));
+      expect(common.status).toBe(200);
+      expect(commonBody).toEqual(fixture.body);
+      expect(host.status).toBe(common.status);
+      expect(await host.json()).toEqual(commonBody);
+      expect(host.headers.get('set-cookie')).toBe(common.headers.get('set-cookie'));
       expect(mockUpstream.calls).toEqual(calls);
     });
 });

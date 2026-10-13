@@ -1,9 +1,7 @@
 import './helpers/sessionRoutes';
 import { userInfo } from '../src/config';
-import legacyGetMusicPlay from '../src/controllers/getMusicPlay';
 import musicPlayOperationController from '../src/controllers/musicPlayOperation';
 import { getMusicPlay } from '../src/routes/operations/getMusicPlay';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useSessionUpstream } from './helpers/sessionRoutes';
@@ -11,15 +9,13 @@ import { useSessionUpstream } from './helpers/sessionRoutes';
 const parity = createParityRunner(
   { name: 'getMusicPlay', node: '/getMusicPlay/:songmid?', serverless: '/getMusicPlay/:songmid?' },
   {
-    legacyNode: legacyGetMusicPlay,
-    legacyServerless: legacyRoutes['/getMusicPlay/:songmid?'],
     operation: getMusicPlay,
     operationNode: musicPlayOperationController,
   },
 );
 const uuid = '00000000-0000-4000-8000-000000000001';
 
-describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/getMusicPlay 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
   beforeEach(() => jest.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(uuid));
   it.each([
@@ -35,8 +31,8 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       await upstream.options(mode),
     );
     const ok = mode === 'valid' || (mode === 'missing' && runtime === 'node');
-    expect(legs.legacy.status).toBe(ok ? 200 : 401);
-    expect(legs.legacy.body).toEqual(
+    expect(legs.operation.status).toBe(ok ? 200 : 401);
+    expect(legs.operation.body).toEqual(
       ok
         ? {
             data: {
@@ -47,13 +43,12 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
           }
         : { code: 401, message: 'Login required' },
     );
-    expect(legs.legacy.calls).toHaveLength(ok ? 1 : 0);
+    expect(legs.operation.calls).toHaveLength(ok ? 1 : 0);
     if (ok)
-      expect(legs.legacy.calls[0].rpc[0].method).toBe(
+      expect(legs.operation.calls[0].rpc[0].method).toBe(
         mode === 'missing' ? 'CgiGetVkey' : 'UrlGetVkey',
       );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     { label: '凭证拒绝', businessCode: 1000, status: 401 },
@@ -80,11 +75,10 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(status);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(status);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     {},
@@ -108,9 +102,8 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '',
@@ -124,11 +117,10 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(400);
-    expect(legs.legacy.body).toEqual({ data: { message: 'no songmid' } });
-    expect(legs.legacy.calls).toEqual([]);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(400);
+    expect(legs.operation.body).toEqual({ data: { message: 'no songmid' } });
+    expect(legs.operation.calls).toEqual([]);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '?songmid=fixture-a&songmid=fixture-b',
@@ -151,11 +143,10 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(
+    expect(legs.operation.status).toBe(
       suffix.startsWith('?songmid=&') && runtime === 'serverless' ? 400 : 200,
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     'm4a',
@@ -172,25 +163,23 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
+    expect(legs.operation.status).toBe(200);
     const file = {
       m4a: 'C400fixture-songfixture-media.m4a',
       ape: 'A000fixture-songfixture-media.ape',
       flac: 'F000fixture-songfixture-media.flac',
       '320': 'M800fixture-songfixture-media.mp3',
     };
-    expect(legs.legacy.calls[0].rpc[0].param.filename).toEqual([
+    expect(legs.operation.calls[0].rpc[0].param.filename).toEqual([
       file[quality as keyof typeof file] ?? 'M500fixture-songfixture-media.mp3',
     ]);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'serverless')
     it('真正入口没设密钥仍先回 501', async () => {
       const options = await upstream.options();
       options.env = {};
       const legs = await parity(runtime, '/getMusicPlay/fixture-song', upstream.calls, options);
-      expect(legs.operation).toEqual(legs.legacy);
       expect(legs.host).toEqual({
         status: 501,
         body: {
@@ -212,9 +201,8 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
           upstream.calls,
           await upstream.options('missing'),
         );
-        expect(legs.legacy.calls[0].rpc[0].param.uin).toBe('fixture-config-uin');
-        expect(legs.operation).toEqual(legs.legacy);
-        expect(legs.host).toEqual(legs.legacy);
+        expect(legs.operation.calls[0].rpc[0].param.uin).toBe('fixture-config-uin');
+        expect(legs.host).toEqual(legs.operation);
       } finally {
         userInfo.uin = original;
       }
@@ -231,9 +219,8 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
         upstream.calls,
         await upstream.options('missing'),
       );
-      expect(legs.legacy.status).toBe(500);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(500);
+      expect(legs.host).toEqual(legs.operation);
     });
     it.each([
       '/fixture-song?resType=raw',
@@ -249,9 +236,8 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
         upstream.calls,
         await upstream.options('missing'),
       );
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(200);
+      expect(legs.host).toEqual(legs.operation);
     });
     it.each([
       {},
@@ -282,8 +268,7 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 新旧实现比对（%s）', (run
         upstream.calls,
         await upstream.options('missing'),
       );
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.host).toEqual(legs.operation);
     });
   }
 });

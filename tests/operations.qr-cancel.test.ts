@@ -1,7 +1,5 @@
 import './helpers/qrRoutes';
-import { qrCancel as legacyQrCancel } from '../src/controllers/login';
 import { qrCancel } from '../src/routes/operations/qrCancel';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useQrUpstream } from './helpers/qrRoutes';
@@ -9,12 +7,10 @@ import { useQrUpstream } from './helpers/qrRoutes';
 const parity = createParityRunner(
   { name: 'qrCancel', node: '/login/qr/cancel', serverless: '/login/qr/cancel' },
   {
-    legacyNode: legacyQrCancel,
-    legacyServerless: legacyRoutes['/login/qr/cancel'],
     operation: qrCancel,
   },
 );
-describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
   it.each(['qq', 'wechat'] as const)('释放 %s 的宿主资源', async (channel) => {
     const options = await upstream.options('cancel', { channel });
@@ -24,15 +20,14 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual({ code: 200 });
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({ code: 200 });
     if (channel === 'qq')
-      expect(legs.legacy.calls).toEqual([
+      expect(legs.operation.calls).toEqual([
         { kind: runtime === 'node' ? 'listener' : 'relay', method: 'close', id: 'fixture-qr-id' },
         ...(runtime === 'node' ? [{ kind: 'listener', method: 'close', id: 'fixture-qr-id' }] : []),
       ]);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each(['invalid', 'expired'] as const)('未知或过期 key %s 仍是 200', async (mode) => {
     const options = await upstream.options('cancel', { mode });
@@ -42,10 +37,9 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual({ code: 200 });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({ code: 200 });
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '',
@@ -61,13 +55,12 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
       upstream.calls,
       await upstream.options('cancel'),
     );
-    expect(legs.legacy.status).toBe(
+    expect(legs.operation.status).toBe(
       query.includes('fixture-invalid') || (runtime === 'node' && query === '?key=&key=other')
         ? 200
         : 400,
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each(['second', 'empty-first', 'unused'] as const)('重复 key 取法 %s', async (kind) => {
     const options = await upstream.options('cancel');
@@ -79,9 +72,10 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
           ? '?key=&key=' + key
           : '?key=' + key + '&unused=&unused=b';
     const legs = await parity(runtime, '/login/qr/cancel' + query, upstream.calls, options);
-    expect(legs.legacy.status).toBe(runtime === 'serverless' && kind === 'empty-first' ? 400 : 200);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(
+      runtime === 'serverless' && kind === 'empty-first' ? 400 : 200,
+    );
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'serverless') {
     it.each([{ relay: false }, { previous: true }])('保留 relay 和密钥配置 %j', async (setup) => {
@@ -92,9 +86,8 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
         upstream.calls,
         options,
       );
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(200);
+      expect(legs.host).toEqual(legs.operation);
     });
     it.each([false, true])('等待 relay 释放，失败 %s 仍回成功', async (relayCloseError) => {
       Object.assign(upstream.state, { relayCloseError, deferRelayClose: true });
@@ -105,13 +98,12 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 新旧实现比对（%s）', (
         upstream.calls,
         options,
       );
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.legacy.calls).toEqual([
+      expect(legs.operation.status).toBe(200);
+      expect(legs.operation.calls).toEqual([
         { kind: 'relay', method: 'close', id: 'fixture-qr-id' },
         { kind: 'relay', method: 'close-complete', id: 'fixture-qr-id' },
       ]);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.host).toEqual(legs.operation);
     });
   }
 });

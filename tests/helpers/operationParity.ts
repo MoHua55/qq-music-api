@@ -20,16 +20,9 @@ import {
 } from './catalogRoutes';
 
 /**
- * 新旧实现比对：同一个请求跑三次，旧实现、新的共用 handler、真正的宿主，比状态码、内容和送到上游的
- * 请求。
- *
- * - 旧实现和新 handler 放在同一个最小宿主上跑，差别只剩路由实现本身。Node 是只挂这一条路由的 Koa，
- *   两边都包上真正的 app 用的同一层 `withControllerLogging`；serverless 是只认这一条路由的 router，
- *   加上入口同样的传输登记与异常兜底（`failureResponse`）。
- * - 真正的宿主是 `app.callback()` 与 `handleRequest`。切换之前它跑旧实现，切换之后跑新 handler，
- *   所以它和旧实现一致，就说明切换没有改到对外行为。
- *
- * 上游用 `useCatalogUpstream` 替换，每一轮开始前清空它记下的请求。
+ * 共用处理与真实宿主跑相同合成案例，比状态、回包、标头与完整上游请求。
+ * Node 最小宿主保留 Koa 和真实日志兜底；serverless 最小宿主保留路由和异常兜底。
+ * 旧实现已经退役，历史基准继续通过独立的 npm tarball 和 main 快照做比对。
  */
 
 type KoaController = (ctx: Koa.Context) => Promise<unknown> | unknown;
@@ -66,10 +59,6 @@ export interface ParityRoute {
 }
 
 export interface ParityImplementations {
-  /** `src/controllers/` 里的旧 controller。 */
-  legacyNode: KoaController;
-  /** `src/serverless/legacyRoutes.ts` 里的旧实现。 */
-  legacyServerless: FetchRoute;
   operation: OperationHandler;
   /** 需要宿主 Cookie API 的薄转接，例如 logout；仍放在同一个最小 Koa 宿主里比。 */
   operationNode?: KoaController;
@@ -81,7 +70,6 @@ export interface ParityLeg<Call = UpstreamCall> extends RouteResult {
 }
 
 export interface ParityResult<Call = UpstreamCall> {
-  legacy: ParityLeg<Call>;
   operation: ParityLeg<Call>;
   host: ParityLeg<Call>;
 }
@@ -138,16 +126,14 @@ const fetchHost = (route: ParityRoute, handler: FetchRoute): Leg => {
 };
 
 export const createParityRunner = (route: ParityRoute, implementations: ParityImplementations) => {
-  const legs: Record<CatalogRuntimeName, { legacy: Leg; operation: Leg }> = {
+  const legs: Record<CatalogRuntimeName, { operation: Leg }> = {
     node: {
-      legacy: koaHost(route, implementations.legacyNode),
       operation: koaHost(
         route,
         implementations.operationNode ?? operationController(implementations.operation),
       ),
     },
     serverless: {
-      legacy: fetchHost(route, implementations.legacyServerless),
       operation: fetchHost(route, operationRoute(implementations.operation)),
     },
   };
@@ -170,7 +156,6 @@ export const createParityRunner = (route: ParityRoute, implementations: ParityIm
     calls: Call[],
     options: ParityCallOptions = {},
   ): Promise<ParityResult<Call>> => ({
-    legacy: await run(legs[runtime].legacy, path, calls, options),
     operation: await run(legs[runtime].operation, path, calls, options),
     host: await run(
       (target, context) =>

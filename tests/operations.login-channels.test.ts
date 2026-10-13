@@ -1,8 +1,6 @@
 import './helpers/qrRoutes';
-import { loginChannels as legacyLoginChannels } from '../src/controllers/login';
 import { loginChannels } from '../src/routes/operations/loginChannels';
 import { handleRequest } from '../src/serverless';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useQrUpstream } from './helpers/qrRoutes';
@@ -10,12 +8,10 @@ import { useQrUpstream } from './helpers/qrRoutes';
 const parity = createParityRunner(
   { name: 'loginChannels', node: '/login/channels', serverless: '/login/channels' },
   {
-    legacyNode: legacyLoginChannels,
-    legacyServerless: legacyRoutes['/login/channels'],
     operation: loginChannels,
   },
 );
-describe.each(CATALOG_RUNTIMES)('/login/channels 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/login/channels 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
   it.each([
     { relay: true, secret: 'fixture-secret', configured: true },
@@ -29,8 +25,8 @@ describe.each(CATALOG_RUNTIMES)('/login/channels 新旧实现比对（%s）', (r
     const service = jest.fn(options.service);
     options.service = service;
     const legs = await parity(runtime, '/login/channels', upstream.calls, options);
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toMatchObject({
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toMatchObject({
       code: 200,
       data: {
         channels: runtime === 'node' || relay ? ['qq', 'wechat'] : ['wechat'],
@@ -39,10 +35,9 @@ describe.each(CATALOG_RUNTIMES)('/login/channels 新旧实现比对（%s）', (r
         features: { recommendations: { getPersonalFm: true, getRecommendedCollections: true } },
       },
     });
-    expect(legs.legacy.calls).toEqual([]);
+    expect(legs.operation.calls).toEqual([]);
     expect(service).not.toHaveBeenCalled();
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '/',
@@ -57,10 +52,9 @@ describe.each(CATALOG_RUNTIMES)('/login/channels 新旧实现比对（%s）', (r
       upstream.calls,
       await upstream.options('channels'),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls).toEqual([]);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toEqual([]);
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'serverless')
     it('保留入口在 POST 时也直接回能力的既有行为', async () => {

@@ -1,7 +1,5 @@
 import './helpers/qrRoutes';
-import { qrCreate as legacyQrCreate } from '../src/controllers/login';
 import { qrCreate } from '../src/routes/operations/qrCreate';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useQrUpstream } from './helpers/qrRoutes';
@@ -9,12 +7,10 @@ import { useQrUpstream } from './helpers/qrRoutes';
 const parity = createParityRunner(
   { name: 'qrCreate', node: '/login/qr/create', serverless: '/login/qr/create' },
   {
-    legacyNode: legacyQrCreate,
-    legacyServerless: legacyRoutes['/login/qr/create'],
     operation: qrCreate,
   },
 );
-describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/login/qr/create 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
   it.each(['qq', 'wechat'] as const)('真实 %s 图片与重放时的上游请求', async (channel) => {
     const options = await upstream.options('create', { channel });
@@ -24,15 +20,16 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toMatchObject({
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toMatchObject({
       code: 200,
       data: { qrimg: expect.stringContaining('data:image/png;base64,') },
     });
     if (runtime === 'serverless' && channel === 'qq')
-      expect(legs.legacy.calls).toEqual([{ kind: 'relay', method: 'image', id: 'fixture-qr-id' }]);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.calls).toEqual([
+        { kind: 'relay', method: 'image', id: 'fixture-qr-id' },
+      ]);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each(['invalid', 'expired'] as const)('key %s 仍回 404', async (mode) => {
     const options = await upstream.options('create', { mode });
@@ -42,10 +39,9 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(404);
-    expect(legs.legacy.calls).toEqual([]);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(404);
+    expect(legs.operation.calls).toEqual([]);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '',
@@ -61,13 +57,12 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
       upstream.calls,
       await upstream.options('create'),
     );
-    expect(legs.legacy.status).toBe(
+    expect(legs.operation.status).toBe(
       query.includes('fixture-invalid') || (runtime === 'node' && query === '?key=&key=other')
         ? 404
         : 400,
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each(['second', 'empty-first', 'unused'] as const)('重复 key 的取法 %s', async (kind) => {
     const options = await upstream.options('create');
@@ -79,11 +74,10 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
           ? '?key=&key=' + key
           : '?key=' + key + '&unused=&unused=b';
     const legs = await parity(runtime, '/login/qr/create' + query, upstream.calls, options);
-    expect(legs.legacy.status).toBe(
+    expect(legs.operation.status).toBe(
       kind === 'unused' ? 200 : runtime === 'node' ? 404 : kind === 'empty-first' ? 400 : 200,
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([{ network: true }, { httpStatus: 503 }])('图片上游失败 %j', async (state) => {
     Object.assign(upstream.state, state, { failPhase: 'qr' });
@@ -94,10 +88,9 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(502);
-    expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(502);
+    expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'node')
     it('保留 QR 创建的上游业务拒绝与诊断', async () => {
@@ -109,10 +102,9 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
         upstream.calls,
         options,
       );
-      expect(legs.legacy.status).toBe(502);
-      expect(legs.legacy.body).toMatchObject({ upstreamCode: 20261, failureStage: 'qr-create' });
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(502);
+      expect(legs.operation.body).toMatchObject({ upstreamCode: 20261, failureStage: 'qr-create' });
+      expect(legs.host).toEqual(legs.operation);
     });
   if (runtime === 'serverless')
     it('前一把密钥封存的 key 仍可重放', async () => {
@@ -123,8 +115,7 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 新旧实现比对（%s）', (
         upstream.calls,
         options,
       );
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(200);
+      expect(legs.host).toEqual(legs.operation);
     });
 });

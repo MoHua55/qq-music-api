@@ -1,6 +1,4 @@
-import legacyGetSongInfo from '../src/controllers/getSongInfo';
 import { getSongInfo } from '../src/routes/operations/getSongInfo';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import {
   CATALOG_RUNTIMES,
   type CatalogRuntimeName,
@@ -17,8 +15,6 @@ const parity = createParityRunner(
     serverless: '/getSongInfo/:songmid/:songid?',
   },
   {
-    legacyNode: legacyGetSongInfo,
-    legacyServerless: legacyRoutes['/getSongInfo/:songmid/:songid?'],
     operation: getSongInfo,
   },
 );
@@ -124,8 +120,8 @@ const assertCase = async (
     upstream.fail(Object.assign(new Error('fixture-private-message'), { code: 'ECONNRESET' }));
   else upstream.respond(fixture.body ?? songinfo);
   const legs = await parity(runtime, fixture.path, upstream.calls);
-  expect(legs.legacy.status).toBe(fixture.status ?? 200);
-  expect(legs.legacy.calls).toEqual([
+  expect(legs.operation.status).toBe(fixture.status ?? 200);
+  expect(legs.operation.calls).toEqual([
     {
       endpoint: MUSICU_URL,
       format: 'json',
@@ -139,11 +135,10 @@ const assertCase = async (
       },
     },
   ]);
-  expect(legs.operation).toEqual(legs.legacy);
-  expect(legs.host).toEqual(legs.legacy);
+  expect(legs.host).toEqual(legs.operation);
 };
 
-describe.each(CATALOG_RUNTIMES)('/getSongInfo 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/getSongInfo 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useCatalogUpstream(runtime);
   it.each(cases)('$label', (fixture) => assertCase(runtime, upstream, fixture));
 });

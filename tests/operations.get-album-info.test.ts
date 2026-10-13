@@ -1,6 +1,4 @@
-import legacyGetAlbumInfo from '../src/controllers/getAlbumInfo';
 import { getAlbumInfo } from '../src/routes/operations/getAlbumInfo';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import {
   CATALOG_RUNTIMES,
   type CatalogRuntimeName,
@@ -14,8 +12,6 @@ import { createParityRunner } from './helpers/operationParity';
 const parity = createParityRunner(
   { name: 'getAlbumInfo', node: '/getAlbumInfo/:albummid?', serverless: '/getAlbumInfo' },
   {
-    legacyNode: legacyGetAlbumInfo,
-    legacyServerless: legacyRoutes['/getAlbumInfo'],
     operation: getAlbumInfo,
   },
 );
@@ -93,7 +89,7 @@ const cases: ParityCase[] = [
   },
 ];
 
-describe.each(CATALOG_RUNTIMES)('/getAlbumInfo 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/getAlbumInfo 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useCatalogUpstream(runtime);
 
   it.each(cases)('$label', async (fixture) => {
@@ -102,12 +98,11 @@ describe.each(CATALOG_RUNTIMES)('/getAlbumInfo 新旧实现比对（%s）', (run
 
     const legs = await parity(runtime, fixture.path, upstream.calls);
 
-    expect(legs.legacy.status).toBe(fixture.status[runtime]);
+    expect(legs.operation.status).toBe(fixture.status[runtime]);
     const albummid = fixture.albummid[runtime];
-    expect(legs.legacy.calls.map((call) => call.params?.albummid)).toEqual(
+    expect(legs.operation.calls.map((call) => call.params?.albummid)).toEqual(
       albummid === null ? [] : [albummid],
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
 });

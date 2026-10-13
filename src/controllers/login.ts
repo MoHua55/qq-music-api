@@ -1,13 +1,4 @@
 import type { Context } from 'koa';
-import {
-  DEFAULT_LOGIN_CHANNEL,
-  NODE_RUNTIME_CAPABILITIES,
-  normalizeLoginChannel,
-  QrLoginServiceError,
-  SUPPORTED_LOGIN_CHANNELS,
-} from '../services/auth/qrLogin';
-import qrLoginService from '../services/auth/qrLogin.node';
-import { describeRuntimeCapabilities } from '../services/runtimeCapabilities';
 import { getTypedQuery } from '../types/core/request';
 
 export const AUTH_COOKIE_NAME = 'qqmusic_session';
@@ -22,14 +13,6 @@ export const AUTH_COOKIE_NAME = 'qqmusic_session';
  * place when sealed arrives, and so both modes share one code path.
  */
 export const AUTH_HEADER_NAME = 'x-qq-session';
-
-export const loginChannels = async (ctx: Context): Promise<void> => {
-  ctx.status = 200;
-  ctx.body = {
-    code: 200,
-    data: describeRuntimeCapabilities('node', NODE_RUNTIME_CAPABILITIES, true),
-  };
-};
 
 interface LoginQuery {
   key?: string;
@@ -57,116 +40,4 @@ export const getAuthToken = (ctx: Context): string | undefined => {
   if (header) return header;
   const query = getTypedQuery<LoginQuery>(ctx);
   return tokenFromCookieString(String(query.cookie ?? '')) || ctx.cookies.get(AUTH_COOKIE_NAME);
-};
-
-const setServiceError = (ctx: Context, error: unknown): void => {
-  if (error instanceof QrLoginServiceError) {
-    ctx.status = error.httpStatus;
-    if (error.retryAfterMs) ctx.set('Retry-After', String(Math.ceil(error.retryAfterMs / 1000)));
-    // upstreamCode stays an opaque upstream number; it is never renamed into an official meaning.
-    ctx.body = {
-      code: error.httpStatus,
-      message: error.message,
-      retryAfterMs: error.retryAfterMs,
-      ...(error.upstreamCode === undefined ? {} : { upstreamCode: error.upstreamCode }),
-      ...error.diagnostics,
-    };
-    return;
-  }
-  throw error;
-};
-
-export const qrKey = async (ctx: Context): Promise<void> => {
-  // Optional and backward compatible: no `channel` means the mobile QQ QR, which is what
-  // every existing caller gets today. The response shape is unchanged either way. The legacy
-  // alias `mobile` is normalized to `qq` here so callers that predate the rename keep working,
-  // while the advertised set stays the two canonical channels.
-  const { channel = DEFAULT_LOGIN_CHANNEL } = getTypedQuery<LoginQuery>(ctx);
-  const loginChannel = normalizeLoginChannel(channel);
-  if (!loginChannel) {
-    ctx.status = 400;
-    ctx.body = {
-      code: 400,
-      message: `channel must be one of ${SUPPORTED_LOGIN_CHANNELS.join(', ')}`,
-    };
-    return;
-  }
-  try {
-    const key = await qrLoginService.createSession(loginChannel);
-    ctx.status = 200;
-    ctx.body = { code: 200, data: { unikey: key } };
-  } catch (error) {
-    setServiceError(ctx, error);
-  }
-};
-
-export const qrCreate = async (ctx: Context): Promise<void> => {
-  const { key } = getTypedQuery<LoginQuery>(ctx);
-  if (!key) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: 'key is required' };
-    return;
-  }
-  try {
-    const qrimg = await qrLoginService.createQr(String(key));
-    ctx.status = 200;
-    ctx.body = { code: 200, data: { qrimg } };
-  } catch (error) {
-    setServiceError(ctx, error);
-  }
-};
-
-export const qrCheck = async (ctx: Context): Promise<void> => {
-  const { key } = getTypedQuery<LoginQuery>(ctx);
-  if (!key) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: 'key is required' };
-    return;
-  }
-  const result = await qrLoginService.checkQr(String(key));
-  if (result.code === 803 && result.cookie) {
-    const token = tokenFromCookieString(result.cookie);
-    if (token)
-      ctx.cookies.set(AUTH_COOKIE_NAME, token, {
-        httpOnly: true,
-        maxAge: 86400000,
-        overwrite: true,
-        sameSite: 'lax',
-      });
-  }
-  ctx.status = 200;
-  ctx.body = result;
-};
-
-export const qrCancel = async (ctx: Context): Promise<void> => {
-  const { key } = getTypedQuery<LoginQuery>(ctx);
-  if (!key) {
-    ctx.status = 400;
-    ctx.body = { code: 400, message: 'key is required' };
-    return;
-  }
-  // Always 200: callers cancel on dialog close without waiting for the answer, so an unknown or
-  // already expired key must not surface as an error they would have to handle.
-  qrLoginService.cancelSession(String(key));
-  ctx.status = 200;
-  ctx.body = { code: 200 };
-};
-
-export const loginStatus = async (ctx: Context): Promise<void> => {
-  const profile = await qrLoginService.getLoginStatus(getAuthToken(ctx));
-  ctx.status = 200;
-  ctx.body = { code: 200, data: profile ? { profile } : {} };
-};
-
-export const userDetail = async (ctx: Context): Promise<void> => {
-  const profile = await qrLoginService.getUserDetail(getAuthToken(ctx));
-  ctx.status = profile ? 200 : 401;
-  ctx.body = profile ? { code: 200, profile } : { code: 401, message: 'Login required' };
-};
-
-export const logout = async (ctx: Context): Promise<void> => {
-  await qrLoginService.logout(getAuthToken(ctx));
-  ctx.cookies.set(AUTH_COOKIE_NAME, '', { expires: new Date(0), overwrite: true });
-  ctx.status = 200;
-  ctx.body = { code: 200 };
 };

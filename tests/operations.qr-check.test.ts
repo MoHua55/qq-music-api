@@ -2,10 +2,8 @@ import './helpers/qrRoutes';
 import Koa from 'koa';
 import Router from 'koa-router';
 import request from 'supertest';
-import { qrCheck as legacyQrCheck } from '../src/controllers/login';
 import qrCheckOperationController from '../src/controllers/qrCheckOperation';
 import { qrCheck, qrCookieTokenOf } from '../src/routes/operations/qrCheck';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useQrUpstream } from './helpers/qrRoutes';
@@ -13,8 +11,6 @@ import { useQrUpstream } from './helpers/qrRoutes';
 const parity = createParityRunner(
   { name: 'qrCheck', node: '/login/qr/check', serverless: '/login/qr/check' },
   {
-    legacyNode: legacyQrCheck,
-    legacyServerless: legacyRoutes['/login/qr/check'],
     operation: qrCheck,
     operationNode: qrCheckOperationController,
   },
@@ -40,7 +36,7 @@ it.each([
   expect(qrCookieTokenOf(cookie)).toBe(expected);
 });
 
-describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/login/qr/check 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
   it.each(['valid', 'invalid', 'expired'] as const)('key %s 保留自然过期与等待', async (mode) => {
     const options = await upstream.options('check', { mode });
@@ -50,14 +46,13 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual(
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual(
       mode === 'valid'
         ? { code: 801, message: 'Waiting for QR scan' }
         : { code: 800, message: 'QR code expired' },
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     { event: { type: 'scanned' as const, payload: null }, code: 802 },
@@ -74,11 +69,10 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toMatchObject({ code });
-    expect(legs.legacy.headers!['set-cookie']).toHaveLength(code === 803 ? 1 : 0);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toMatchObject({ code });
+    expect(legs.operation.headers!['set-cookie']).toHaveLength(code === 803 ? 1 : 0);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     { failPhase: 'exchange' as const, businessCode: 20279 },
@@ -94,12 +88,11 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toMatchObject({ code: 800, failureStage: 'credential-exchange' });
-    expect(legs.legacy.headers!['set-cookie']).toEqual([]);
-    expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toMatchObject({ code: 800, failureStage: 'credential-exchange' });
+    expect(legs.operation.headers!['set-cookie']).toEqual([]);
+    expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '',
@@ -115,13 +108,12 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
       upstream.calls,
       await upstream.options('check'),
     );
-    expect(legs.legacy.status).toBe(
+    expect(legs.operation.status).toBe(
       query.includes('fixture-invalid') || (runtime === 'node' && query === '?key=&key=other')
         ? 200
         : 400,
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each(['second', 'empty-first', 'unused'] as const)('重复 key %s 保留原取法', async (kind) => {
     const options = await upstream.options('check');
@@ -133,9 +125,10 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
           ? '?key=&key=' + key
           : '?key=' + key + '&unused=&unused=b';
     const legs = await parity(runtime, '/login/qr/check' + query, upstream.calls, options);
-    expect(legs.legacy.status).toBe(runtime === 'serverless' && kind === 'empty-first' ? 400 : 200);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(
+      runtime === 'serverless' && kind === 'empty-first' ? 400 : 200,
+    );
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([408, 404, 403, 402, 405])('微信真实轮询码 %s', async (wechatCode) => {
     upstream.state.wechatCode = wechatCode;
@@ -146,9 +139,8 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
       upstream.calls,
       options,
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'serverless')
     it('前一把密钥封存的 key 仍能轮询', async () => {
@@ -159,9 +151,8 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
         upstream.calls,
         options,
       );
-      expect(legs.legacy.status).toBe(200);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(200);
+      expect(legs.host).toEqual(legs.operation);
     });
   if (runtime === 'node')
     it.each([
@@ -190,13 +181,11 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/check 新旧实现比对（%s）', (r
           cookies: Array.isArray(cookies) ? cookies : cookies ? [cookies] : [],
         };
       };
-      const legacy = await call(legacyQrCheck),
-        operation = await call(qrCheckOperationController);
-      expect(legacy.body.code).toBe(803);
-      expect(legacy.cookies).toHaveLength(fixture.signed ? 2 : 1);
-      expect(legacy.cookies.every((cookie: string) => cookie.includes('; secure'))).toBe(
+      const operation = await call(qrCheckOperationController);
+      expect(operation.body.code).toBe(803);
+      expect(operation.cookies).toHaveLength(fixture.signed ? 2 : 1);
+      expect(operation.cookies.every((cookie: string) => cookie.includes('; secure'))).toBe(
         fixture.secure,
       );
-      expect(operation).toEqual(legacy);
     });
 });

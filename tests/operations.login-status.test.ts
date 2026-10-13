@@ -1,7 +1,5 @@
 import './helpers/sessionRoutes';
-import { loginStatus as legacyLoginStatus } from '../src/controllers/login';
 import { loginStatus } from '../src/routes/operations/loginStatus';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { CONTRACT_PROFILE } from './helpers/contractUpstream';
 import { createParityRunner } from './helpers/operationParity';
@@ -11,13 +9,11 @@ import { useSessionUpstream } from './helpers/sessionRoutes';
 const parity = createParityRunner(
   { name: 'loginStatus', node: '/login/status', serverless: '/login/status' },
   {
-    legacyNode: legacyLoginStatus,
-    legacyServerless: legacyRoutes['/login/status'],
     operation: loginStatus,
   },
 );
 
-describe.each(CATALOG_RUNTIMES)('/login/status 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/login/status 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
   it.each(['valid', 'missing', 'invalid', 'expired'] as const)('会话状态 %s', async (mode) => {
     const legs = await parity(
@@ -26,17 +22,16 @@ describe.each(CATALOG_RUNTIMES)('/login/status 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(mode),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.body).toEqual(
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual(
       mode === 'valid'
         ? { code: 200, data: { profile: CONTRACT_PROFILE } }
         : { code: 200, data: {} },
     );
-    expect(legs.legacy.calls.flatMap((call) => call.rpc.map((rpc) => rpc.method))).toEqual(
+    expect(legs.operation.calls.flatMap((call) => call.rpc.map((rpc) => rpc.method))).toEqual(
       mode === 'valid' ? ['GetLoginUserInfo'] : [],
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it.each([
@@ -58,11 +53,10 @@ describe.each(CATALOG_RUNTIMES)('/login/status 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(status);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.legacy.calls[0].rpc[0].method).toBe('GetLoginUserInfo');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(status);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.operation.calls[0].rpc[0].method).toBe('GetLoginUserInfo');
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it.each(['network', 'http'] as const)('上游 %s 失败', async (kind) => {
@@ -72,10 +66,9 @@ describe.each(CATALOG_RUNTIMES)('/login/status 新旧实现比对（%s）', (run
       });
     else upstream.state.httpStatus = 503;
     const legs = await parity(runtime, '/login/status', upstream.calls, await upstream.options());
-    expect(legs.legacy.status).toBe(500);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(500);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
   });
 
   it('空的资料字段照旧转交', async () => {
@@ -86,9 +79,8 @@ describe.each(CATALOG_RUNTIMES)('/login/status 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options(),
     );
-    expect(legs.legacy.status).toBe(200);
-    expect(legs.legacy.calls).toHaveLength(1);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
   });
 });

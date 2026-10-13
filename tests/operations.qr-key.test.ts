@@ -1,17 +1,15 @@
 import './helpers/qrRoutes';
-import { qrKey as legacyQrKey } from '../src/controllers/login';
 import { qrKey } from '../src/routes/operations/qrKey';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useQrUpstream } from './helpers/qrRoutes';
 
 const parity = createParityRunner(
   { name: 'qrKey', node: '/login/qr/key', serverless: '/login/qr/key' },
-  { legacyNode: legacyQrKey, legacyServerless: legacyRoutes['/login/qr/key'], operation: qrKey },
+  { operation: qrKey },
 );
 
-describe.each(CATALOG_RUNTIMES)('/login/qr/key 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/login/qr/key 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
   it.each([
     '',
@@ -35,9 +33,8 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/key 新旧实现比对（%s）', (run
       query === '?channel=' ||
       query.startsWith('?channel=&') ||
       (runtime === 'node' && query.includes('&channel='));
-    expect(legs.legacy.status).toBe(invalid ? 400 : 200);
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(invalid ? 400 : 200);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     '',
@@ -51,11 +48,10 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/key 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options('key', { relay: false }),
     );
-    expect(legs.legacy.status).toBe(
+    expect(legs.operation.status).toBe(
       runtime === 'serverless' && ['?channel=qq', '?channel=mobile'].includes(query) ? 400 : 200,
     );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
   it.each([
     { failPhase: 'bootstrap' as const, httpStatus: 503 },
@@ -72,10 +68,9 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/key 新旧实现比对（%s）', (run
       upstream.calls,
       await upstream.options('key'),
     );
-    expect(legs.legacy.status).toBe(runtime === 'node' && state.failPhase === 'qr' ? 200 : 502);
-    expect(JSON.stringify(legs.legacy.body)).not.toContain('fixture-private');
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation.status).toBe(runtime === 'node' && state.failPhase === 'qr' ? 200 : 502);
+    expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
+    expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'node')
     it.each([
@@ -88,8 +83,7 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/key 新旧实现比对（%s）', (run
         upstream.calls,
         await upstream.options('key', setup),
       );
-      expect(legs.legacy.status).toBe(status);
-      expect(legs.operation).toEqual(legs.legacy);
-      expect(legs.host).toEqual(legs.legacy);
+      expect(legs.operation.status).toBe(status);
+      expect(legs.host).toEqual(legs.operation);
     });
 });

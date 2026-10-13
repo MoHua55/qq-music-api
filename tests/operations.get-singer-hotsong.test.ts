@@ -1,6 +1,4 @@
-import legacyGetSingerHotsong from '../src/controllers/getSingerHotsong';
 import { getSingerHotsong } from '../src/routes/operations/getSingerHotsong';
-import { legacyRoutes } from '../src/serverless/legacyRoutes';
 import {
   CATALOG_RUNTIMES,
   type CatalogRuntimeName,
@@ -17,8 +15,6 @@ const parity = createParityRunner(
     serverless: '/getSingerHotsong',
   },
   {
-    legacyNode: legacyGetSingerHotsong,
-    legacyServerless: legacyRoutes['/getSingerHotsong'],
     operation: getSingerHotsong,
   },
 );
@@ -132,7 +128,7 @@ const cases: ParityCase[] = [
   },
 ];
 
-describe.each(CATALOG_RUNTIMES)('/getSingerHotsong 新旧实现比对（%s）', (runtime) => {
+describe.each(CATALOG_RUNTIMES)('/getSingerHotsong 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useCatalogUpstream(runtime);
   it.each(cases)('$label', async (fixture) => {
     if (fixture.failure)
@@ -140,8 +136,8 @@ describe.each(CATALOG_RUNTIMES)('/getSingerHotsong 新旧实现比对（%s）', 
     else upstream.respond(fixture.body ?? hotsongs);
     const legs = await parity(runtime, `/getSingerHotsong${fixture.query}`, upstream.calls);
     const param = fixture.param[runtime];
-    expect(legs.legacy.status).toBe(fixture.status?.[runtime] ?? (param === null ? 400 : 200));
-    expect(legs.legacy.calls).toEqual(
+    expect(legs.operation.status).toBe(fixture.status?.[runtime] ?? (param === null ? 400 : 200));
+    expect(legs.operation.calls).toEqual(
       param === null
         ? []
         : [
@@ -169,11 +165,10 @@ describe.each(CATALOG_RUNTIMES)('/getSingerHotsong 新旧实现比对（%s）', 
           ],
     );
     if (param === null)
-      expect(legs.legacy.body).toEqual(
+      expect(legs.operation.body).toEqual(
         runtime === 'node' ? { response: 'no singermid' } : { data: { message: 'no singermid' } },
       );
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.host).toEqual(legs.operation);
   });
 });
 
@@ -181,8 +176,7 @@ describe('/getSingerHotsong Node 的可选路径不代替查询', () => {
   const upstream = useCatalogUpstream('node');
   it('只带路径仍回 400', async () => {
     const legs = await parity('node', '/getSingerHotsong/fixture-singer/20/3', upstream.calls);
-    expect(legs.legacy).toEqual({ status: 400, body: { response: 'no singermid' }, calls: [] });
-    expect(legs.operation).toEqual(legs.legacy);
-    expect(legs.host).toEqual(legs.legacy);
+    expect(legs.operation).toEqual({ status: 400, body: { response: 'no singermid' }, calls: [] });
+    expect(legs.host).toEqual(legs.operation);
   });
 });
