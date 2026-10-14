@@ -11,6 +11,7 @@ export type QqErrorKind =
   | BusinessErrorKind
   | 'input'
   | 'auth-missing'
+  | 'feature-unavailable'
   | 'network'
   | 'upstream-http'
   | 'invalid-response'
@@ -59,6 +60,11 @@ export interface SafeQqError {
 const defaults: Record<QqErrorKind, { key: string; message: string; status: number }> = {
   input: { key: 'input.invalid', message: 'Invalid request', status: 400 },
   'auth-missing': { key: 'auth.required', message: 'Login required', status: 401 },
+  'feature-unavailable': {
+    key: 'feature.unavailable',
+    message: 'Feature is not enabled',
+    status: 501,
+  },
   'credential-invalid': { key: 'auth.credential-invalid', message: 'Login required', status: 401 },
   'rate-limited': { key: 'upstream.rate-limited', message: 'Too many requests', status: 429 },
   network: { key: 'network.unknown', message: 'Network request failed', status: 502 },

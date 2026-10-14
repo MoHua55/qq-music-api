@@ -29,6 +29,9 @@ export const UPSTREAM_OPERATIONS = [
   /** 已验证调用形状，非零码的含义尚未确认，保持未知。 */
   'playlist.subscribe',
   'playlist.unsubscribe',
+  'song.like',
+  'song.unlike',
+  'song.identity-check',
   /** 建立／删除按各自操作保留未知非零码，不扩大凭证失效语义。 */
   'playlist.create',
   'playlist.delete',

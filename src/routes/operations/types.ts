@@ -32,6 +32,8 @@ export interface OperationRequest {
   readonly token: string | undefined;
   /** serverless 是否配置了会话密钥，只传能力判断，不传密钥本身。 */
   readonly sessionConfigured?: boolean;
+  /** 仅可信部署配置能开启未完成真账号验证的写入，不从请求参数读取。 */
+  readonly unverifiedWritesEnabled?: boolean;
   /** 登录服务。serverless 每次请求现建，所以只在真的用到时才调用。 */
   service(): Promise<QrLoginService>;
   readonly qr?: Partial<QrRouteService>;

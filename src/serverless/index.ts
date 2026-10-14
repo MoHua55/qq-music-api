@@ -21,6 +21,7 @@ import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
@@ -84,6 +85,7 @@ export interface ServerlessEnv {
   QQ_PLAYBACK_HINTS_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
+  QQ_UNVERIFIED_WRITES_ENABLED?: string;
 }
 
 /**
@@ -165,6 +167,7 @@ const routes: Record<string, RouteHandler> = {
   '/user/playlist/rename': operationRoute(playlistRename),
   '/user/playlist/delete': operationRoute(playlistDelete),
   '/user/playlist/subscribe': operationRoute(playlistSubscribe),
+  '/user/song/like': operationRoute(songLike),
   '/user/subscription-status': operationRoute(subscriptionStatus),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
@@ -248,6 +251,7 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist/rename',
   '/user/playlist/delete',
   '/user/playlist/subscribe',
+  '/user/song/like',
   '/user/subscription-status',
   '/user/playlist',
   '/user/albums',

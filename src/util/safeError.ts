@@ -19,6 +19,7 @@ export const UPSTREAM_PHASES = [
   'get-user-vip',
   'playlist-track-write',
   'playlist-subscribe',
+  'song-like',
   'playlist-create',
   'playlist-delete',
   'playlist-rename',

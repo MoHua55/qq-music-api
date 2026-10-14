@@ -90,6 +90,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
+  { name: 'songLike', method: 'POST', routePath: '/user/song/like', category: 'User' },
   { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
   { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
   { name: 'playlistRename', method: 'POST', routePath: '/user/playlist/rename', category: 'User' },
@@ -303,6 +304,11 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list. Album subscription writes are not enabled.',
     bodyExample: { tid: '70001', subscribed: true },
+  },
+  songLike: {
+    description:
+      'Experimental catalog-song like/unlike. Disabled by default; trusted deployments must set QQ_UNVERIFIED_WRITES_ENABLED=1 for controlled verification. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state. The public capability remains false.',
+    bodyExample: { song: { id: 101, mid: 'FixtureSongA1', type: 0 }, liked: true },
   },
   subscriptionStatus: {
     description:

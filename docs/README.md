@@ -78,6 +78,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | 环境变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `PORT` | `3200` | HTTP 服务端口 |
+| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 只在受控测试部署设为 `1`，开启尚未完成真账号验证的红心写入；能力声明仍为 false |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
@@ -139,6 +140,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `POST /user/playlist/tracks` | 是 | 往自己的歌单加歌、删歌 | ✓ |
 | `POST /user/playlist/create`、`/rename`、`/delete` | 是 | 建立、改名、删除自己的歌单 | ✓ |
 | `POST /user/playlist/subscribe` | 是 | 收藏、取消收藏歌单 | ✓ |
+| `POST /user/song/like` | 是 | 受控测试的红心、取消红心，默认关闭 | ✓ |
 | `GET /user/subscription-status` | 是 | 查歌单、专辑、歌曲有没有收藏 | ✓ |
 | **推荐与电台** | | | |
 | `GET /user/guess-you-like` | 是 | 猜你喜欢，每次几首 | ✓ |
@@ -152,6 +154,17 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
 搜索、歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。
+
+## 红心写入（默认关闭）
+
+`POST /user/song/like` 收 JSON `{ song: { id, mid, type: 0 }, liked }`。
+id 必须是正的安全整数，mid 是 1–64 位字母或数字，type 必填且只能是数字 0，liked 必须是布尔值；不收额外字段。
+先读歌曲详情核对 id／mid，再读红心状态；已是目标状态也要确认后才回 `{ code: 200, liked }`。
+需要变更时仅向系统目录 201 写一次，再读回目标状态；写入和确认流程不自动重试。
+关联无法确认、写入回应不明或读回未知／不符时回安全 `502`，`retryable: false`，不要盲目重送。
+默认回 `501`＋`feature.unavailable`，受控测试部署明确设置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才可使用。
+Serverless 未配置会话密钥时仍按既有规则回 `501`。
+`features.mutations.likeSong` 保持 false，离线测试不能证明上游实写可用。
 
 ## QQ 音乐原生扫码登录
 
