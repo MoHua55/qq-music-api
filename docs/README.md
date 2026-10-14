@@ -32,14 +32,30 @@ $env:PORT = '3200'
 node node_modules/@yakult-green-tea/qq-music-api/dist/src/app.js
 ```
 
-本地 Docker 镜像的构建和运行：
+本地 Docker 使用 Node.js 24 LTS，构建时编译，运行时只安装生产依赖并启动 `dist`。
+先在当前环境设置自己的 `QQ_SESSION_SECRET`，再构建和运行：
 
 ```powershell
 npm run build:local-images
 npm run run:images
 ```
 
-默认映射本机 3200 端口。嵌入方通过 npm 安装本包时，需要更新依赖版本、锁文件并重新构建，才能用到新版本。
+默认映射本机 3200 端口，镜像标签跟随 package.json 的版本。
+`run:images` 挂载命名卷 `qq-music-api-state`，保存设备文件和加密会话；重建容器时复用同一个卷及密钥。
+容器默认使用 `QQ_AUTH_STATE_PATH=/app/.auth-state/qq-device.json` 和
+`QQ_AUTH_SESSION_PATH=/app/.auth-state/qq-sessions.json`。
+没设置 `QQ_SESSION_SECRET` 时会话只放内存，重启后需要重新登录；不要把凭证保存成明文。
+自行使用 bind mount 时，要让容器的 node 用户有写入权限。
+
+构建不会推送镜像。远端地址必须是自己的 registry/repository，tag 与 push 分开执行：
+
+```powershell
+npm run tag:images -- your-registry/your-repository:your-tag
+npm run push:images -- your-registry/your-repository:your-tag
+```
+
+第二条会发布到指定地址，只在你明确决定推送时运行。
+嵌入方通过 npm 安装本包时，需要更新依赖版本、锁文件并重新构建，才能用到新版本。
 
 ## API Explorer
 
@@ -64,9 +80,10 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `PORT` | `3200` | HTTP 服务端口 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
+| `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
-| `QQ_SESSION_SECRET` | 无 | Serverless 会话加密密钥 |
+| `QQ_SESSION_SECRET` | 无 | Serverless 会话或 Node 持久会话的加密密钥；持久部署重启时保持不变 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
 
 设备身份文件不包含用户凭证。多实例部署应各自指定身份文件，避免多个实例共用同一个设备身份。
