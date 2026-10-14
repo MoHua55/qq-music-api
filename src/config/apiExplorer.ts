@@ -116,6 +116,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'User',
   },
   { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
+  { name: 'userDailySongs', method: 'GET', routePath: '/user/daily-songs', category: 'User' },
   {
     name: 'getRecommendPlaylists',
     method: 'GET',
@@ -446,6 +447,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
+  },
+  userDailySongs: {
+    description:
+      "Get today's Daily 30 songs for the authenticated user. It reads the account's own daily playlist, so it works whether or not the playlist is in your favorites. Songs keep the upstream format. Without a session it answers 401; when the upstream returns no songs it answers 422. There is no refresh parameter.",
   },
   getGuessYouLike: {
     description:

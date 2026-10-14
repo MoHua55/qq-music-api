@@ -22,6 +22,7 @@ const STATIC_ROUTES = new Set([
   '/user/liked-songs',
   '/user/playlist-detail',
   '/user/guess-you-like',
+  '/user/daily-songs',
   '/recommend/playlists',
   '/recommend/categories',
   '/recommend/category-playlists',

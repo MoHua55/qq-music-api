@@ -43,7 +43,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
   lyrics: { getLyrics: runtime === 'node', getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,
-    getDailySongs: false,
+    getDailySongs: true,
     getRecommendedCollections: true,
     getHistoryEntries: false,
     getHistoryDates: false,

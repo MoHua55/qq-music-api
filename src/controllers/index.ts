@@ -19,6 +19,7 @@ import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
 import { withControllerLogging } from '../util/observability';
@@ -65,6 +66,7 @@ export default {
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
+  userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),
   playlistRename: withControllerLogging('playlistRename', operationController(playlistRename)),

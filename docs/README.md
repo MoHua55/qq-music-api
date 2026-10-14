@@ -237,6 +237,23 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - 上游说成功但一首歌都没给，回 `422`（`errorKey: resource.not-found`）。
 - Serverless 部署没设 `QQ_SESSION_SECRET` 时回 `501`，和其他要登录的接口一样。
 
+### 每日 30 首
+
+`GET /user/daily-songs`，需要登录。拿当前账号今天的「每日 30 首」，不用先在 QQ 音乐里收藏它。
+
+```json
+{
+  "code": 200,
+  "songs": [{ "mid": "demo-song-mid", "id": 90001, "name": "示例歌曲", "singer": [], "album": {}, "file": {} }]
+}
+```
+
+- `songs` 里每首歌保持上游原来的格式，和猜你喜欢一样，通常是 30 首。
+- 不回歌单 id：上游这里给的 id 不可靠。没有 `refresh` 参数，同一天重复请求拿到的是同一批。
+- 没登录回 `401`；上游不认这组凭证也回 `401`，请重新登录。
+- 上游说成功但一首歌都没给，回 `422`（`errorKey: resource.not-found`）；上游格式不对回 `502`。
+- Serverless 部署没设 `QQ_SESSION_SECRET` 时回 `501`。
+
 ### 电台
 
 两条接口都需要登录，没登录回 `401`；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。
@@ -356,7 +373,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getDailySongs`、`getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
 | `playbackReports` | — | `reportPlayback` |
@@ -374,7 +391,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
     "configured": true,
     "features": {
       "library": { "getLikedSongs": true },
-      "recommendations": { "getDailySongs": false },
+      "recommendations": { "getDailySongs": true, "dislikeSong": false },
       "mutations": { "likeSong": false }
     }
   }

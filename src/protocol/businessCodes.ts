@@ -39,6 +39,8 @@ export const UPSTREAM_OPERATIONS = [
   'subscription.song-status',
   /** 猜你喜欢（`get_radio_track` id 99）。 */
   'recommend.guess-you-like',
+  /** 每日 30 首（带凭证按系统目录 202 读 `uniform_get_Dissinfo`），要登录。 */
+  'recommend.daily-songs',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
   'recommend.playlists',
   /** 歌单分类（`get_hot_category`），匿名。 */
@@ -217,6 +219,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['recommend.guess-you-like', 'recommend.playlists'],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
+  ),
+  ...credentialRejected(
+    ['recommend.daily-songs'],
+    '每日 30 首要登录，照电台路由处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['recommend.radio-list', 'recommend.radio-tracks'],
