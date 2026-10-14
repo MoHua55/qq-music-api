@@ -258,55 +258,59 @@ export const getAuthenticatedPlayUrls = async (
     },
     auth.credential,
   );
-  const sip = Array.isArray(data.sip) ? data.sip.map(stringOf).filter(Boolean) : [];
-  let domain: string | undefined = sip.find((value) => !value.startsWith('http://ws')) ?? sip[0];
-  if (!domain) {
-    const firstPurl = (Array.isArray(data.midurlinfo) ? data.midurlinfo : [])
-      .map(dictionaryOf)
-      .map((item) => stringOf(item.purl))
-      .find(Boolean);
-    if (firstPurl) {
-      try {
-        // sjy6 is the responsive compatible route observed across authenticated playback. Trying
-        // it first keeps the common Serverless path to one Range request instead of dispatch + N.
-        domain =
-          (await streamCdnSelector.select([PREFERRED_STREAM_DOMAIN], firstPurl)) ?? undefined;
-        if (!domain) {
-          const dispatch = await callMusicu(
-            http,
-            auth.device,
-            'get-cdn-dispatch',
-            'music.audioCdnDispatch.cdnDispatch',
-            'GetCdnDispatch',
-            {
-              guid,
-              uid: '0',
-              use_new_domain: 1,
-              use_ipv6: 1,
-            },
-            auth.credential,
-          );
-          const dispatchSip = Array.isArray(dispatch.sip)
-            ? dispatch.sip.map(stringOf).filter(Boolean)
-            : [];
-          const alternativeSip = dispatchSip.filter((value) => !isPreferredStreamDomain(value));
-          const refreshMs =
-            (numberOf(dispatch.refreshTime) ?? DEFAULT_CDN_REFRESH_MS / 1_000) * 1_000;
+  /** 播放链接的域名：先用回应里的 sip，没有就拿第一个 purl 去测 CDN；都没有时回 undefined。 */
+  const streamDomainOf = async (payload: Dictionary): Promise<string | undefined> => {
+    const sip = Array.isArray(payload.sip) ? payload.sip.map(stringOf).filter(Boolean) : [];
+    let domain: string | undefined = sip.find((value) => !value.startsWith('http://ws')) ?? sip[0];
+    if (!domain) {
+      const firstPurl = (Array.isArray(payload.midurlinfo) ? payload.midurlinfo : [])
+        .map(dictionaryOf)
+        .map((item) => stringOf(item.purl))
+        .find(Boolean);
+      if (firstPurl) {
+        try {
+          // sjy6 is the responsive compatible route observed across authenticated playback. Trying
+          // it first keeps the common Serverless path to one Range request instead of dispatch + N.
           domain =
-            (await streamCdnSelector.select(
-              [...alternativeSip, DEFAULT_STREAM_DOMAIN],
-              firstPurl,
-              refreshMs,
-            )) ?? undefined;
+            (await streamCdnSelector.select([PREFERRED_STREAM_DOMAIN], firstPurl)) ?? undefined;
+          if (!domain) {
+            const dispatch = await callMusicu(
+              http,
+              auth.device,
+              'get-cdn-dispatch',
+              'music.audioCdnDispatch.cdnDispatch',
+              'GetCdnDispatch',
+              {
+                guid,
+                uid: '0',
+                use_new_domain: 1,
+                use_ipv6: 1,
+              },
+              auth.credential,
+            );
+            const dispatchSip = Array.isArray(dispatch.sip)
+              ? dispatch.sip.map(stringOf).filter(Boolean)
+              : [];
+            const alternativeSip = dispatchSip.filter((value) => !isPreferredStreamDomain(value));
+            const refreshMs =
+              (numberOf(dispatch.refreshTime) ?? DEFAULT_CDN_REFRESH_MS / 1_000) * 1_000;
+            domain =
+              (await streamCdnSelector.select(
+                [...alternativeSip, DEFAULT_STREAM_DOMAIN],
+                firstPurl,
+                refreshMs,
+              )) ?? undefined;
+          }
+        } catch (error) {
+          logger.warn('qq-auth.cdn-selection-failed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
-      } catch (error) {
-        logger.warn('qq-auth.cdn-selection-failed', {
-          error: error instanceof Error ? error.message : String(error),
-        });
       }
     }
-  }
-  domain ??= DEFAULT_STREAM_DOMAIN;
+    return domain;
+  };
+  const domain = (await streamDomainOf(data)) ?? DEFAULT_STREAM_DOMAIN;
   const playUrl: Dictionary = { ...skipped };
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
   const loggedQuality = options.preview
