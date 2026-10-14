@@ -83,6 +83,24 @@ describe('default test suite layout', () => {
       (file) => !file.startsWith(`${LEGACY_DIR}${path.sep}`),
     );
 
+  it('runs the expanded Folia contracts offline in both commands', () => {
+    const contracts = packageScripts()['test:contracts'];
+    expect(contracts).toContain('--setupFilesAfterEnv ./tests/helpers/offlineNetwork.cjs');
+    for (const file of [
+      'tests/playlist.track-writes.routes.test.ts',
+      'tests/subscriptions.routes.test.ts',
+      'tests/recommend.routes.test.ts',
+      'tests/daily-songs.routes.test.ts',
+      'tests/operations.music-play-controlled-hints.test.ts',
+      'tests/services.qr-login.test.ts',
+      'tests/operations.qr-check.test.ts',
+      'tests/errors.runtime-baseline.test.ts',
+    ]) {
+      expect(contracts.split(' ')).toContain(file);
+      expect(defaultSuiteFiles()).toContain(path.join(ROOT, file));
+    }
+  });
+
   it('has no status-set-only route test left in the default suite', () => {
     const offenders = defaultSuiteFiles()
       .filter((file) => STATUS_SET_ONLY.test(fs.readFileSync(file, 'utf8')))
