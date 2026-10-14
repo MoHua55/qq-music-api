@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { previewMediaIdOf, validMediaIdOf } from '../src/protocol/previewFile';
 
 // 要不要去要试听文件：只有单曲详情里确认 size_try > 0，而且有可信的 media id（前端给的有效 mediaId 优先，
@@ -22,6 +24,11 @@ describe('valid media id', () => {
 });
 
 describe('preview media id', () => {
+  it('公开说明把 size_try 当作试听文件存在标记，不当作文件大小', () => {
+    const docs = readFileSync(resolve(__dirname, '../docs/README.md'), 'utf8');
+    expect(docs).toContain('`file.size_try` 大于 0 代表有试听文件');
+    expect(docs).not.toContain('大小是 `file.size_try`');
+  });
   it.each([
     [
       'has a preview',
