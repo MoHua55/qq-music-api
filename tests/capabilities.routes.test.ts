@@ -30,7 +30,7 @@ const expectedFeatures = (node: boolean) => ({
     getArtistSongs: true,
     getArtistAlbums: true,
     getCloudTracks: false,
-    getSubscriptionStatus: false,
+    getSubscriptionStatus: true,
   },
   playback: { getSongDetail: true, getAudioSource: true, getReplacement: false, preview: true },
   search: { searchSongs: node },
@@ -52,7 +52,7 @@ const expectedFeatures = (node: boolean) => ({
   mutations: {
     updatePlaylistTracks: true,
     likeSong: false,
-    subscribePlaylist: false,
+    subscribePlaylist: true,
     subscribeAlbum: false,
   },
   playbackReports: { reportPlayback: false },

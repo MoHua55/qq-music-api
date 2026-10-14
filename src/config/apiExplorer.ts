@@ -91,6 +91,18 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
+  {
+    name: 'playlistSubscribe',
+    method: 'POST',
+    routePath: '/user/playlist/subscribe',
+    category: 'User',
+  },
+  {
+    name: 'subscriptionStatus',
+    method: 'GET',
+    routePath: '/user/subscription-status',
+    category: 'User',
+  },
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
   { name: 'getUserAlbums', method: 'GET', routePath: '/user/albums', category: 'User' },
   { name: 'getUserLikedSongs', method: 'GET', routePath: '/user/liked-songs', category: 'User' },
@@ -268,6 +280,31 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
 ];
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  playlistSubscribe: {
+    description:
+      'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list. Album subscription writes are not enabled.',
+    bodyExample: { tid: '70001', subscribed: true },
+  },
+  subscriptionStatus: {
+    description:
+      'Query verified playlist, album or song subscription protocols, up to 100 identifiers. items report subscribed, not-subscribed or unknown; a failed query returns an error, never false.',
+    queryParams: [
+      {
+        key: 'type',
+        label: 'type',
+        required: true,
+        description: 'playlist, album or song',
+        defaultValue: 'playlist',
+      },
+      {
+        key: 'ids',
+        label: 'ids',
+        required: true,
+        description: 'Comma-separated numeric playlist IDs or album/song MIDs',
+        defaultValue: '70001,70002',
+      },
+    ],
+  },
   playlistTracks: {
     description:
       'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 is an explicit catalog-song declaration, not the Android response type. changed false means no change was reported; add results include existed for each song. Likes are not enabled.',

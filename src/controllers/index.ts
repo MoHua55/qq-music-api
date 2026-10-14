@@ -13,6 +13,7 @@ import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
 import { withControllerLogging } from '../util/observability';
@@ -60,6 +61,14 @@ export default {
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
+  playlistSubscribe: withControllerLogging(
+    'playlistSubscribe',
+    operationController(playlistSubscribe),
+  ),
+  subscriptionStatus: withControllerLogging(
+    'subscriptionStatus',
+    operationController(subscriptionStatus),
+  ),
   getHotKey: withControllerLogging('getHotKey', getHotKey),
   getSearchByKey: withControllerLogging('getSearchByKey', getSearchByKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),

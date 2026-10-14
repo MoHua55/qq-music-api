@@ -16,6 +16,7 @@ import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
@@ -153,6 +154,8 @@ const routes: Record<string, RouteHandler> = {
   '/user/detail': operationRoute(userDetail),
   '/user/vip': operationRoute(userVip),
   '/user/playlist/tracks': operationRoute(playlistTracks),
+  '/user/playlist/subscribe': operationRoute(playlistSubscribe),
+  '/user/subscription-status': operationRoute(subscriptionStatus),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
     fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
@@ -231,6 +234,8 @@ const LOGIN_ROUTES = new Set([
   '/user/detail',
   '/user/vip',
   '/user/playlist/tracks',
+  '/user/playlist/subscribe',
+  '/user/subscription-status',
   '/user/playlist',
   '/user/albums',
   '/user/liked-songs',

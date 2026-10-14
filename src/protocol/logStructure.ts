@@ -38,6 +38,9 @@ const STATIC_ROUTES = new Set([
   '/user/playlist/create',
   '/user/playlist/rename',
   '/user/playlist/delete',
+  '/user/playlist/tracks',
+  '/user/playlist/subscribe',
+  '/user/subscription-status',
 ]);
 const CATALOG_ROUTES = new Set([
   'getSongListCategories',

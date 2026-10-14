@@ -30,7 +30,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
     getArtistSongs: true,
     getArtistAlbums: true,
     getCloudTracks: false,
-    getSubscriptionStatus: false,
+    getSubscriptionStatus: true,
   },
   playback: {
     getSongDetail: true,
@@ -57,7 +57,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
   mutations: {
     updatePlaylistTracks: true,
     likeSong: false,
-    subscribePlaylist: false,
+    subscribePlaylist: true,
     subscribeAlbum: false,
   },
   playbackReports: { reportPlayback: false },

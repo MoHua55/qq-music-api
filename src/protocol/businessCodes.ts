@@ -26,6 +26,12 @@ export const UPSTREAM_OPERATIONS = [
   'user.vip',
   /** 写入前的自建清单核对；不借用其他操作的非零码语义。 */
   'playlist.owned-list',
+  /** 已验证调用形状，非零码的含义尚未确认，保持未知。 */
+  'playlist.subscribe',
+  'playlist.unsubscribe',
+  'subscription.playlist-status',
+  'subscription.album-status',
+  'subscription.song-status',
   /** 猜你喜欢（`get_radio_track` id 99）。 */
   'recommend.guess-you-like',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */

@@ -166,6 +166,14 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 ### 收藏歌单分页
 
+### 收藏与查询收藏状态
+
+`POST /user/playlist/subscribe`：`{ "tid": "70001", "subscribed": true }` 收藏歌单，`false` 取消收藏。只接受本人的会话，账号参数由服务器填；只有上游 `result: 0` 且失败清单为空才回 `{ code: 200, subscribed }`，写入不自动重试。失败后先读回状态再决定下一步，不盲目重送。
+
+`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单还做过收藏前后的状态转换；专辑收藏写入与红心写入等待各自真账号验证，当前不开放。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
+
+### 收藏歌单接着读
+
 自建与收藏歌单会合并去重。收藏每页读取 100 条，每轮最多 1000 条：
 
 - 全部读完时，`more: false`，`total` 等于本轮列表长度。
