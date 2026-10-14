@@ -161,7 +161,8 @@ export const callRoute = async (
     const pending =
       options.method === 'POST' ? request(server).post(path) : request(server).get(path);
     pending.set(options.headers ?? {});
-    if (options.body !== undefined) pending.send(options.body);
+    if (options.body !== undefined)
+      pending.set('Content-Type', 'application/json').send(JSON.stringify(options.body));
     const response = await pending;
     return {
       status: response.status,
