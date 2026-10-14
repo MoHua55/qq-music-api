@@ -99,11 +99,11 @@ describe.each(CATALOG_RUNTIMES)('歌单建立与删除（%s）', (runtime) => {
     expect(upstream.calls.flatMap((c) => c.rpc).map((r) => r.method)).toEqual(['GetPlaylistByUin']);
   });
   it.each([
-    [],
-    [{ ...owned, uin: '99999' }],
-    [{ ...owned, dirType: 2 }],
-    [owned, { ...owned }],
-  ])('非本人或不可靠的自建清单不删除', async (v_playlist) => {
+    { v_playlist: [] },
+    { v_playlist: [{ ...owned, uin: '99999' }] },
+    { v_playlist: [{ ...owned, dirType: 2 }] },
+    { v_playlist: [owned, { ...owned }] },
+  ])('非本人或不可靠的自建清单不删除', async ({ v_playlist }) => {
     upstream.state.rpcReplies!.GetPlaylistByUin.data = { v_playlist };
     expect((await call('delete', { tid: 70001 })).status).toBe(400);
     expect(upstream.calls.flatMap((c) => c.rpc).some((r) => r.method === 'DelPlaylist')).toBe(
