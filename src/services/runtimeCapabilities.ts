@@ -55,7 +55,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
   },
   radio: { getRadioList: true, getRadioTracks: true },
   mutations: {
-    updatePlaylistTracks: false,
+    updatePlaylistTracks: true,
     likeSong: false,
     subscribePlaylist: false,
     subscribeAlbum: false,

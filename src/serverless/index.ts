@@ -11,6 +11,7 @@ import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
+import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
@@ -151,6 +152,7 @@ const routes: Record<string, RouteHandler> = {
 
   '/user/detail': operationRoute(userDetail),
   '/user/vip': operationRoute(userVip),
+  '/user/playlist/tracks': operationRoute(playlistTracks),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
     fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
@@ -228,6 +230,7 @@ const LOGIN_ROUTES = new Set([
   '/logout',
   '/user/detail',
   '/user/vip',
+  '/user/playlist/tracks',
   '/user/playlist',
   '/user/albums',
   '/user/liked-songs',

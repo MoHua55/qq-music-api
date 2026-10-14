@@ -90,6 +90,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
+  { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
   { name: 'getUserAlbums', method: 'GET', routePath: '/user/albums', category: 'User' },
   { name: 'getUserLikedSongs', method: 'GET', routePath: '/user/liked-songs', category: 'User' },
@@ -267,6 +268,11 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
 ];
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  playlistTracks: {
+    description:
+      'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 is an explicit catalog-song declaration, not the Android response type. changed false means no change was reported; add results include existed for each song. Likes are not enabled.',
+    bodyExample: { tid: '70001', op: 'add', songs: [{ id: 101, type: 0 }] },
+  },
   userVip: {
     description:
       'Get membership flags for the signed-in account. isVip is true only when iVipFlag equals 1; false does not mean songs cannot play. Other known flags remain in upstream. No super-membership classification.',

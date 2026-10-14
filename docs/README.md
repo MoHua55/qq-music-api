@@ -158,7 +158,13 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `/user/vip` 的 `isVip` 只按 `iVipFlag === 1` 判断。`isVip = false` 不代表歌曲不能播放（免费账号领了听歌时长也可能播完整歌曲），播放仍以取链接结果为准。其他已知会员与权益旗标在 `upstream` 原样保留，不判断超级会员或豪华绿钻。缺会话回 401、Serverless 没配置密钥回 501；查不到本人可靠旗标回 502，不假装成免费账号，也不拿其他账号的结果代替。能力声明为 `features.user.getVip`。
 
-### 收藏歌单接着读
+### 修改自己的普通歌单
+
+`POST /user/playlist/tracks`，JSON 正文：`{ "tid": "70001", "op": "add", "songs": [{ "id": 101, "type": 0 }] }`。`op` 只收 `add` 或 `del`，每次 1–100 首。`type: 0` 表示调用方明确确认是普通曲库歌曲；上游固定送 `songType: 0`，Android 读到的 `type: 1` 或 `songtype: 13` 不能直接传来，未知类型会拒绝。
+
+服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增还回逐首 `songs: [{ id, existed }]`，重复加入当成没有变更。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心、其他歌曲类型等待各自实测再开放。能力 `features.mutations.updatePlaylistTracks` 为 true，`likeSong` 仍为 false。
+
+### 收藏歌单分页
 
 自建与收藏歌单会合并去重。收藏每页读取 100 条，每轮最多 1000 条：
 

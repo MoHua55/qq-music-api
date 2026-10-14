@@ -13,6 +13,8 @@ const firstOf = (value: string | string[] | undefined): string | undefined =>
 
 export const operationRequestOf = (ctx: Context): OperationRequest => ({
   runtime: 'node',
+  method: ctx.method,
+  body: async () => (ctx.request as { body?: unknown }).body,
   query: (name) => firstOf(ctx.query[name]),
   queryRaw: (name) => ctx.query[name],
   params: (ctx as Context & { params?: Record<string, string> }).params ?? {},

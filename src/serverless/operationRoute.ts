@@ -12,6 +12,7 @@ import { json } from './response';
 
 /** 入口路由上下文里转接用得到的部分。 */
 export interface OperationRouteContext {
+  request?: Request;
   env?: ServerlessEnv;
   options?: ServerlessOptions;
   url: URL;
@@ -27,8 +28,11 @@ export const operationRequestOf = ({
   service,
   env,
   options,
+  request,
 }: OperationRouteContext): OperationRequest => ({
   runtime: 'serverless',
+  method: request?.method ?? 'GET',
+  body: async () => request?.json(),
   query: (name) => url.searchParams.get(name) ?? undefined,
   // serverless 原来就只读第一个值，两个取法在这边是同一个。
   queryRaw: (name) => url.searchParams.get(name) ?? undefined,

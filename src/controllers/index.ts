@@ -9,6 +9,7 @@ import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
+import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
@@ -58,6 +59,7 @@ export default {
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
+  playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   getHotKey: withControllerLogging('getHotKey', getHotKey),
   getSearchByKey: withControllerLogging('getSearchByKey', getSearchByKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),

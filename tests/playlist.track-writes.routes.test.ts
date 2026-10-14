@@ -58,6 +58,7 @@ describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
     {},
     { ...input, dirId: 11 },
     { ...input, op: 'wrong' },
+    { ...input, op: ['add'] },
     { ...input, songs: [] },
     { ...input, songs: [{ id: 101, type: 1 }] },
     { ...input, songs: [{ id: 101, type: 13 }] },

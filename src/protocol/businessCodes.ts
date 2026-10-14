@@ -24,6 +24,8 @@ export const UPSTREAM_OPERATIONS = [
   'session.authenticated-read',
   /** 会员状态；未验证的非零码不按其他读取推断为凭证失效。 */
   'user.vip',
+  /** 写入前的自建清单核对；不借用其他操作的非零码语义。 */
+  'playlist.owned-list',
   /** 猜你喜欢（`get_radio_track` id 99）。 */
   'recommend.guess-you-like',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
