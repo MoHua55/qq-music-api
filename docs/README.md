@@ -78,7 +78,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | 环境变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `PORT` | `3200` | HTTP 服务端口 |
-| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 只在受控测试部署设为 `1`，开启尚未完成真账号验证的红心写入；能力声明仍为 false |
+| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 供候选接口的受控验证使用；已启用的红心接口不依赖此开关 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
@@ -140,7 +140,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `POST /user/playlist/tracks` | 是 | 往自己的歌单加歌、删歌 | ✓ |
 | `POST /user/playlist/create`、`/rename`、`/delete` | 是 | 建立、改名、删除自己的歌单 | ✓ |
 | `POST /user/playlist/subscribe` | 是 | 收藏、取消收藏歌单 | ✓ |
-| `POST /user/song/like` | 是 | 受控测试的红心、取消红心，默认关闭 | ✓ |
+| `POST /user/song/like` | 是 | 红心、取消红心，读回确认后才返回成功 | ✓ |
 | `GET /user/subscription-status` | 是 | 查歌单、专辑、歌曲有没有收藏 | ✓ |
 | **推荐与电台** | | | |
 | `GET /user/guess-you-like` | 是 | 猜你喜欢，每次几首 | ✓ |
@@ -155,16 +155,17 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 
 搜索、歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。
 
-## 红心写入（默认关闭）
+## 红心写入
 
 `POST /user/song/like` 收 JSON `{ song: { id, mid, type: 0 }, liked }`。
 id 必须是正的安全整数，mid 是 1–64 位字母或数字，type 必填且只能是数字 0，liked 必须是布尔值；不收额外字段。
 先读歌曲详情核对 id／mid，再读红心状态；已是目标状态也要确认后才回 `{ code: 200, liked }`。
 需要变更时仅向系统目录 201 写一次，再读回目标状态；写入和确认流程不自动重试。
 关联无法确认、写入回应不明或读回未知／不符时回安全 `502`，`retryable: false`，不要盲目重送。
-默认回 `501`＋`feature.unavailable`，受控测试部署明确设置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才可使用。
+默认启用，不需要实验写入开关；没有登录会话回 `401`。
 Serverless 未配置会话密钥时仍按既有规则回 `501`。
-`features.mutations.likeSong` 保持 false，离线测试不能证明上游实写可用。
+`features.mutations.likeSong` 为 true，专辑写入能力仍为 false。
+Node 已用手机 QQ 与微信各完成一次红心、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
 
 ## QQ 音乐原生扫码登录
 
@@ -260,13 +261,13 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `POST /user/playlist/tracks`，JSON 正文：`{ "tid": "70001", "op": "add", "songs": [{ "id": 101, "type": 0 }] }`。`op` 只收 `add` 或 `del`，每次 1–100 首。`type: 0` 表示调用方明确确认是普通曲库歌曲；上游固定送 `songType: 0`，Android 读到的 `type: 1` 或 `songtype: 13` 不能直接传来，未知类型会拒绝。
 
-服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增和删除都只回这两个字段，没有逐首结果：上游给的逐首旗标实测不能说明歌曲原本在不在，准确的逐首判断留待后续。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心、其他歌曲类型等待各自实测再开放。能力 `features.mutations.updatePlaylistTracks` 为 true，`likeSong` 仍为 false。
+服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增和删除都只回这两个字段，没有逐首结果：上游给的逐首旗标实测不能说明歌曲原本在不在，准确的逐首判断留待后续。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心使用独立的 `/user/song/like`，其他歌曲类型仍未开放。能力 `features.mutations.updatePlaylistTracks` 和 `likeSong` 为 true。
 
 ### 收藏与查询收藏状态
 
 `POST /user/playlist/subscribe`：`{ "tid": "70001", "subscribed": true }` 收藏歌单，`false` 取消收藏。只接受本人的会话，账号参数由服务器填；只有上游 `result: 0` 且失败清单为空才回 `{ code: 200, subscribed }`，写入不自动重试。失败后先读回状态再决定下一步，不盲目重送。
 
-`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单还做过收藏前后的状态转换；专辑收藏写入与红心写入等待各自真账号验证，当前不开放。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
+`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单与红心还做过写入前后的状态转换；专辑写入未完成双通道验证，默认不开放。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
 
 ### 收藏歌单接着读
 
@@ -454,7 +455,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
-| `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
+| `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist` | `subscribeAlbum` |
 | `playbackReports` | — | `reportPlayback` |
 
 已有的 `/getSongListDetail` 继续返回原来的歌单数据；`catalog.getPlaylistDetail: false` 指的是尚未提供单独的歌单 metadata 能力。纯前端的可用性判断与本地诊断不属于这里的后端方法声明。
@@ -471,7 +472,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
     "features": {
       "library": { "getLikedSongs": true },
       "recommendations": { "getDailySongs": true, "dislikeSong": false },
-      "mutations": { "likeSong": false }
+      "mutations": { "likeSong": true, "subscribeAlbum": false }
     }
   }
 }

@@ -307,7 +307,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   songLike: {
     description:
-      'Experimental catalog-song like/unlike. Disabled by default; trusted deployments must set QQ_UNVERIFIED_WRITES_ENABLED=1 for controlled verification. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state. The public capability remains false.',
+      'Like or unlike a catalog song for the signed-in account. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state. Album subscription writes remain disabled by default.',
     bodyExample: { song: { id: 101, mid: 'FixtureSongA1', type: 0 }, liked: true },
   },
   subscriptionStatus: {
