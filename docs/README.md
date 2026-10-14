@@ -172,7 +172,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `POST /user/playlist/tracks`，JSON 正文：`{ "tid": "70001", "op": "add", "songs": [{ "id": 101, "type": 0 }] }`。`op` 只收 `add` 或 `del`，每次 1–100 首。`type: 0` 表示调用方明确确认是普通曲库歌曲；上游固定送 `songType: 0`，Android 读到的 `type: 1` 或 `songtype: 13` 不能直接传来，未知类型会拒绝。
 
-服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增还回逐首 `songs: [{ id, existed }]`，重复加入当成没有变更。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心、其他歌曲类型等待各自实测再开放。能力 `features.mutations.updatePlaylistTracks` 为 true，`likeSong` 仍为 false。
+服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增还回逐首 `songs: [{ id, existed }]`；`existed` 仅保留上游原始旗标（0 为 false、1 为 true），不能用它判断歌曲原本是否存在。实测重复加歌和新歌混合时它也可能全为 false；整体变更看 `changed`，准确的逐首存在判断留待后续。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心、其他歌曲类型等待各自实测再开放。能力 `features.mutations.updatePlaylistTracks` 为 true，`likeSong` 仍为 false。
 
 ### 收藏与查询收藏状态
 

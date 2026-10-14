@@ -75,6 +75,7 @@ export const playlistTracksResult = async (
             ![0, 1].includes(item.existed as number)
           )
             throw new QqApiError('invalid-response');
+          // 原始旗标的布尔映射；实测重加仍可为 0，不能代表写入前已存在。
           return { id: item.songId, existed: item.existed === 1 };
         })
       : undefined;
