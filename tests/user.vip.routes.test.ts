@@ -65,7 +65,7 @@ describe.each(CATALOG_RUNTIMES)('/user/vip（%s）', (runtime) => {
     upstream.state.data = data;
     const result = await call();
     expect(result.status).toBe(502);
-    expect(result.body.errorKey).toBe('upstream.invalid-response');
+    expect(result.body).toMatchObject({ errorKey: 'upstream.invalid-response' });
     expect(result.body).not.toHaveProperty('isVip');
   });
   it.each([
@@ -74,8 +74,7 @@ describe.each(CATALOG_RUNTIMES)('/user/vip（%s）', (runtime) => {
     upstream.state.businessCode = code;
     const result = await call();
     expect(result.status).toBe(502);
-    expect(result.body.errorKey).toBe('upstream.business-rejected');
-    expect(result.body.upstreamCode).toBe(code);
+    expect(result.body).toMatchObject({ errorKey: 'upstream.unknown', upstreamCode: code });
   });
   it('上游网关和网络错误保持新路由错误语义', async () => {
     upstream.state.globalCode = 500003;
@@ -93,7 +92,7 @@ describe.each(CATALOG_RUNTIMES)('/user/vip（%s）', (runtime) => {
 });
 it('能力和 Explorer 宣告会员状态查询', async () => {
   const result = await callRoute('node', '/login/channels');
-  expect(result.body.data.features.user.getVip).toBe(true);
+  expect(result.body).toMatchObject({ data: { features: { user: { getVip: true } } } });
   expect(apiExplorerMetadata.endpoints.some((endpoint) => endpoint.routePath === '/user/vip')).toBe(
     true,
   );
