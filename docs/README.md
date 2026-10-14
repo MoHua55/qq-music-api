@@ -148,7 +148,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | 接口 | 参数 | 返回内容 |
 | --- | --- | --- |
 | `/user/detail` | 会话 | 当前用户资料 |
-| `/user/vip` | 会话 | 当前账号会员状态 `{ code: 200, isVip, upstream }`，只分免费与绿钻 |
+| `/user/vip` | 会话 | 当前账号会员状态 `{ code: 200, isVip, vipLevel, upstream }`，分免费、绿钻、超级会员 |
 | `/user/playlist` | 可选 `uid`、`favoriteOffset` | 自建与收藏歌单 |
 | `/user/liked-songs` | `offset`、`limit`，最多 100 | 内建“我喜欢”的歌曲分页 |
 | `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`，最多 100 | 登录用户自己歌单的歌曲分页，包括不公开歌单 |
@@ -156,7 +156,16 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `/user/playlist` 只支持当前账号。`uid` 不传就是本人，传其他账号会回 `400`，说明为 `uid must be the logged-in account`。
 
-`/user/vip` 的 `isVip` 只按 `iVipFlag === 1` 判断。`isVip = false` 不代表歌曲不能播放（免费账号领了听歌时长也可能播完整歌曲），播放仍以取链接结果为准。其他已知会员与权益旗标在 `upstream` 原样保留，不判断超级会员或豪华绿钻。缺会话回 401、Serverless 没配置密钥回 501；查不到本人可靠旗标回 502，不假装成免费账号，也不拿其他账号的结果代替。能力声明为 `features.user.getVip`。
+`/user/vip` 的 `vipLevel` 告诉你账号是哪一级会员：
+
+| `vipLevel` | 意思 | 怎么判断 |
+| --- | --- | --- |
+| `super` | 超级会员 | `HugeVip === 1` |
+| `green` | 绿钻会员 | `HugeVip === 0` 且 `iVipFlag === 1` |
+| `free` | 免费账号 | `HugeVip === 0` 且 `iVipFlag === 0` |
+| `unknown` | 判断不出来 | 缺 `HugeVip`，或旗标出现 0、1 以外的值 |
+
+`unknown` 不要当成免费账号处理。`iSuperVip` 在绿钻账号也是 1，不能用来认超级会员。`isVip` 和以前一样，只按 `iVipFlag === 1` 判断。这两个字段都不决定能不能播：免费账号领了听歌时长也可能播完整歌曲，播放仍以取链接结果为准。其他已知会员与权益旗标在 `upstream` 原样保留。缺会话回 401、Serverless 没配置密钥回 501；查不到本人可靠旗标回 502，不假装成免费账号，也不拿其他账号的结果代替。能力声明为 `features.user.getVip`。
 
 ### 建立、改名与删除自己的普通歌单
 

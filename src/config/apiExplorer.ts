@@ -330,7 +330,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   userVip: {
     description:
-      'Get membership flags for the signed-in account. isVip is true only when iVipFlag equals 1; false does not mean songs cannot play. Other known flags remain in upstream. No super-membership classification.',
+      'Get the membership level of the signed-in account. vipLevel is free, green (green diamond), super (super VIP) or unknown: HugeVip 1 means super, otherwise iVipFlag 1 means green and 0 means free; a missing or unexpected flag stays unknown instead of free. isVip is still true only when iVipFlag equals 1. Neither field decides playback: a free account may still play full songs. Other known flags remain in upstream.',
   },
   getCookie: {
     description: 'Get safe cookie status information.',

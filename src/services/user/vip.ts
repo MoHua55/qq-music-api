@@ -55,6 +55,21 @@ const descriptor = (session: AuthSession): MusicuDescriptor<Record<string, unkno
     },
   };
 };
+export type VipLevel = 'free' | 'green' | 'super' | 'unknown';
+
+/**
+ * 只有三级：HugeVip 为 1 是超级会员；HugeVip 为 0 时 iVipFlag 为 1 是绿钻、为 0 是免费。
+ * iSuperVip 在绿钻账号也是 1，不能拿来认超级会员。缺字段或出现没见过的值都回 unknown，不当成免费。
+ */
+export const vipLevelOf = (flags: Record<string, unknown>): VipLevel => {
+  const huge = flags.HugeVip;
+  const vip = flags.iVipFlag;
+  if (huge === 1) return 'super';
+  if (huge !== 0) return 'unknown';
+  if (vip === 1) return 'green';
+  return vip === 0 ? 'free' : 'unknown';
+};
+
 export const userVipResult = async (
   session: AuthSession | null,
   options: SessionMusicuOptions = {},
@@ -62,7 +77,7 @@ export const userVipResult = async (
   try {
     if (!session) throw new QqApiError('auth-missing');
     const upstream = await createSessionMusicuClient(session, options).execute(descriptor(session));
-    return okResult({ isVip: upstream.iVipFlag === 1, upstream });
+    return okResult({ isVip: upstream.iVipFlag === 1, vipLevel: vipLevelOf(upstream), upstream });
   } catch (error) {
     return failureResult('get-user-vip', error);
   }
