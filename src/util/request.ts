@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse, Method, ResponseType } from 'axios';
 import { apiConfig, requestConfig } from '../config';
+import { legacyRequestStructureOf, upstreamRouteOf } from '../protocol/logStructure';
 import type { LegacyHttpTransport } from '../services/httpTransport';
 import { logger } from './logger';
 import { summarizeValue } from './observability';
@@ -45,12 +46,11 @@ function request<T = unknown>(
     url: baseURL,
     method: axiosMethod,
   };
+  const startedAt = Date.now();
 
   logger.debug('upstream.requesting', {
     scope: 'request',
-    url: baseURL,
-    method: axiosMethod,
-    params: summarizeValue(options.params),
+    ...legacyRequestStructureOf(baseURL, axiosMethod, options),
   });
 
   return qqMusicHttpClient(requestConfigOptions).then(
@@ -60,9 +60,10 @@ function request<T = unknown>(
       }
       logger.debug('upstream.succeeded', {
         scope: 'request',
-        url: baseURL,
+        route: upstreamRouteOf(baseURL),
         method: axiosMethod,
         status: response.status,
+        durationMs: Date.now() - startedAt,
         result: summarizeValue(response.data),
       });
       return response;
@@ -70,8 +71,9 @@ function request<T = unknown>(
     (error: unknown) => {
       logger.error('upstream.failed', {
         scope: 'request',
-        url: baseURL,
+        route: upstreamRouteOf(baseURL),
         method: axiosMethod,
+        durationMs: Date.now() - startedAt,
         error: summarizeValue(error),
       });
       throw error;

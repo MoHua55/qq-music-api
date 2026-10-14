@@ -1,4 +1,10 @@
 import type { Context, Next } from 'koa';
+import {
+  parameterStructureOf,
+  requestRouteOf,
+  resultStructureOf,
+  valueStructureOf,
+} from '../protocol/logStructure';
 import { AuthCredentialRejectedError } from './authError';
 import { GatewayCredentialConflictError } from './gatewayCredentialConflictError';
 import { logger } from './logger';
@@ -9,9 +15,6 @@ type SummaryValue = Record<string, unknown>;
 type ControllerHandler = (ctx: Context, next: Next) => Promise<unknown> | unknown;
 type WrappedControllerHandler = (ctx: Context, next?: Next) => Promise<void>;
 
-const MAX_ARRAY_ITEMS = 3;
-const MAX_OBJECT_KEYS = 6;
-const MAX_STRING_LENGTH = 80;
 const MASKED_VALUE = '*** MASKED ***';
 const SENSITIVE_KEYS = new Set([
   'authorization',
@@ -67,39 +70,8 @@ const redactRecord = (
     ]),
   );
 
-const trimString = (value: string) =>
-  value.length > MAX_STRING_LENGTH
-    ? {
-        length: value.length,
-        preview: `${value.slice(0, MAX_STRING_LENGTH)}...`,
-      }
-    : value;
-
-const summarizeArray = (value: unknown[], depth: number): unknown => {
-  if (depth >= 1) return { type: 'array', length: value.length };
-  return {
-    type: 'array',
-    length: value.length,
-    items: value.slice(0, MAX_ARRAY_ITEMS).map((item) => summarizeValue(item, depth + 1)),
-  };
-};
-
-const summarizeObject = (value: Record<string, unknown>, depth: number): unknown => {
-  const keys = Object.keys(value);
-  if (depth >= 1) return { type: 'object', keys: keys.slice(0, MAX_OBJECT_KEYS) };
-  const entries = keys
-    .slice(0, MAX_OBJECT_KEYS)
-    .map((key) => [
-      key,
-      isSensitiveKey(key) ? MASKED_VALUE : summarizeValue(value[key], depth + 1),
-    ]);
-  return Object.fromEntries(entries);
-};
-
-export const summarizeValue = (value: unknown, depth = 0): unknown => {
+export const summarizeValue = (value: unknown): unknown => {
   if (value === null || value === undefined) return value;
-  if (typeof value === 'string') return trimString(value);
-  if (typeof value === 'number' || typeof value === 'boolean') return value;
   // 原始异常的 message、stack、config 都可能带着地址和凭证，日志里只留白名单摘要。
   if (isErrorLike(value)) return summarizeError(value);
   if (Buffer.isBuffer(value)) {
@@ -108,9 +80,8 @@ export const summarizeValue = (value: unknown, depth = 0): unknown => {
       length: value.length,
     };
   }
-  if (Array.isArray(value)) return summarizeArray(value, depth);
-  if (isPlainObject(value)) return summarizeObject(value, depth);
-  return String(value);
+  if (isPlainObject(value)) return resultStructureOf(value);
+  return valueStructureOf(value);
 };
 
 const compactRecord = (record: Record<string, unknown>): SummaryValue =>
@@ -122,31 +93,33 @@ export const summarizeRequestContext = (ctx: Context): SummaryValue => {
   const requestBody = (ctx.request as { body?: unknown }).body;
   const queryExtras = ctx.path.startsWith('/login/qr/') ? new Set(['key']) : new Set<string>();
   const query = redactRecord(ctx.query as Record<string, unknown>, queryExtras);
+  const requestFields = (value: Record<string, unknown>) =>
+    Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        isSensitiveKey(key, queryExtras) ? MASKED_VALUE : valueStructureOf(item),
+      ]),
+    );
 
   return compactRecord({
-    query: Object.keys(query).length ? summarizeValue(query) : undefined,
+    query: Object.keys(query).length ? requestFields(query) : undefined,
     params: Object.keys((ctx.params as Record<string, unknown>) || {}).length
-      ? summarizeValue(ctx.params)
+      ? requestFields(ctx.params)
       : undefined,
-    body: requestBody !== undefined ? summarizeValue(requestBody) : undefined,
+    body: requestBody !== undefined ? parameterStructureOf(requestBody) : undefined,
   });
 };
 
 export const summarizeResponseBody = (body: unknown): unknown => summarizeValue(body);
 
 export const sanitizeRequestUrl = (url: string): string => {
-  const parsed = new URL(url, 'http://qq-music-api.local');
-  const extras = parsed.pathname.startsWith('/login/qr/') ? new Set(['key']) : new Set<string>();
-  for (const key of Array.from(parsed.searchParams.keys())) {
-    if (isSensitiveKey(key, extras)) parsed.searchParams.set(key, MASKED_VALUE);
-  }
-  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  return requestRouteOf(url);
 };
 
 const createControllerMeta = (controller: string, ctx: Context): SummaryValue => ({
   scope: 'controller',
   controller,
-  route: ctx.path,
+  route: requestRouteOf(ctx.path, ctx._matchedRoute),
   method: ctx.method,
   params: summarizeRequestContext(ctx),
 });
@@ -219,7 +192,7 @@ const createServiceMeta = (service: string, upstream: string, params?: unknown):
     scope: 'service',
     service,
     upstream,
-    params: params === undefined ? undefined : summarizeValue(params),
+    params: params === undefined ? undefined : parameterStructureOf(params),
   });
 
 export const logServiceRequest = (

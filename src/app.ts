@@ -142,7 +142,9 @@ app.use(async (ctx: Koa.Context, next: Koa.Next) => {
   const requestStartAt = Date.now();
   await next();
   const rt = ctx.response.get('X-Response-Time');
-  const sanitizedUrl = encodeURI(sanitizeRequestUrl(ctx.url)).replace(/%0D|%0A/gi, '');
+  const sanitizedUrl = encodeURI(
+    (ctx._matchedRoute ?? sanitizeRequestUrl(ctx.url)).replace(/\?/g, ''),
+  ).replace(/%0D|%0A/gi, '');
 
   if (isExplorerDebugRequest(ctx.path)) {
     logExplorerRequestDebug('request-summary', {

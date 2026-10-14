@@ -65,7 +65,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
-| `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug` |
+| `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
 | `QQ_SESSION_SECRET` | 无 | Serverless 会话加密密钥 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
 
