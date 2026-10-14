@@ -27,3 +27,26 @@ export const qualityFileRestriction = (
     hint: { key, message: PLAYBACK_HINT_MESSAGES[key] },
   };
 };
+
+/** quality=best 依次尝试的音质，和 Folia 的回退顺序一致。 */
+export const BEST_QUALITY_ORDER = ['flac', '320', '128'] as const;
+export type BestQuality = (typeof BEST_QUALITY_ORDER)[number];
+
+const sizeOf = (file: unknown, key: string): number | undefined => {
+  const raw = file && typeof file === 'object' ? (file as Record<string, unknown>)[key] : undefined;
+  const size = typeof raw === 'string' && /^\d{1,15}$/.test(raw) ? Number(raw) : raw;
+  return typeof size === 'number' && Number.isSafeInteger(size) ? size : undefined;
+};
+
+/**
+ * quality=best 这首歌要试哪些音质：详情里 size_flac、size_320mp3 大于 0 才试那一级，128 一定是最后一级。
+ * 详情读不到（undefined）或数字不可靠时只试 128，不猜文件。
+ */
+export const bestQualityLevelsOf = (track: unknown): BestQuality[] => {
+  const file = track && typeof track === 'object' ? (track as { file?: unknown }).file : undefined;
+  return [
+    ...((sizeOf(file, 'size_flac') ?? 0) > 0 ? (['flac'] as const) : []),
+    ...((sizeOf(file, 'size_320mp3') ?? 0) > 0 ? (['320'] as const) : []),
+    '128',
+  ];
+};

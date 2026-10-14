@@ -12,7 +12,13 @@ import {
   previewUnavailableRestriction,
   validMediaIdOf,
 } from '../../protocol/previewFile';
-import { apeFileFailureOf, qualityFileRestriction } from '../../protocol/qualityFile';
+import {
+  apeFileFailureOf,
+  BEST_QUALITY_ORDER,
+  type BestQuality,
+  bestQualityLevelsOf,
+  qualityFileRestriction,
+} from '../../protocol/qualityFile';
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
@@ -114,6 +120,51 @@ const previewMediaIdsOf = async (
   return { mediaIds, missing };
 };
 
+/**
+ * quality=best：先查详情（最多 `MAX_PLAYBACK_HINT_LOOKUPS` 首），再按 flac → 320 → 128 一级一级要，每一级把还没拿到
+ * 链接、又有那一级文件的歌合成一个请求；拿到就停，条目标出实际音质。128 一定会要，那一级的结果（含提示）原样回传。
+ * 不采用一次要全部文件名、看谁有 purl 的做法：绿钻要 ape 时没文件也会拿到假链接。
+ */
+const bestPlayUrls = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  streamCdnSelector: StreamCdnSelector,
+  songmids: string[],
+  mediaId: string | undefined,
+  playbackHintsEnabled: boolean,
+): Promise<Dictionary> => {
+  const unique = [...new Set(songmids)];
+  const looked = unique.slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
+  const details = await Promise.all(
+    looked.map((mid) => songDetailOf(http, auth, mid, 'get-quality-detail')),
+  );
+  const levels = new Map<string, BestQuality[]>(unique.map((mid) => [mid, ['128']]));
+  for (const [index, mid] of looked.entries()) levels.set(mid, bestQualityLevelsOf(details[index]));
+  const playUrl: Dictionary = {};
+  let pending = unique;
+  for (const level of BEST_QUALITY_ORDER) {
+    const batch = pending.filter((mid) => levels.get(mid)?.includes(level));
+    if (!batch.length) continue;
+    const result = await getAuthenticatedPlayUrls(
+      http,
+      auth,
+      streamCdnSelector,
+      batch.join(','),
+      level,
+      mediaId,
+      {},
+      playbackHintsEnabled,
+    );
+    for (const mid of batch) {
+      const entry = result[mid];
+      if (entry && (level === '128' || stringOf(dictionaryOf(entry).url)))
+        playUrl[mid] = { ...dictionaryOf(entry), quality: level };
+    }
+    pending = level === '128' ? [] : pending.filter((mid) => !playUrl[mid]);
+  }
+  return playUrl;
+};
+
 export const getAuthenticatedPlayUrls = async (
   http: AuthHttpClient,
   auth: AuthSession,
@@ -128,6 +179,15 @@ export const getAuthenticatedPlayUrls = async (
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  if (String(quality) === 'best' && !options.preview)
+    return bestPlayUrls(
+      http,
+      auth,
+      streamCdnSelector,
+      requestedList,
+      mediaId,
+      playbackHintsEnabled,
+    );
   // 试听只要确认有试听文件的歌；确定没有的回「没有试听」，其他的回「试听不可用」，都不去要。
   const preview = options.preview
     ? await previewMediaIdsOf(http, auth, requestedList, mediaId)

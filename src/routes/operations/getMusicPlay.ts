@@ -36,6 +36,7 @@ interface AnonymousPlayEntry {
   url: string;
   error: string | boolean;
   preview?: true;
+  quality?: '128';
   restriction?: PlaybackRestriction & { hint?: PlaybackHint };
 }
 
@@ -239,6 +240,9 @@ export const createGetMusicPlay =
         entry.restriction.hint = preview ? previewUnavailableHint() : playbackHintOf(undefined);
     });
     Object.assign(playUrl, skipped);
+    // 匿名拿不到 320 以上，quality=best 直接要 128（上面已退回 128 的文件名），条目照样标出实际音质。
+    if (!preview && quality === 'best')
+      for (const entry of Object.values(playUrl)) entry.quality = '128';
     response.playUrl = playUrl;
     return { status: 200, headers: {}, body: { data: justPlayUrl ? { playUrl } : response } };
   };
