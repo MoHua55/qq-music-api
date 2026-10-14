@@ -1,6 +1,16 @@
 import './helpers/sessionRoutes';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { CATALOG_RUNTIMES, callRoute } from './helpers/catalogRoutes';
 import { useSessionUpstream } from './helpers/sessionRoutes';
+
+it('文档明确 existed 不代表歌曲原本已存在', () => {
+  const readme = readFileSync(resolve(__dirname, '../docs/README.md'), 'utf8');
+  expect(readme).toContain('existed` 仅保留上游原始旗标');
+  expect(readme).toContain('不能用它判断歌曲原本是否存在');
+  const explorer = readFileSync(resolve(__dirname, '../src/config/apiExplorer.ts'), 'utf8');
+  expect(explorer).toContain('existed is the upstream flag, not proof of prior membership');
+});
 
 describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
@@ -89,6 +99,20 @@ describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
       },
     };
     expect((await call({ ...input, op })).body).toMatchObject({ code: 200, changed: false });
+  });
+  it('重复加歌的 existed 0 原样保留，不按 changed 猜成 true', async () => {
+    upstream.state.rpcReplies!.AddSonglist.data = {
+      retCode: 0,
+      result: { dirId: 0, tid: 0, songlist: [{ songId: 101, songType: 0, existed: 0 }] },
+    };
+    expect((await call()).body).toMatchObject({
+      changed: false,
+      songs: [{ id: 101, existed: false }],
+    });
+    expect(upstream.calls.flatMap((c) => c.rpc).map((r) => r.method)).toEqual([
+      'GetPlaylistByUin',
+      'AddSonglist',
+    ]);
   });
   it.each(['add', 'del'])('%s 错误或 503 只送一次写入，不重试', async (op) => {
     const method = op === 'add' ? 'AddSonglist' : 'DelSonglist';
