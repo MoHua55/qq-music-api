@@ -310,7 +310,8 @@ export const getAuthenticatedPlayUrls = async (
     }
     return domain;
   };
-  const domain = (await streamDomainOf(data)) ?? DEFAULT_STREAM_DOMAIN;
+  const firstDomain = await streamDomainOf(data);
+  const domain = firstDomain ?? DEFAULT_STREAM_DOMAIN;
   const playUrl: Dictionary = { ...skipped };
   const entries = Array.isArray(data.midurlinfo) ? data.midurlinfo : [];
   const loggedQuality = options.preview
@@ -382,5 +383,52 @@ export const getAuthenticatedPlayUrls = async (
           playbackHintsEnabled ? PLAYBACK_HINT_RULES : [],
           contextOf(restriction as Dictionary),
         );
+  // 原因没确认时再取一次：只在 m4a／128（quality=best 的最后一级也走这里）、最终提示是 reason-unconfirmed 时，
+  // 同一会话、同一首、同一音质再要一次，合成一个请求，每首最多多 1 次。地区、会员这些已有具体提示的不再取。
+  // 再取仍没给或请求本身出错时，保留第一次的结果，不让整个回应失败。
+  const retryList =
+    options.preview || !['m4a', '128'].includes(String(loggedQuality))
+      ? []
+      : unavailable
+          .filter(
+            ({ restriction }) =>
+              dictionaryOf((restriction as Dictionary).hint).key === 'playback.reason-unconfirmed',
+          )
+          .map(({ mid }) => String(mid));
+  if (retryList.length) {
+    try {
+      const retry = await callMusicu(
+        http,
+        auth.device,
+        'get-music-play-retry',
+        'music.vkey.GetVkey',
+        'UrlGetVkey',
+        {
+          filename: retryList.map(
+            (mid) => `${fileType.prefix}${mid}${normalizedMediaId || mid}${fileType.extension}`,
+          ),
+          guid,
+          songmid: retryList,
+          songtype: retryList.map(() => 0),
+          uin: stringOf(auth.credential.str_musicid) || String(auth.credential.musicid),
+          ctx: 0,
+        },
+        auth.credential,
+      );
+      const retrySip = Array.isArray(retry.sip) ? retry.sip.map(stringOf).filter(Boolean) : [];
+      const retryDomain =
+        (retrySip.length || !firstDomain ? await streamDomainOf(retry) : firstDomain) ??
+        DEFAULT_STREAM_DOMAIN;
+      for (const entry of Array.isArray(retry.midurlinfo) ? retry.midurlinfo : []) {
+        const item = dictionaryOf(entry);
+        const mid = identifierOf(item.songmid);
+        const purl = stringOf(item.purl);
+        if (mid && purl && retryList.includes(mid))
+          playUrl[mid] = { url: `${retryDomain}${purl}`, error: false };
+      }
+    } catch {
+      // 第一次的结果已经在 playUrl 里。
+    }
+  }
   return playUrl;
 };

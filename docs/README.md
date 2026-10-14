@@ -512,6 +512,8 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 - `evidence` 说明这个判断有多可靠；`url_unavailable` 永远是 `observed-response`（只是看到上游没给链接）。
 - `codes` 只放这首歌条目里的安全整数（`result`、`subcode`、`errtype`、`code`），一个都没有就省略。这些数字的含义还没确认，不要拿来推断原因。
 - `hint` 是给使用者看的原因。带会话的 `m4a`／`128` 失败时，最多为 10 首补查同一会话、同一出口的详情；只有播放条目码 `104003`／`1` 与详情的 `switch`、`msgid`、`alert`、`pay_play` 完整组合吻合，才提示 `playback.maybe-region-restricted`（可能是地区限制）或 `playback.maybe-membership`（可能缺少会员权益）。规则来自一个手机 QQ 免费账号的受控重复实验候选；微信相同特征可复用提示，属于尚未实测的跨通道外推。缺字段、未知特征、查不到详情、匿名或其他音质一律 `playback.reason-unconfirmed`。音乐包和下架仍不分类。`message` 是保留 may 的英文预设，前端可按 key 换文案；提示不改变 `restriction.key`、`evidence`、播放、授权或重试。设置 `QQ_PLAYBACK_HINTS_ENABLED=0`（或 `false`）可全局停用具体提示与额外查询，Node 与 Serverless 都支持。
+
+**原因没确认时再取一次**：带会话的 `m4a`／`128`（包括 `quality=best` 退到最后一级 `128`）有歌拿不到链接、最终提示是 `playback.reason-unconfirmed` 时，服务会用同一会话、同一首、同一音质马上再取一次；这些歌合成一个请求，每首最多多 1 次。再取拿到就直接回链接，前端看到的和一次就成功一样；还是没有，或者再取的请求本身出错，就回第一次的结果，不会让整个请求失败，也不会清会话。已经有地区或会员提示的歌、`320`／`flac`／`ape`、试听和匿名请求都不再取。关掉具体提示时所有失败都是“原因尚未确认”，也照样再取一次。
 - 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
 
 **ape 文件检查**：只有 `quality=ape` 会先查详情中的 `file.size_ape`（每首一次、重复共用、最多 10 首）。确认没有文件时，不取链接，提示 `playback.quality-file-unavailable`，可选 `restriction.failureReason` 为 `quality-file-unavailable`；查询失败、数字缺失或超限时同样不放行，提示 `playback.quality-detail-unavailable`，分类为 `quality-detail-unavailable`。原有 `restriction.key` 仍是 `url_unavailable`，HTTP 状态不变。`320`／`flac` 沿用原行为；`preview=1` 优先按试听规则处理，不检查 ape。
