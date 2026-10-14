@@ -19,6 +19,7 @@ router.get('/logout', context.logout);
 router.get('/user/detail', context.userDetail);
 router.get('/user/vip', context.userVip);
 router.post('/user/song/like', context.songLike);
+router.post('/user/album/subscribe', context.albumSubscribe);
 router.post('/user/playlist/tracks', context.playlistTracks);
 router.post('/user/playlist/create', context.playlistCreate);
 router.post('/user/playlist/rename', context.playlistRename);

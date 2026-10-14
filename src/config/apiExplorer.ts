@@ -91,6 +91,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'songLike', method: 'POST', routePath: '/user/song/like', category: 'User' },
+  { name: 'albumSubscribe', method: 'POST', routePath: '/user/album/subscribe', category: 'User' },
   { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
   { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
   { name: 'playlistRename', method: 'POST', routePath: '/user/playlist/rename', category: 'User' },
@@ -309,6 +310,11 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Like or unlike a catalog song for the signed-in account. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state. Album subscription writes remain disabled by default.',
     bodyExample: { song: { id: 101, mid: 'FixtureSongA1', type: 0 }, liked: true },
+  },
+  albumSubscribe: {
+    description:
+      'Experimental album subscribe/unsubscribe by album MID. Disabled by default; controlled deployments must explicitly set QQ_UNVERIFIED_WRITES_ENABLED=1. Reads the target state, writes at most once and confirms it again; unknown outcomes return 502 and must not be retried blindly. The public capability remains false.',
+    bodyExample: { id: 'FixtureAlbumA1', subscribed: true },
   },
   subscriptionStatus: {
     description:

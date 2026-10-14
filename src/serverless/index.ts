@@ -1,3 +1,4 @@
+import { albumSubscribe } from '../routes/operations/albumSubscribe';
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getMusicPlay } from '../routes/operations/getMusicPlay';
 import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
@@ -168,6 +169,7 @@ const routes: Record<string, RouteHandler> = {
   '/user/playlist/delete': operationRoute(playlistDelete),
   '/user/playlist/subscribe': operationRoute(playlistSubscribe),
   '/user/song/like': operationRoute(songLike),
+  '/user/album/subscribe': operationRoute(albumSubscribe),
   '/user/subscription-status': operationRoute(subscriptionStatus),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
@@ -252,6 +254,7 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist/delete',
   '/user/playlist/subscribe',
   '/user/song/like',
+  '/user/album/subscribe',
   '/user/subscription-status',
   '/user/playlist',
   '/user/albums',

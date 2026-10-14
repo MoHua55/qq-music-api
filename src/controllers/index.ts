@@ -1,3 +1,4 @@
+import { albumSubscribe } from '../routes/operations/albumSubscribe';
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
@@ -68,6 +69,7 @@ export default {
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
   songLike: withControllerLogging('songLike', operationController(songLike)),
+  albumSubscribe: withControllerLogging('albumSubscribe', operationController(albumSubscribe)),
   userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),

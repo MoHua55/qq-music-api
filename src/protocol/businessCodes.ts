@@ -34,6 +34,8 @@ export const UPSTREAM_OPERATIONS = [
   'song.like',
   'song.unlike',
   'song.identity-check',
+  'album.subscribe',
+  'album.unsubscribe',
   /** 建立／删除按各自操作保留未知非零码，不扩大凭证失效语义。 */
   'playlist.create',
   'playlist.delete',
