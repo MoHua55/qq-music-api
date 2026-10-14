@@ -139,7 +139,7 @@ describe('createStoredSessionResolver', () => {
       musicid: '42',
       musickey: 'refreshed-key',
       loginType: 2,
-      refresh_key: 'next-refresh-key',
+      refresh_key: 'refresh-key',
       musickeyCreateTime: Math.floor(current / 1000),
       keyExpiresIn: 259200,
     }));
@@ -167,6 +167,47 @@ describe('createStoredSessionResolver', () => {
     expect((repository.load() as AuthSession[])[0]).toMatchObject({
       token,
       credential: { musickey: 'refreshed-key' },
+    });
+  });
+
+  it('连续续期保留 refresh_key，access_token 到期才轮换并能从保存状态恢复', async () => {
+    let current = 1_000_000_000_000;
+    const initial = current;
+    const accessExpiresAt = initial + 2 * 60 * 60 * 1000;
+    const repository = createMemoryAuthSessionRepository();
+    const refreshCredential = jest.fn(async (session: AuthSession) => ({
+      ...session.credential,
+      musickey: `fixture-music-key-${current}`,
+      access_token: current < accessExpiresAt ? 'fixture-access-old' : 'fixture-access-new',
+      musickeyCreateTime: Math.floor(current / 1000),
+      keyExpiresIn: 3600,
+    }));
+    const resolver = createResolver({ repository, now: () => current, refreshCredential });
+    const token = await resolver.issue(
+      nearlyExpired(current, { access_token: 'fixture-access-old' }),
+    );
+    for (const elapsed of [0, 60 * 60 * 1000, 2 * 60 * 60 * 1000 + 1000]) {
+      current = initial + elapsed;
+      const resolved = await resolver.resolve(token);
+      expect(resolved).toMatchObject({
+        token,
+        credential: {
+          refresh_key: 'refresh-key',
+          access_token: current < accessExpiresAt ? 'fixture-access-old' : 'fixture-access-new',
+        },
+      });
+      expect(resolved?.expiresAt).toBe((Math.floor(current / 1000) + 3600) * 1000);
+    }
+    expect(refreshCredential).toHaveBeenCalledTimes(3);
+    expect(
+      refreshCredential.mock.calls.every(
+        ([session]) => session.credential.refresh_key === 'refresh-key',
+      ),
+    ).toBe(true);
+    const restored = createResolver({ repository, now: () => current });
+    expect(await restored.resolve(token)).toMatchObject({
+      token,
+      credential: { refresh_key: 'refresh-key', access_token: 'fixture-access-new' },
     });
   });
 
