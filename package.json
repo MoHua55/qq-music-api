@@ -54,7 +54,7 @@
     "test": "jest",
     "test:legacy-routes": "jest --config jest.legacy-routes.config.js --passWithNoTests",
     "probe:legacy-routes": "jest --config jest.legacy-routes.live.config.js --runInBand --passWithNoTests",
-    "test:contracts": "jest --runInBand --coverage=false --setupFilesAfterEnv ./tests/helpers/offlineNetwork.cjs --runTestsByPath tests/folia.http-contracts.test.ts tests/folia.persistence-contracts.test.ts tests/serverless.closure-contracts.test.ts tests/package.artifact.test.ts tests/capabilities.routes.test.ts tests/protocol.errors.test.ts tests/transport.musicu.test.ts tests/transport.hosts.test.ts tests/negative.http-contracts.test.ts",
+    "test:contracts": "jest --runInBand --coverage=false --setupFilesAfterEnv ./tests/helpers/offlineNetwork.cjs --runTestsByPath tests/folia.http-contracts.test.ts tests/folia.persistence-contracts.test.ts tests/serverless.closure-contracts.test.ts tests/package.artifact.test.ts tests/capabilities.routes.test.ts tests/protocol.errors.test.ts tests/transport.musicu.test.ts tests/transport.hosts.test.ts tests/negative.http-contracts.test.ts tests/playlist.track-writes.routes.test.ts tests/subscriptions.routes.test.ts tests/recommend.routes.test.ts tests/daily-songs.routes.test.ts tests/operations.music-play-controlled-hints.test.ts tests/services.qr-login.test.ts tests/operations.qr-check.test.ts tests/errors.runtime-baseline.test.ts",
     "prepare": "husky && git config core.hooksPath .husky",
     "prepublishOnly": "npm run build:js",
     "build:esm": "tsc -p tsconfig.esm.json --outDir dist-esm && node scripts/finalize-esm-build.js",
