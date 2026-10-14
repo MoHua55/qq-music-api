@@ -85,11 +85,16 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     anonymousPlay?: unknown;
     /** 单曲详情按 songmid 回 `track_info`；没列到的歌回空的 data。 */
     songDetails?: Record<string, unknown>;
+    credentialLoginType?: number;
+    playbackHintsEnabled?: boolean;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
     token: 'a'.repeat(64),
-    credential: CONTRACT_CREDENTIAL,
+    credential: {
+      ...CONTRACT_CREDENTIAL,
+      ...(state.credentialLoginType === undefined ? {} : { loginType: state.credentialLoginType }),
+    },
     device: deviceFixture.device,
     expiresAt,
   });
@@ -97,6 +102,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
   const resetService = (expiresAt: number) => {
     const session = sessionOf(expiresAt);
     mockSessionService = createQrLoginService({
+      ...{ playbackHintsEnabled: state.playbackHintsEnabled },
       http: createAuthHttpClient(),
       createSessionHttp: createAuthHttpClient,
       deviceRepository: createMemoryDeviceContextRepository(deviceFixture.device),
@@ -218,7 +224,10 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
                 );
       return {
         token,
-        env: { QQ_SESSION_SECRET: CONTRACT_SECRET },
+        env: {
+          QQ_SESSION_SECRET: CONTRACT_SECRET,
+          ...{ QQ_PLAYBACK_HINTS_ENABLED: state.playbackHintsEnabled === false ? '0' : undefined },
+        },
         service: async () => mockSessionService,
         beforeEachLeg: () => resetService(expiresAt),
       };
