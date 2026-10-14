@@ -6,6 +6,7 @@ export type BackendRuntime = 'node' | 'serverless';
 // Keep client-only predicates and diagnostics out of this declaration.
 const featuresFor = (runtime: BackendRuntime) => ({
   user: { getVip: true },
+  playlistManagement: { createPlaylist: true, renamePlaylist: false, deletePlaylist: true },
   auth: {
     getLoginStatus: true,
     logout: true,

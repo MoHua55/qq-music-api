@@ -11,6 +11,7 @@ import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
+import { playlistCreate, playlistDelete } from '../routes/operations/playlistManagement';
 import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
@@ -154,6 +155,8 @@ const routes: Record<string, RouteHandler> = {
   '/user/detail': operationRoute(userDetail),
   '/user/vip': operationRoute(userVip),
   '/user/playlist/tracks': operationRoute(playlistTracks),
+  '/user/playlist/create': operationRoute(playlistCreate),
+  '/user/playlist/delete': operationRoute(playlistDelete),
   '/user/playlist/subscribe': operationRoute(playlistSubscribe),
   '/user/subscription-status': operationRoute(subscriptionStatus),
 
@@ -234,6 +237,8 @@ const LOGIN_ROUTES = new Set([
   '/user/detail',
   '/user/vip',
   '/user/playlist/tracks',
+  '/user/playlist/create',
+  '/user/playlist/delete',
   '/user/playlist/subscribe',
   '/user/subscription-status',
   '/user/playlist',

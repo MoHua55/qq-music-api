@@ -6,6 +6,7 @@ import { handleRequest, type QqQrRelay, type ServerlessEnv } from '../src/server
 // Public feature names follow provider interfaces; values describe implemented backend methods.
 const expectedFeatures = (node: boolean) => ({
   user: { getVip: true },
+  playlistManagement: { createPlaylist: true, renamePlaylist: false, deletePlaylist: true },
   auth: {
     getLoginStatus: true,
     logout: true,

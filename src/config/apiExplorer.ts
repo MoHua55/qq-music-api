@@ -91,6 +91,8 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
+  { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
+  { name: 'playlistDelete', method: 'POST', routePath: '/user/playlist/delete', category: 'User' },
   {
     name: 'playlistSubscribe',
     method: 'POST',
@@ -280,6 +282,16 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
 ];
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  playlistCreate: {
+    description:
+      'Create a playlist with a name of up to 20 characters. Writes are never retried. The name and identifiers are checked through the owned list after writing; upstream write-response names may be garbled. If verification fails, retryable is false and writeAttempted/verification report the uncertain outcome.',
+    bodyExample: { name: '示例歌单' },
+  },
+  playlistDelete: {
+    description:
+      'Delete your own ordinary playlist by tid. The server resolves its directory from your owned list, rejects protected/system directories, sends one delete, checks matching identifiers and reads back absence. No automatic retry and no promise that recovery is possible.',
+    bodyExample: { tid: '70001' },
+  },
   playlistSubscribe: {
     description:
       'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list. Album subscription writes are not enabled.',

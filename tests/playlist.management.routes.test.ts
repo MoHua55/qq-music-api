@@ -156,4 +156,14 @@ describe.each(CATALOG_RUNTIMES)('歌单建立与删除（%s）', (runtime) => {
       upstream.calls.flatMap((c) => c.rpc).filter((r) => r.method === 'AddPlaylist'),
     ).toHaveLength(1);
   });
+  it('建立后读回没有新目标是上游未确认，不是调用方输入错误', async () => {
+    upstream.state.rpcReplies!.GetPlaylistByUin.data = { v_playlist: [] };
+    const result = await call('create', { name: '测试歌单' });
+    expect(result.status).toBe(502);
+    expect(result.body).toMatchObject({
+      retryable: false,
+      verification: 'unconfirmed',
+      tid: 70001,
+    });
+  });
 });
