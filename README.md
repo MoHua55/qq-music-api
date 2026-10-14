@@ -21,9 +21,12 @@
 - **Node.js / Electron 接入**：通过 npm 包嵌入服务，可注入加密会话仓库来保存登录态；包内请求配置不会修改宿主共享的 Axios 默认值。
 - **Serverless 入口**：提供标准的 `Request / Response` 接口。微信扫码可直接使用；手机 QQ 扫码需要能够维持长连接的中继。不同入口支持的功能以使用文档为准。
 - **API Explorer**：用内置表单查看参数、发送请求和预览响应，不必先写调用代码。
-- **开发分支中的能力查询与推荐**：查询当前部署的功能和登录通道；登录后读取猜你喜欢，有会话时带凭证读取推荐歌单，没有会话时匿名读取。
+- **推荐与电台**：猜你喜欢、每日 30 首、推荐歌单、歌单分类、新歌速递，以及 QQ 音乐的各类电台。
+- **编辑歌单与收藏**：往自己的歌单加歌删歌，建立、改名、删除歌单，收藏歌单，查询收藏状态。
+- **更清楚的播放结果**：试听、自动拿最高可用音质；拿不到链接时说明原因（只在有把握时才说），会员等级也查得到。
+- **能力查询**：`/login/channels` 告诉你这个部署支持哪些登录通道和功能。
 
-能力查询、猜你喜欢和推荐歌单计划随 **3.2.0** 发布，目前仍是开发分支中的功能。请以安装的版本和实际服务支持的能力为准。拿到播放链接也不代表能完整播放，内容和音质仍取决于 QQ 返回的授权结果。
+拿到播放链接也不代表能完整播放，内容和音质仍取决于 QQ 返回的授权结果。各版本的改动见[变更记录](./CHANGELOG.md)。
 
 上游来源、维护者与许可证保留说明见 [ATTRIBUTION.md](./ATTRIBUTION.md)。
 
@@ -38,7 +41,7 @@ node node_modules/@yakult-green-tea/qq-music-api/dist/src/app.js
 
 默认服务地址是 `http://localhost:3200`。启动后打开 [API Explorer](http://localhost:3200/explorer)，就能查看接口、填写参数并试用不需要登录的请求。端口可以通过 `PORT` 环境变量修改。
 
-如果要修改源码或运行开发分支：
+如果要修改源码：
 
 ```sh
 git clone https://github.com/yakult-green-tea/qq-music-api.git
@@ -47,11 +50,12 @@ npm ci
 npm start
 ```
 
-克隆后默认是 `main`，开发分支中的功能需要切到对应分支。Docker、扫码登录、会话保存和嵌入宿主的配置请看[使用文档](./docs/README.md)。
+克隆后默认是 `main`，也就是最新发布的版本。Docker、扫码登录、会话保存和嵌入宿主的配置请看[使用文档](./docs/README.md)。
 
 ## 文档与发布
 
-- [使用文档](./docs/README.md)：部署、配置、扫码登录、接口参数和错误处理。
+- [使用文档](./docs/README.md)：部署、配置、扫码登录，以及所有接口的一览表和参数。
+- [错误对照表](./docs/errors.md)：每个状态码、错误键和 QQ 回的数字码是什么意思，前端该怎么处理。
 - [贡献指南](./CONTRIBUTING.md)：开发环境、提交流程和测试要求。
 - [发布流程](./RELEASING.md)与[变更记录](./CHANGELOG.md)：版本验证、发包步骤和已发布的改动。
 - [npm 包](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)与[GitHub Releases](https://github.com/yakult-green-tea/qq-music-api/releases)：获取已发布版本。

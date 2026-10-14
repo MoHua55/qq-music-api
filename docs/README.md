@@ -99,6 +99,43 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 
 **自动续期**：Node、Electron、Docker 这类把凭证存在服务端的部署（`sessionMode: stored`），会在 QQ 凭证到期前 6 小时内、有请求进来时自动续期一次，`qqmusic_session` 不变，前端不用做任何事。续期失败时继续用还没到期的旧凭证，5 分钟后才再试；登出和续期同时发生时以登出为准。凭证里没有续期材料（例如手机 QQ 扫码走备用验证得到的凭证）就不续。Serverless 部署（`sealed`）目前不自动续期，凭证到期后要重新扫码。
 
+## 接口一览
+
+这个 fork 新增或重写的接口都在下表。要登录的接口，带上扫码得到的会话即可（Node 用 cookie `qqmusic_session` 或 `X-QQ-Session`，Serverless 用 `X-QQ-Session`）。出错时怎么读，看[错误对照表](./errors.md)。
+
+| 接口 | 要登录 | 做什么 | Serverless |
+| --- | --- | --- | --- |
+| **登录** | | | |
+| `GET /login/channels` | 否 | 这个部署支持哪些登录通道和功能 | ✓ |
+| `GET /login/qr/key`、`/login/qr/create` | 否 | 拿二维码（`channel=qq` 手机 QQ，`channel=wechat` 微信） | ✓（手机 QQ 要中继） |
+| `GET /login/qr/check` | 否 | 查扫码进度，成功时拿到会话 | ✓ |
+| `GET /login/qr/cancel` | 否 | 取消这张二维码 | ✓ |
+| `GET /login/status`、`/logout` | 是 | 查登录状态、登出 | ✓ |
+| **个人资料与歌单** | | | |
+| `GET /user/detail` | 是 | 头像、昵称等资料 | ✓ |
+| `GET /user/vip` | 是 | 会员等级 `vipLevel` | ✓ |
+| `GET /user/playlist` | 是 | 自建和收藏的歌单 | ✓ |
+| `GET /user/playlist-detail` | 是 | 自己歌单里的歌（含不公开的歌单） | ✓ |
+| `GET /user/liked-songs` | 是 | “我喜欢”的歌，分页 | ✓ |
+| `GET /user/albums` | 是 | 收藏的专辑，分页 | ✓ |
+| **编辑歌单与收藏** | | | |
+| `POST /user/playlist/tracks` | 是 | 往自己的歌单加歌、删歌 | ✓ |
+| `POST /user/playlist/create`、`/rename`、`/delete` | 是 | 建立、改名、删除自己的歌单 | ✓ |
+| `POST /user/playlist/subscribe` | 是 | 收藏、取消收藏歌单 | ✓ |
+| `GET /user/subscription-status` | 是 | 查歌单、专辑、歌曲有没有收藏 | ✓ |
+| **推荐与电台** | | | |
+| `GET /user/guess-you-like` | 是 | 猜你喜欢，每次几首 | ✓ |
+| `GET /user/daily-songs` | 是 | 今天的每日 30 首 | ✓ |
+| `GET /recommend/playlists` | 可选 | 推荐歌单；登录了会更贴近个人口味 | ✓ |
+| `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
+| `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
+| `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
+| **播放与曲库** | | | |
+| `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
+| `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
+
+搜索、歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。
+
 ## QQ 音乐原生扫码登录
 
 Node 支持手机 QQ 和微信扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。扫码登录相关路由都是 GET。
@@ -360,7 +397,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
 | `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`network.*` |
 
-上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
+完整的状态码、`errorKey`、QQ 数字码和播放提示对照见[错误对照表](./errors.md)。上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
 
 想知道为什么回了 `401` 或 `422`，可以用 `LOG_LEVEL=debug` 启动：会多一条 `recommend.request-diagnostic` 日志，只有接口名、状态码、`errorKey` 和上游的数字码（推荐歌单跳过条目时也会记下跳过几条）。`5xx` 和 `429` 平时就会记一条 `recommend.request-failed` 警告。`LOG_LEVEL` 目前只在 Node 部署上确认有效；serverless 部署要看平台有没有把这个环境变量交给运行时。
 
