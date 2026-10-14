@@ -325,7 +325,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   playlistTracks: {
     description:
-      'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 is an explicit catalog-song declaration, not the Android response type. changed false means no change was reported; existed is the upstream flag, not proof of prior membership. Even repeated or mixed adds can report false. Accurate per-song presence checks are deferred. Likes are not enabled.',
+      'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 is an explicit catalog-song declaration, not the Android response type. The response is { code: 200, changed }; changed false means no change was reported, without saying why. There is no per-song result: accurate per-song presence checks are deferred. Likes are not enabled.',
     bodyExample: { tid: '70001', op: 'add', songs: [{ id: 101, type: 0 }] },
   },
   userVip: {

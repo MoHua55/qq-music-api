@@ -66,26 +66,8 @@ export const playlistTracksResult = async (
     const changed = data.dirId === dirId && positiveIntegerOf(data.tid) === tid;
     if (!changed && !(data.dirId === 0 && (data.tid === 0 || data.tid === '0')))
       throw new QqApiError('invalid-response');
-    if (!Array.isArray(data.songlist)) throw new QqApiError('invalid-response');
-    const statuses = add
-      ? data.songlist.map((item) => {
-          if (
-            !isDictionary(item) ||
-            !songs.some((song) => song.songId === item.songId) ||
-            ![0, 1].includes(item.existed as number)
-          )
-            throw new QqApiError('invalid-response');
-          // 原始旗标的布尔映射；实测重加仍可为 0，不能代表写入前已存在。
-          return { id: item.songId, existed: item.existed === 1 };
-        })
-      : undefined;
-    if (
-      statuses &&
-      (statuses.length !== songs.length ||
-        songs.some((song) => statuses.filter((item) => item.id === song.songId).length !== 1))
-    )
-      throw new QqApiError('invalid-response');
-    return okResult({ changed, ...(statuses ? { songs: statuses } : {}) });
+    // 回应里的逐首 existed 实测不能说明歌曲原本在不在，所以不回传，整体变更只看 changed。
+    return okResult({ changed });
   } catch (error) {
     return failureResult('playlist-track-write', error);
   }
