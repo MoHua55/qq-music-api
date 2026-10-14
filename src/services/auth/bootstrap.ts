@@ -19,9 +19,9 @@ export const QIMEI_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * QIMEI rejects a request whose signed timestamp is more than about five minutes away from the
- * server clock (HTTP 200, outer code -30000). A rejection on a local clock that is off by more
- * than this is retried once, signed with the server's time instead. The `Date` header only has
- * second precision, so anything below a minute is treated as an accurate clock.
+ * server clock (HTTP 200, outer code -30000). A rejection is retried once, signed with the
+ * server's time, when the local clock is more than this threshold (one minute) off. The `Date`
+ * header only has second precision, so anything below a minute is treated as an accurate clock.
  */
 export const QIMEI_CLOCK_SKEW_RETRY_MS = 60 * 1000;
 
@@ -39,18 +39,26 @@ export const buildQimeiHeadersAndBody = async (
   return { headers, body: dictionaryOf(request.body) };
 };
 
-/** Server time minus `sentAt`, from the response `Date` header; undefined when there is none. */
-const serverClockSkewMs = (headers: unknown, sentAt: number): number | undefined => {
+/**
+ * Server time minus `localNow`, from the response `Date` header; undefined when there is none.
+ * Approximate: it also carries the time spent building and sending the request, and the header's
+ * truncation to whole seconds. Both are far below `QIMEI_CLOCK_SKEW_RETRY_MS`.
+ */
+const serverClockSkewMs = (headers: unknown, localNow: number): number | undefined => {
   const date = dictionaryOf(headers).date;
   const serverAt = typeof date === 'string' ? Date.parse(date) : Number.NaN;
-  return Number.isFinite(serverAt) ? serverAt - sentAt : undefined;
+  return Number.isFinite(serverAt) ? serverAt - localNow : undefined;
 };
 
-/** One QIMEI round trip signed at `signedAt`, logged at code/type/length granularity. */
+/**
+ * One QIMEI round trip signed at `signedAt`, logged at code/type/length granularity.
+ * `localNow` is the local clock reading the bootstrap started from, not the send time, so the
+ * retry's logged skew also includes the first round trip.
+ */
 const requestQimei = async (
   http: AuthHttpClient,
   device: AndroidDevice,
-  sentAt: number,
+  localNow: number,
   signedAt: number,
 ) => {
   const request = await buildQimeiHeadersAndBody(device, new Date(signedAt));
@@ -64,7 +72,7 @@ const requestQimei = async (
     qimei36: stringOf(data.q36),
     outerCode: numberOf(outer.code),
     innerCode: numberOf(inner.code),
-    clockSkewMs: serverClockSkewMs(response.headers, sentAt),
+    clockSkewMs: serverClockSkewMs(response.headers, localNow),
   };
   logger.info('qq-auth.qimei-result', {
     source: 'upstream',
@@ -74,7 +82,7 @@ const requestQimei = async (
     innerCode: result.innerCode,
     q16Length: result.qimei.length,
     q36Length: result.qimei36.length,
-    signedWith: signedAt === sentAt ? 'local-clock' : 'server-clock',
+    signedWith: signedAt === localNow ? 'local-clock' : 'server-clock',
     clockSkewSec:
       result.clockSkewMs === undefined ? undefined : Math.round(result.clockSkewMs / 1000),
   });
@@ -85,6 +93,10 @@ const requestQimei = async (
  * Reuses the stored QIMEI while it is fresh and returns whether the device context changed.
  * Diagnostics stay at code/type/length granularity: raw bodies and identifiers never leave
  * this function.
+ *
+ * `now` is also the clock the first request is signed with (it used to be a fresh `new Date()`),
+ * so a host or test that injects a fixed clock signs with that clock. Production hosts inject
+ * `Date.now`, where the two are the same.
  *
  * A rejection while the local clock is off from the server's by more than
  * `QIMEI_CLOCK_SKEW_RETRY_MS` is retried once with the server's time. Nothing about the skew

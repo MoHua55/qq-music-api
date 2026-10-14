@@ -3,6 +3,7 @@ import { createAndroidDevice } from '../src/services/auth/androidDevice';
 import { ensureQimei } from '../src/services/auth/bootstrap';
 import type { AuthHttpClient } from '../src/services/auth/httpClient';
 import { QqDeviceBootstrapError } from '../src/services/auth/musicuProtocol';
+import { logger } from '../src/util/logger';
 
 // QIMEI signs its request with the local clock and rejects anything more than about five
 // minutes off the server's (HTTP 200, outer -30000). These tests stand in for that upstream:
@@ -11,7 +12,10 @@ import { QqDeviceBootstrapError } from '../src/services/auth/musicuProtocol';
 const SERVER_NOW = Date.parse('2026-10-14T16:14:45.000Z');
 const UPSTREAM_WINDOW_SEC = 300;
 
-const accepted = { code: 0, data: JSON.stringify({ code: 0, data: { q16: 'q16', q36: 'q36' } }) };
+// Distinct enough that finding either one in a log line means a raw identifier leaked.
+const Q16 = 'raw-q16-identifier';
+const Q36 = 'raw-q36-identifier';
+const accepted = { code: 0, data: JSON.stringify({ code: 0, data: { q16: Q16, q36: Q36 } }) };
 const rejected = { code: -30000 };
 
 /** A QIMEI endpoint whose clock reads `SERVER_NOW`; records the timestamp each request signed. */
@@ -45,8 +49,8 @@ describe('ensureQimei clock skew', () => {
 
     expect(signed).toEqual([Math.floor((SERVER_NOW + 20_000) / 1000)]);
     expect(device).toMatchObject({
-      qimei: 'q16',
-      qimei36: 'q36',
+      qimei: Q16,
+      qimei36: Q36,
       qimeiSavedAt: SERVER_NOW + 20_000,
     });
   });
@@ -63,7 +67,47 @@ describe('ensureQimei clock skew', () => {
 
     expect(signed).toEqual([Math.floor(localNow / 1000), SERVER_NOW / 1000]);
     // The TTL keeps running on the local clock, the one the next freshness check reads.
-    expect(device).toMatchObject({ qimei: 'q16', qimei36: 'q36', qimeiSavedAt: localNow });
+    expect(device).toMatchObject({ qimei: Q16, qimei36: Q36, qimeiSavedAt: localNow });
+  });
+
+  it('should log which clock each attempt signed with, without the raw QIMEI', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      const { http } = fakeQimeiUpstream();
+
+      await ensureQimei(http, createAndroidDevice(), SERVER_NOW - 345_000);
+
+      const results = info.mock.calls.filter(([event]) => event === 'qq-auth.qimei-result');
+      expect(results.map(([, fields]) => fields)).toEqual([
+        {
+          source: 'upstream',
+          httpStatus: 200,
+          outerCode: -30000,
+          outerDataType: 'undefined',
+          innerCode: undefined,
+          q16Length: 0,
+          q36Length: 0,
+          signedWith: 'local-clock',
+          clockSkewSec: 345,
+        },
+        {
+          source: 'upstream',
+          httpStatus: 200,
+          outerCode: 0,
+          outerDataType: 'string',
+          innerCode: 0,
+          q16Length: Q16.length,
+          q36Length: Q36.length,
+          signedWith: 'server-clock',
+          clockSkewSec: 345,
+        },
+      ]);
+      const logged = JSON.stringify(info.mock.calls);
+      expect(logged).not.toContain(Q16);
+      expect(logged).not.toContain(Q36);
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it('should not retry a rejection when the clock is within a minute', async () => {
