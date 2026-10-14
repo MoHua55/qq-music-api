@@ -9,7 +9,11 @@ import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
-import { playlistCreate, playlistDelete } from '../routes/operations/playlistManagement';
+import {
+  playlistCreate,
+  playlistDelete,
+  playlistRename,
+} from '../routes/operations/playlistManagement';
 import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
@@ -63,6 +67,7 @@ export default {
   userVip: withControllerLogging('userVip', operationController(userVip)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),
+  playlistRename: withControllerLogging('playlistRename', operationController(playlistRename)),
   playlistDelete: withControllerLogging('playlistDelete', operationController(playlistDelete)),
   playlistSubscribe: withControllerLogging(
     'playlistSubscribe',

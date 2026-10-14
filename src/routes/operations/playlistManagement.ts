@@ -1,5 +1,6 @@
 import { QqApiError, toNewRouteErrorResponse } from '../../protocol/errors';
 import { playlistCreateResult, playlistDeleteResult } from '../../services/user/playlistManagement';
+import { playlistRenameResult } from '../../services/user/playlistRename';
 import type { OperationHandler } from './types';
 
 const writeHandler =
@@ -23,3 +24,4 @@ const writeHandler =
   };
 export const playlistCreate = writeHandler(playlistCreateResult);
 export const playlistDelete = writeHandler(playlistDeleteResult);
+export const playlistRename = writeHandler(playlistRenameResult);

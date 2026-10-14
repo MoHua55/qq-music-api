@@ -158,13 +158,15 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `/user/vip` 的 `isVip` 只按 `iVipFlag === 1` 判断。`isVip = false` 不代表歌曲不能播放（免费账号领了听歌时长也可能播完整歌曲），播放仍以取链接结果为准。其他已知会员与权益旗标在 `upstream` 原样保留，不判断超级会员或豪华绿钻。缺会话回 401、Serverless 没配置密钥回 501；查不到本人可靠旗标回 502，不假装成免费账号，也不拿其他账号的结果代替。能力声明为 `features.user.getVip`。
 
-### 建立与删除自己的普通歌单
+### 建立、改名与删除自己的普通歌单
 
 `POST /user/playlist/create { "name": "示例歌单" }`：名称必填，最多 20 个字符。成功回 `{ code: 200, tid, dirId, name, verified: true, moderation? }`。`name` 从自建清单读回，不使用可能乱码的写入响应；`moderation` 原样保留已知内容审核旗标。
 
 `POST /user/playlist/delete { "tid": "70001" }`：服务器先从本人自建清单验证目标并换出目录号，只接受已知普通目录 1–199、没有系统类型标记的目标；拒绝“我喜欢”、系统目录、别人的或找不到的歌单，不接受调用方给 `dirId`。写入响应必须匹配目标，读回确认不见后才回 `{ code: 200, tid, deleted: true, verified: true }`。不承诺删除后能恢复。
 
-两种写入都只送一次、不自动重试。写入已尝试但结果或读回不可靠时回错误，`retryable: false`、`writeAttempted: true`、`verification: "unconfirmed"`，已知的 `tid`／`dirId` 会保留供读回确认，不能直接再创建或删除一次。协议来源是网页的写入与读回样本；Android 运行方式仍需实际验收。能力 `features.playlistManagement` 的 `createPlaylist`／`deletePlaylist` 为 true；改名的设置保留映射还没确认，`renamePlaylist` 为 false。
+`POST /user/playlist/rename { "tid": "70001", "name": "新的歌单名称" }`：只改本人普通歌单的名称，不接受描述、封面、公开设置等其他参数。服务器用编辑页的读法取得现值，原样保留描述、封面完整查询串、标签与公开／私密设置，使用已验证的整组写入形状；`dir_show` 只允许 1 或 2，其他值拒绝，不能默认变公开。非空第二封面尚未实测保留，暂不支持这类歌单的改名。写后再次读回核对名称与各项设置才回 `{ code: 200, tid, name, verified: true }`。
+
+三种写入都只送一次、不自动重试。写入已尝试但结果或读回不可靠时回错误，`retryable: false`、`writeAttempted: true`、`verification: "unconfirmed"`，已知的 `tid`／`dirId` 会保留供读回确认，不能直接再写一次。协议来源是网页的写入与读回样本；Android 运行方式仍需实际验收。能力 `features.playlistManagement` 的 `createPlaylist`／`renamePlaylist`／`deletePlaylist` 为 true。
 
 ### 普通歌单增删歌曲
 

@@ -32,6 +32,8 @@ export const UPSTREAM_OPERATIONS = [
   /** 建立／删除按各自操作保留未知非零码，不扩大凭证失效语义。 */
   'playlist.create',
   'playlist.delete',
+  'playlist.edit-read',
+  'playlist.rename',
   'subscription.playlist-status',
   'subscription.album-status',
   'subscription.song-status',

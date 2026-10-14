@@ -20,6 +20,7 @@ export const UPSTREAM_PHASES = [
   'playlist-subscribe',
   'playlist-create',
   'playlist-delete',
+  'playlist-rename',
   'subscription-status',
   'get-cdn-dispatch',
   'get-session',

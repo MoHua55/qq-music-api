@@ -92,6 +92,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
   { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
+  { name: 'playlistRename', method: 'POST', routePath: '/user/playlist/rename', category: 'User' },
   { name: 'playlistDelete', method: 'POST', routePath: '/user/playlist/delete', category: 'User' },
   {
     name: 'playlistSubscribe',
@@ -282,6 +283,11 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
 ];
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  playlistRename: {
+    description:
+      'Rename your own ordinary playlist. The editor read preserves description, tag identifiers, exact cover URL including its query and visibility (only 1 or 2). Non-empty secondary covers remain unsupported until preservation is verified. One write, followed by a matching read; uncertain outcomes must not be retried blindly.',
+    bodyExample: { tid: '70001', name: '新的歌单名称' },
+  },
   playlistCreate: {
     description:
       'Create a playlist with a name of up to 20 characters. Writes are never retried. The name and identifiers are checked through the owned list after writing; upstream write-response names may be garbled. If verification fails, retryable is false and writeAttempted/verification report the uncertain outcome.',

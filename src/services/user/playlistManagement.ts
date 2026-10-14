@@ -6,13 +6,13 @@ import { createSessionMusicuClient, type SessionMusicuOptions } from '../recomme
 import { ordinaryOwnedPlaylistOf, ownedPlaylistsDescriptor } from './ownedPlaylist';
 import { exactObjectOf, positiveIntegerOf } from './writeInput';
 
-const resultOf = (data: unknown): Record<string, unknown> => {
+export const playlistWriteResultOf = (data: unknown): Record<string, unknown> => {
   if (!isDictionary(data) || data.retCode !== 0 || !isDictionary(data.result))
     throw new QqApiError('invalid-response');
   return data.result;
 };
-const failedWrite = (
-  phase: 'playlist-create' | 'playlist-delete',
+export const failedPlaylistWrite = (
+  phase: 'playlist-create' | 'playlist-delete' | 'playlist-rename',
   error: unknown,
   writeAttempted: boolean,
   known: Record<string, number>,
@@ -55,7 +55,7 @@ export const playlistCreateResult = async (
       readOnly: false,
       operation: 'playlist.create',
     });
-    const result = resultOf(data);
+    const result = playlistWriteResultOf(data);
     const tid = positiveIntegerOf(result.tid),
       dirId = positiveIntegerOf(result.dirId);
     if (!tid || !dirId || dirId >= 200) throw new QqApiError('invalid-response');
@@ -86,7 +86,7 @@ export const playlistCreateResult = async (
       ...(Object.keys(moderation).length ? { moderation } : {}),
     });
   } catch (error) {
-    return failedWrite('playlist-create', error, writeAttempted, known);
+    return failedPlaylistWrite('playlist-create', error, writeAttempted, known);
   }
 };
 
@@ -110,7 +110,7 @@ export const playlistDeleteResult = async (
     );
     Object.assign(known, { tid, dirId });
     writeAttempted = true;
-    const result = resultOf(
+    const result = playlistWriteResultOf(
       await client.execute({
         module: 'music.musicasset.PlaylistBaseWrite',
         method: 'DelPlaylist',
@@ -136,6 +136,6 @@ export const playlistDeleteResult = async (
       throw new QqApiError('invalid-response');
     return okResult({ tid, deleted: true, verified: true });
   } catch (error) {
-    return failedWrite('playlist-delete', error, writeAttempted, known);
+    return failedPlaylistWrite('playlist-delete', error, writeAttempted, known);
   }
 };
