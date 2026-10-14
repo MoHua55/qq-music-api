@@ -52,7 +52,7 @@ const expectedFeatures = (node: boolean) => ({
   radio: { getRadioList: true, getRadioTracks: true },
   mutations: {
     updatePlaylistTracks: true,
-    likeSong: false,
+    likeSong: true,
     subscribePlaylist: true,
     subscribeAlbum: false,
   },

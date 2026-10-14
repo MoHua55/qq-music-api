@@ -8,7 +8,7 @@ describe.each(CATALOG_RUNTIMES)('红心写入（%s）', (runtime) => {
   let previous: string | undefined;
   const call = async (
     body: unknown = { song, liked: true },
-    enabled = true,
+    enabled = false,
     mode: 'valid' | 'missing' = 'valid',
   ) => {
     const options = await upstream.options(mode);
@@ -44,16 +44,22 @@ describe.each(CATALOG_RUNTIMES)('红心写入（%s）', (runtime) => {
     if (previous === undefined) delete process.env.QQ_UNVERIFIED_WRITES_ENABLED;
     else process.env.QQ_UNVERIFIED_WRITES_ENABLED = previous;
   });
-  it('默认关闭，不执行上游调用', async () => {
-    expect(await call(undefined, false)).toMatchObject({
-      status: 501,
-      body: { errorKey: 'feature.unavailable', retryable: false },
+  it.each([false, true])('红心默认启用，不依赖实验写入开关 %s', async (enabled) => {
+    expect(await call(undefined, enabled)).toMatchObject({
+      status: 200,
+      body: { code: 200, liked: true },
     });
-    expect(upstream.calls).toHaveLength(0);
+    expect(methods()).toEqual([
+      'get_song_detail_yqq',
+      'IsSongFanByMid',
+      'AddSonglist',
+      'IsSongFanByMid',
+    ]);
   });
-  it('能力声明仍然是 false', async () => {
+  it('只声明已验证的红心能力，专辑仍关闭', async () => {
     const result = await callRoute(runtime, '/login/channels');
-    expect(result.body).toHaveProperty('data.features.mutations.likeSong', false);
+    expect(result.body).toHaveProperty('data.features.mutations.likeSong', true);
+    expect(result.body).toHaveProperty('data.features.mutations.subscribeAlbum', false);
   });
   it.each([true, false])('先核对歌曲，再写一次并确认目标 %s', async (liked) => {
     upstream.state.rpcReplyQueues!.IsSongFanByMid = [
