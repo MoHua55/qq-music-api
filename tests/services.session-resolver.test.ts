@@ -161,7 +161,7 @@ describe('createStoredSessionResolver', () => {
     expect(refreshCredential).toHaveBeenCalledTimes(1);
     expect(refreshed).toMatchObject({
       token,
-      credential: { musickey: 'refreshed-key' },
+      credential: { musickey: 'refreshed-key', refresh_key: 'refresh-key' },
       expiresAt: (Math.floor(current / 1000) + 259200) * 1000,
     });
     expect((repository.load() as AuthSession[])[0]).toMatchObject({
