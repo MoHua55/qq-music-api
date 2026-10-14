@@ -17,14 +17,31 @@ router.get('/login/status', context.loginStatus);
 router.get('/login/channels', context.loginChannels);
 router.get('/logout', context.logout);
 router.get('/user/detail', context.userDetail);
+router.get('/user/vip', context.userVip);
+router.post('/user/playlist/tracks', context.playlistTracks);
+router.post('/user/playlist/create', context.playlistCreate);
+router.post('/user/playlist/rename', context.playlistRename);
+router.post('/user/playlist/delete', context.playlistDelete);
+router.post('/user/playlist/subscribe', context.playlistSubscribe);
+router.get('/user/subscription-status', context.subscriptionStatus);
 router.get('/user/playlist', context.getUserPlaylist);
 router.get('/user/albums', context.getUserAlbums);
 router.get('/user/liked-songs', context.getUserLikedSongs);
 router.get('/user/playlist-detail', context.getOwnedPlaylistSongs);
 router.get('/user/guess-you-like', context.getGuessYouLike);
+router.get('/user/daily-songs', context.userDailySongs);
 
 // recommendations; a login session is used when present
 router.get('/recommend/playlists', context.getRecommendPlaylists);
+
+// public catalog recommendations; always anonymous
+router.get('/recommend/categories', context.getPlaylistCategories);
+router.get('/recommend/category-playlists', context.getCategoryPlaylists);
+router.get('/recommend/new-songs', context.getNewSongs);
+
+// radio; a login session is required
+router.get('/radio/list', context.getRadioList);
+router.get('/radio/tracks', context.getRadioTracks);
 
 // downloadQQMusic
 router.get('/downloadQQMusic', context.getDownloadQQMusic);

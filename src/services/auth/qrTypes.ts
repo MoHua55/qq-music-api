@@ -141,6 +141,14 @@ export type QrFailureReason =
   | 'qr-timeout'
   | 'unexpected-error';
 
+/** The step a fallback ran after, kept because the fallback's own result replaces it on top. */
+export interface QrPrimaryFailure {
+  failureStage?: QrFailureStage;
+  failureReason?: QrFailureReason;
+  upstreamCode?: number;
+  upstreamErrorKey?: string;
+}
+
 /** Safe failure metadata shared by QR checks and startup errors. */
 export interface QrFailureDetails {
   failureStage?: QrFailureStage;
@@ -149,6 +157,14 @@ export interface QrFailureDetails {
   upstreamCode?: number;
   upstreamGlobalCode?: number;
   upstreamSubCode?: number;
+  /** Only for a code registered with a source for this channel and step; unknown codes get none. */
+  upstreamErrorKey?: string;
+  /** Present only when a fallback ran: what the first attempt failed with. */
+  primaryFailure?: QrPrimaryFailure;
+  /** Present (and `true`) only when a fallback ran after the primary step failed. */
+  fallbackAttempted?: true;
+  /** A plain-English hint for people, derived from the fields above; only for recognised failures. */
+  failureHint?: { key: string; message: string };
 }
 
 export interface QrFailureDiagnostics extends QrFailureDetails {
@@ -265,6 +281,8 @@ export interface SessionResolver {
 }
 
 export interface QrLoginDependencies {
+  /** 全局停用具体播放提示；不改变播放、授权或重试。默认启用。 */
+  playbackHintsEnabled?: boolean;
   http?: AuthHttpClient;
   streamUrlProbe?: StreamUrlProbe;
   /** Builds the per-QR-session client used by the web login channels. */
@@ -290,6 +308,11 @@ export interface QrLoginDependencies {
   checkBudgetMs?: number;
   now?: () => number;
   randomBytes?: (size: number) => Buffer;
+}
+
+/** `preview`: ask for the preview file (`RS02…mp3`) instead of the chosen quality. */
+export interface PlaybackOptions {
+  preview?: boolean;
 }
 
 export interface QrCheckResult extends QrFailureDetails {
@@ -333,6 +356,7 @@ export interface QrLoginService {
     songmid: string,
     quality?: string | number,
     mediaId?: string,
+    options?: PlaybackOptions,
   ): Promise<Dictionary | null>;
   /** 新路由用：解析会话并交给共用实现建自己的上游客户端。解不开、过期都返回 `null`。 */
   resolveSession(token?: string): Promise<AuthSession | null>;

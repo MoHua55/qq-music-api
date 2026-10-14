@@ -22,10 +22,37 @@ export const UPSTREAM_OPERATIONS = [
   'login.wechat.credential-refresh',
   /** 登录之后带凭证的 musicu 读取（资料、歌单、喜欢、取播放链接等）。 */
   'session.authenticated-read',
+  /** 会员状态；未验证的非零码不按其他读取推断为凭证失效。 */
+  'user.vip',
+  /** 写入前的自建清单核对；不借用其他操作的非零码语义。 */
+  'playlist.owned-list',
+  /** 已验证调用形状，非零码的含义尚未确认，保持未知。 */
+  'playlist.subscribe',
+  'playlist.unsubscribe',
+  /** 建立／删除按各自操作保留未知非零码，不扩大凭证失效语义。 */
+  'playlist.create',
+  'playlist.delete',
+  'playlist.edit-read',
+  'playlist.rename',
+  'subscription.playlist-status',
+  'subscription.album-status',
+  'subscription.song-status',
   /** 猜你喜欢（`get_radio_track` id 99）。 */
   'recommend.guess-you-like',
+  /** 每日 30 首（带凭证按系统目录 202 读 `uniform_get_Dissinfo`），要登录。 */
+  'recommend.daily-songs',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
   'recommend.playlists',
+  /** 歌单分类（`get_hot_category`），匿名。 */
+  'recommend.categories',
+  /** 分类歌单（`get_playlist_by_category`），匿名。 */
+  'recommend.category-playlists',
+  /** 新歌速递（`get_new_song_info`），匿名。 */
+  'recommend.new-songs',
+  /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
+  'recommend.radio-list',
+  /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */
+  'recommend.radio-tracks',
   /** 网页版每日推荐候选接口（目前没有路由用它，只记录观测）。 */
   'recommend.web-daily-candidate',
   /** 匿名的歌单详情 CGI。 */
@@ -167,7 +194,7 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
     kind: 'rate-limited',
     errorKey: 'auth.rate-limited',
     evidence: 'protocol-reference',
-    note: '公开协议资料：登录操作过于频繁；本项目未实测。只是分类，不改变现有的扫码冷却',
+    note: '公开协议资料：登录操作过于频繁；本项目未实测。扫码冷却遇到它是 30 秒（其他失败 15 秒）',
     suggestedAction: 'wait',
     invalidatesSession: false,
   }),
@@ -192,6 +219,14 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['recommend.guess-you-like', 'recommend.playlists'],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
+  ),
+  ...credentialRejected(
+    ['recommend.daily-songs'],
+    '每日 30 首要登录，照电台路由处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['recommend.radio-list', 'recommend.radio-tracks'],
+    '电台路由要登录，沿用其他带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
   ),
   ...entries(['recommend.guess-you-like'], 'business', [22006], {
     ...observedUnknown('本项目实测见过（带 song_ids 且 num 改成 10 时被拒），原因没有分离'),

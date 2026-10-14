@@ -1,4 +1,5 @@
 import { AxiosRequestConfig } from 'axios';
+import { legacyRequestStructureOf } from '../protocol/logStructure';
 import { BaseUCommonParams } from '../types/core/request';
 import { logger } from '../util/logger';
 import { getLegacyHttpTransport } from './httpTransport';
@@ -17,6 +18,6 @@ export default ({ options = {}, method = 'get' }: BaseUCommonParams) => {
       ...options.headers,
     },
   });
-  logger.debug(baseURL.u, { opts });
+  logger.debug('upstream.request-structure', legacyRequestStructureOf(baseURL.u, method, opts));
   return transport.request(baseURL.u, method, opts, 'u');
 };

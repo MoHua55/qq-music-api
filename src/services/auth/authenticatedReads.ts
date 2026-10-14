@@ -25,13 +25,13 @@ import { WECHAT_LOGIN_TYPE } from './wechatLogin';
 // src/services/auth/authenticatedReads.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。
 
-/** 上游没有交代 musickey 寿命时的兜底会话时长，也是这个常量原本的唯一用途。 */
-export const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
-
-/** 推导出来的会话时长夹在这个区间内，挡住上游给出畸形时间时的两个极端。 */
-export const AUTH_TTL_MIN_MS = 60 * 60 * 1000;
-
-export const AUTH_TTL_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+// 凭证寿命的计算搬到了 credentialExpiry.ts（静默续期也要用）；这里保留原来的导出名。
+export {
+  AUTH_TTL_MAX_MS,
+  AUTH_TTL_MIN_MS,
+  AUTH_TTL_MS,
+  authSessionExpiryAt,
+} from './credentialExpiry';
 
 export const CREDENTIAL_REFRESH_SAFETY_CODES = new Set([1000, 104401, 104400]);
 
@@ -129,11 +129,11 @@ export const getLoginProfile = async (
   ...(await getLoginUser(http, auth)),
 });
 
-/** Refreshes a WeChat credential with the complete field set returned by its QR exchange. */
-export const refreshWechatCredential = async (
+const refreshCredentialAs = async (
   http: AuthHttpClient,
   device: AndroidDevice,
   credential: QqCredential,
+  loginType: number,
 ): Promise<QqCredential> =>
   credentialFrom(
     await callMusicu(
@@ -152,10 +152,27 @@ export const refreshWechatCredential = async (
         loginMode: 2,
       },
       credential,
-      { tmeLoginType: WECHAT_LOGIN_TYPE },
+      { tmeLoginType: loginType },
     ),
-    WECHAT_LOGIN_TYPE,
+    loginType,
   );
+
+/** Refreshes a WeChat credential with the complete field set returned by its QR exchange. */
+export const refreshWechatCredential = (
+  http: AuthHttpClient,
+  device: AndroidDevice,
+  credential: QqCredential,
+): Promise<QqCredential> => refreshCredentialAs(http, device, credential, WECHAT_LOGIN_TYPE);
+
+/**
+ * The stored silent refresh, for either channel: the login type is the one the credential already
+ * carries, which is also what every authenticated read sends as `tmeLoginType`.
+ */
+export const refreshLoginCredential = (
+  http: AuthHttpClient,
+  device: AndroidDevice,
+  credential: QqCredential,
+): Promise<QqCredential> => refreshCredentialAs(http, device, credential, credential.loginType);
 
 /** Refreshes the exchanged WeChat key once when the reference credential check requests it. */
 export const validateWechatCredential = async (
@@ -183,28 +200,6 @@ export const validateWechatCredential = async (
     credentialKeyLength: refreshed.musickey.length,
   });
   return refreshed;
-};
-
-/**
- * 会话到期时间跟着 musickey 自己的寿命走。
- *
- * 上游的凭证带着 `musickeyCreateTime`（epoch 秒）与 `keyExpiresIn`（秒，实测 259200 = 整三天）。
- * 之前这里硬编 24 小时，比上游短，于是用户每天都得重新扫码——而那并不是 QQ 要求的。缺字段或者值不
- * 合理时退回原来的 24 小时，结果再夹进 `[1 小时, 7 天]`，因此一份畸形的上游回应既不会立刻作废会话，
- * 也不会签发一个远超凭证寿命的会话。
- *
- * 凭证已经过期时算出来的时长是负的，会被夹到 1 小时；那一小时里任何一次上游调用都会被拒绝并映射成
- * 401，客户端照样能干净地登出。
- */
-export const authSessionExpiryAt = (credential: QqCredential, now: number): number => {
-  const createdAtSeconds = numberOf(credential.musickeyCreateTime);
-  const lifetimeSeconds = numberOf(credential.keyExpiresIn);
-  if (!createdAtSeconds || !lifetimeSeconds || createdAtSeconds <= 0 || lifetimeSeconds <= 0)
-    return now + AUTH_TTL_MS;
-  const ttl = (createdAtSeconds + lifetimeSeconds) * 1000 - now;
-  if (ttl < AUTH_TTL_MIN_MS) return now + AUTH_TTL_MIN_MS;
-  if (ttl > AUTH_TTL_MAX_MS) return now + AUTH_TTL_MAX_MS;
-  return now + ttl;
 };
 
 /** 收藏歌单最多读这么多条：上游一直说还有更多时，不能无限读下去。 */

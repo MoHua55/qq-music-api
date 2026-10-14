@@ -5,6 +5,8 @@ import { handleRequest, type QqQrRelay, type ServerlessEnv } from '../src/server
 
 // Public feature names follow provider interfaces; values describe implemented backend methods.
 const expectedFeatures = (node: boolean) => ({
+  user: { getVip: true },
+  playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {
     getLoginStatus: true,
     logout: true,
@@ -29,24 +31,29 @@ const expectedFeatures = (node: boolean) => ({
     getArtistSongs: true,
     getArtistAlbums: true,
     getCloudTracks: false,
-    getSubscriptionStatus: false,
+    getSubscriptionStatus: true,
   },
-  playback: { getSongDetail: true, getAudioSource: true, getReplacement: false },
+  playback: { getSongDetail: true, getAudioSource: true, getReplacement: false, preview: true },
   search: { searchSongs: node },
   lyrics: { getLyrics: node, getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,
-    getDailySongs: false,
+    getDailySongs: true,
     getRecommendedCollections: true,
     getHistoryEntries: false,
     getHistoryDates: false,
     getHistorySongs: false,
     dislikeSong: false,
+    personalFmModes: true,
+    getPlaylistCategories: true,
+    getCategoryPlaylists: true,
+    getNewSongs: true,
   },
+  radio: { getRadioList: true, getRadioTracks: true },
   mutations: {
-    updatePlaylistTracks: false,
+    updatePlaylistTracks: true,
     likeSong: false,
-    subscribePlaylist: false,
+    subscribePlaylist: true,
     subscribeAlbum: false,
   },
   playbackReports: { reportPlayback: false },

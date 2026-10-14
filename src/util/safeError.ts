@@ -12,6 +12,17 @@
 /** `callMusicu` 等协议调用使用的阶段名；不在这里的阶段不会出现在回应或日志中。 */
 export const UPSTREAM_PHASES = [
   'get-music-play',
+  'get-music-play-retry',
+  'get-playback-hint',
+  'get-preview-detail',
+  'get-quality-detail',
+  'get-user-vip',
+  'playlist-track-write',
+  'playlist-subscribe',
+  'playlist-create',
+  'playlist-delete',
+  'playlist-rename',
+  'subscription-status',
   'get-cdn-dispatch',
   'get-session',
   'create-qr',
@@ -25,7 +36,13 @@ export const UPSTREAM_PHASES = [
   'get-owned-playlist-songs',
   'get-user-liked-songs',
   'get-guess-you-like',
+  'get-daily-songs',
   'get-recommend-playlists',
+  'get-radio-list',
+  'get-radio-tracks',
+  'get-playlist-categories',
+  'get-category-playlists',
+  'get-new-songs',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

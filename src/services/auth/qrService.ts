@@ -15,6 +15,7 @@ import {
   isOwnAccountId,
   type OwnedPlaylistSongsParams,
   positiveIdOf,
+  refreshLoginCredential,
   validateWechatCredential,
   withCredentialRejectionMapped,
 } from './authenticatedReads';
@@ -28,8 +29,15 @@ import {
 import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
+import { logWechatQr } from './qrDiagnostics';
 import { createQqQrDriver, createWechatQrDriver } from './qrDrivers';
-import { confirmingState, failureDetailsOf, qrFailureDetailsOf, terminalState } from './qrFailures';
+import {
+  confirmingState,
+  failureDetailsOf,
+  primaryFailureOf,
+  qrFailureDetailsOf,
+  terminalState,
+} from './qrFailures';
 import {
   type AuthSession,
   type AuthSessionRepository,
@@ -37,6 +45,7 @@ import {
   type LegacyQrLoginChannel,
   NODE_RUNTIME_CAPABILITIES,
   normalizeLoginChannel,
+  type PlaybackOptions,
   type QqCredential,
   type QrChannelDriver,
   type QrCheckResult,
@@ -74,12 +83,23 @@ import {
 
 export const QR_TTL_MS = 3 * 60 * 1000;
 
-export const BACKOFF_BASE_MS = 30 * 1000;
+/** Every failure cools the next QR down by the same amount; repeated failures never double it. */
+export const QR_COOLDOWN_MS = 15 * 1000;
 
-export const BACKOFF_MAX_MS = 15 * 60 * 1000;
+/** The upstream explicitly said "too frequent" (login 104604 or an upstream HTTP 429). */
+export const QR_RATE_LIMITED_COOLDOWN_MS = 30 * 1000;
+
+const LOGIN_RATE_LIMITED_CODE = 104604;
+
+// A fallback's own result replaces the primary one on top, so "too frequent" is looked for in both.
+const isRateLimitedFailure = (details: QrFailureDetails): boolean =>
+  details.upstreamCode === LOGIN_RATE_LIMITED_CODE ||
+  details.upstreamHttpStatus === 429 ||
+  details.primaryFailure?.upstreamCode === LOGIN_RATE_LIMITED_CODE;
 
 export class QrLoginServiceImpl implements QrLoginService {
   private readonly http: AuthHttpClient;
+  private readonly playbackHintsEnabled: boolean;
   private readonly streamCdnSelector: StreamCdnSelector;
   private readonly createSessionHttp: () => AuthHttpClient;
   private readonly now: () => number;
@@ -92,12 +112,12 @@ export class QrLoginServiceImpl implements QrLoginService {
   private readonly sessionResolver: SessionResolver;
   private readonly deviceStore: DeviceContextStore;
   private creatingSession = false;
-  private failureCount = 0;
   private nextQrAllowedAt = 0;
   private lastQrFailure?: QrFailureDetails;
 
   public constructor(dependencies: QrLoginDependencies) {
     this.http = dependencies.http ?? unavailableHttpClient();
+    this.playbackHintsEnabled = dependencies.playbackHintsEnabled !== false;
     this.streamCdnSelector = new StreamCdnSelector(
       dependencies.streamUrlProbe ?? createStreamUrlProbe(this.http),
       dependencies.now ?? Date.now,
@@ -116,6 +136,8 @@ export class QrLoginServiceImpl implements QrLoginService {
         repository: dependencies.authSessionRepository ?? createMemoryAuthSessionRepository(),
         now: this.now,
         randomBytes: this.random,
+        refreshCredential: (session) =>
+          refreshLoginCredential(this.http, session.device, session.credential),
       });
     this.qrSessionStore = createQrSessionStore(
       dependencies.qrSessionRepository ?? createMemoryQrSessionRepository(),
@@ -175,8 +197,9 @@ export class QrLoginServiceImpl implements QrLoginService {
     details: QrFailureDetails = { failureStage: 'qr-event', failureReason: 'qr-timeout' },
   ): number {
     this.lastQrFailure = failureDetailsOf(details);
-    this.failureCount += 1;
-    const delay = Math.min(BACKOFF_BASE_MS * 2 ** (this.failureCount - 1), BACKOFF_MAX_MS);
+    const delay = isRateLimitedFailure(this.lastQrFailure)
+      ? QR_RATE_LIMITED_COOLDOWN_MS
+      : QR_COOLDOWN_MS;
     this.nextQrAllowedAt = this.now() + delay;
     return delay;
   }
@@ -243,7 +266,7 @@ export class QrLoginServiceImpl implements QrLoginService {
   private failSession(session: QrSessionRecord, error: unknown, stage: QrFailureStage): void {
     if (terminalState(session.state)) return;
     session.state = 'failed';
-    Object.assign(session, qrFailureDetailsOf(error, stage));
+    Object.assign(session, qrFailureDetailsOf(error, stage, session.channel));
     session.retryAfterMs = this.backoff(session);
     this.qrSessionStore.persist();
     logger.warn('qq-auth.session-failed', {
@@ -268,6 +291,9 @@ export class QrLoginServiceImpl implements QrLoginService {
     try {
       return await exchangeCredential(this.http, device, session.qrcodeId, musicid, mqttToken);
     } catch (error) {
+      // The fallback below replaces this failure on top whatever it returns, so it is kept here.
+      session.primaryFailure = primaryFailureOf(error, 'credential-exchange', session.channel);
+      session.fallbackAttempted = true;
       session.failureStage = 'credential-validation';
       const direct = {
         musicid,
@@ -319,9 +345,10 @@ export class QrLoginServiceImpl implements QrLoginService {
     session.authToken = token;
     session.failureStage = undefined;
     session.failureReason = undefined;
+    session.primaryFailure = undefined;
+    session.fallbackAttempted = undefined;
     session.state = 'confirmed';
     this.qrSessionStore.persist();
-    this.failureCount = 0;
     this.nextQrAllowedAt = 0;
     this.lastQrFailure = undefined;
     logger.info('qq-auth.login-confirmed', {
@@ -335,6 +362,22 @@ export class QrLoginServiceImpl implements QrLoginService {
 
   private onQrEvent(session: QrSessionRecord, event: QrEvent): void {
     if (terminalState(session.state)) return;
+    const previousState = session.state;
+    // A later WeChat waiting response is not evidence that the phone's scan was undone.
+    // Keep the QQ listener's existing semantics and still accept cancellation/expiry events.
+    if (
+      session.channel === 'wechat' &&
+      event.type === 'waiting' &&
+      confirmingState(session.state)
+    ) {
+      logWechatQr(session, 'qr-state', {
+        eventType: 'waiting',
+        previousState,
+        state: session.state,
+        ignored: true,
+      });
+      return;
+    }
     if (event.type === 'waiting') session.state = 'waiting';
     else if (event.type === 'scanned') session.state = 'scanned';
     else if (event.type === 'cookies' || event.type === 'authorized') {
@@ -358,6 +401,24 @@ export class QrLoginServiceImpl implements QrLoginService {
       session.retryAfterMs = this.backoff(session);
     }
     this.qrSessionStore.persist();
+    if (session.channel === 'wechat' && session.state !== previousState) {
+      const eventType =
+        event.type === 'waiting' ||
+        event.type === 'scanned' ||
+        event.type === 'authorized' ||
+        event.type === 'cookies' ||
+        event.type === 'canceled' ||
+        event.type === 'timeout' ||
+        event.type === 'loginFailed'
+          ? event.type
+          : 'unknown';
+      logWechatQr(session, 'qr-state', {
+        eventType,
+        previousState,
+        state: session.state,
+        ignored: false,
+      });
+    }
   }
 
   /**
@@ -522,20 +583,34 @@ export class QrLoginServiceImpl implements QrLoginService {
       const session = this.sessionFor(key);
       await this.advanceSession(session, budgetMs);
       if (session.state === 'confirmed' && session.authToken) {
-        return {
+        return this.observedCheckResult(session, {
           code: 803,
           message: 'Authorization login successful',
           cookie: `qqmusic_session=${session.authToken}`,
-        };
+        });
       }
       if (session.state === 'scanned' || session.state === 'exchanging')
-        return { code: 802, message: 'QR code scanned' };
+        return this.observedCheckResult(session, { code: 802, message: 'QR code scanned' });
       if (session.state === 'expired' || session.state === 'failed')
-        return this.failedCheckResult(session);
-      return { code: 801, message: 'Waiting for QR scan' };
+        return this.observedCheckResult(session, this.failedCheckResult(session));
+      return this.observedCheckResult(session, { code: 801, message: 'Waiting for QR scan' });
     } catch {
       return { code: 800, message: 'QR code expired' };
     }
+  }
+
+  private observedCheckResult(session: QrSessionRecord, result: QrCheckResult): QrCheckResult {
+    if (session.channel !== 'wechat') return result;
+    const failure = failureDetailsOf(session);
+    logWechatQr(session, 'qr-check', {
+      state: session.state,
+      apiCode: result.code,
+      sessionMode: this.capabilities.sessionMode,
+      pollErrors: this.qrRuntimes.get(session.key)?.pollErrors ?? 0,
+      failureStage: failure.failureStage,
+      failureReason: failure.failureReason,
+    });
+    return result;
   }
 
   private failedCheckResult(session: QrSessionRecord): QrCheckResult {
@@ -635,6 +710,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     songmid: string,
     quality?: string | number,
     mediaId?: string,
+    options?: PlaybackOptions,
   ): Promise<Dictionary | null> {
     const auth = await this.authFor(token);
     return auth
@@ -646,6 +722,8 @@ export class QrLoginServiceImpl implements QrLoginService {
             songmid,
             quality,
             mediaId,
+            options,
+            this.playbackHintsEnabled,
           ),
         )
       : null;

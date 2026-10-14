@@ -239,15 +239,16 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
   });
 
   it.each([
-    429, 503,
-  ])('keeps bootstrap HTTP %i and per-runtime cooldown lifecycle explicit', async (status) => {
+    [429, 30000],
+    [503, 15000],
+  ])('keeps bootstrap HTTP %i and its %i ms per-runtime cooldown explicit', async (status, cooldown) => {
     mockUpstream.state.bootstrapStatus = status;
     const first = await call('/login/qr/key?channel=qq', false);
     expect(first).toMatchObject({
       status: 502,
-      headers: { 'retry-after': '30' },
+      headers: { 'retry-after': String(cooldown / 1000) },
       body: {
-        retryAfterMs: 30000,
+        retryAfterMs: cooldown,
         failureReason: 'upstream-http-error',
         upstreamHttpStatus: status,
       },
@@ -257,9 +258,9 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     if (runtime === 'node') {
       expect(retry).toMatchObject({
         status: 429,
-        headers: { 'retry-after': '29' },
+        headers: { 'retry-after': String(Math.ceil((cooldown - 1501) / 1000)) },
         body: {
-          retryAfterMs: 28499,
+          retryAfterMs: cooldown - 1501,
           failureReason: 'local-backoff',
           lastFailure: {
             failureStage: 'device-bootstrap',
@@ -272,8 +273,8 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     } else {
       expect(retry).toMatchObject({
         status: 502,
-        headers: { 'retry-after': '30' },
-        body: { retryAfterMs: 30000 },
+        headers: { 'retry-after': String(cooldown / 1000) },
+        body: { retryAfterMs: cooldown },
       });
       expect(mockUpstream.requests).toHaveLength(2);
     }
@@ -295,15 +296,56 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
     }[event];
     expect(await call(path, false)).toMatchObject({
       status: 200,
-      body: { code: 800, retryAfterMs: 30000, failureStage: 'qr-event', failureReason },
+      body: { code: 800, retryAfterMs: 15000, failureStage: 'qr-event', failureReason },
     });
     expect(await call(path, false)).toMatchObject({
       status: 200,
-      body: { code: 800, retryAfterMs: 30000 },
+      body: { code: 800, retryAfterMs: 15000 },
     });
     expect((await call('/login/qr/key?channel=qq', false)).status).toBe(
       runtime === 'node' ? 429 : 200,
     );
+  });
+
+  // 手机 QQ 换凭证失败后会用扫码票据再验证一次；两步都失败时，顶层照旧是最后那一步，
+  // 被盖掉的换凭证结果放进 primaryFailure，两个宿主一样。
+  it('keeps the fallback failure on top and adds the overwritten exchange failure', async () => {
+    mockUpstream.state.loginCode = 20279;
+    mockUpstream.state.credentialCode = 1000;
+    const key = (await call('/login/qr/key?channel=qq', false)).body.data.unikey;
+    const path = `/login/qr/check?key=${encodeURIComponent(key)}`;
+    await call(`/login/qr/create?key=${encodeURIComponent(key)}`, false);
+    await mockUpstream.observe({
+      type: 'cookies',
+      payload: {
+        cookies: { qqmusic_uin: { value: '10000' }, qqmusic_key: { value: 'fixture-exchange' } },
+      },
+    });
+    let result = await call(path, false);
+    for (let attempt = 0; attempt < 5 && result.body.code !== 800; attempt++) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      result = await call(path, false);
+    }
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        code: 800,
+        message: 'QR login failed',
+        retryAfterMs: 15000,
+        failureStage: 'credential-validation',
+        failureReason: 'upstream-rejected',
+        upstreamCode: 1000,
+        primaryFailure: {
+          failureStage: 'credential-exchange',
+          failureReason: 'upstream-rejected',
+          upstreamCode: 20279,
+          upstreamErrorKey: 'auth.device-limit',
+        },
+        fallbackAttempted: true,
+        failureHint: { key: 'login.device-limit', message: expect.any(String) },
+      },
+    });
+    expect(result.body.upstreamErrorKey).toBeUndefined();
   });
 
   it('keeps cancellation idempotent while preserving the different QR storage lifecycles', async () => {
@@ -329,7 +371,7 @@ describe.each(['node', 'serverless'] as const)('existing error boundaries: %s', 
             message: 'QR code expired',
             failureStage: 'qr-event',
             failureReason: 'qr-timeout',
-            retryAfterMs: 30000,
+            retryAfterMs: 15000,
           },
     );
     expect(mockUpstream.closed).toContain('fixture-qr-id');

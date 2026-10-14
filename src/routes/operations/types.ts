@@ -15,6 +15,9 @@ export type QrRouteService = Pick<QrLoginService, 'createSession' | 'createQr' |
 export type OperationRuntime = 'node' | 'serverless';
 
 export interface OperationRequest {
+  readonly method?: string;
+  /** 新写入路由使用；旧路由不读取正文。 */
+  body?(): Promise<unknown>;
   runtime: OperationRuntime;
   /** 同名参数的第一个值；没带这个参数是 `undefined`，带了但是空的是 `''`。两边一致。 */
   query(name: string): string | undefined;

@@ -3,6 +3,7 @@ import { handleRequest } from '../src/serverless';
 import { deriveAndroidDevice } from '../src/serverless/derivedDevice';
 import { createRouter } from '../src/serverless/router';
 import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
+import { logger } from '../src/util/logger';
 
 // The serverless entry, exercised through its Web-standard signature. Everything asserted here is
 // either a routing rule or one of the §5.3 compatibility invariants — the ones Folia depends on and
@@ -35,7 +36,7 @@ describe('serverless QR startup diagnostics', () => {
         upstreamHttpStatus: 503,
       });
       expect(JSON.stringify(body)).not.toContain('private-body');
-      expect(response.headers.get('retry-after')).toBe('30');
+      expect(response.headers.get('retry-after')).toBe('15');
     } finally {
       fetchSpy.mockRestore();
     }
@@ -394,6 +395,45 @@ describe('QR login sealed state (D1′)', () => {
     // `/check` made — the device identity is not just re-derived, it is carried forward.
     const exchangeComm = musicuComms.find((comm) => comm.QIMEI === QIMEI_16);
     expect(exchangeComm).toBeDefined();
+  });
+
+  it('should expose safe evidence for sealed WeChat checks without changing the stateless contract', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      const keyResponse = await call('/login/qr/key?channel=wechat', {}, QR_FLOW_ENV);
+      const unikey = (await bodyOf(keyResponse)).data.unikey as string;
+      for (const [upstreamCode, apiCode] of [
+        [404, 802],
+        [408, 801],
+      ]) {
+        wechatPollBody = wxStatusBody(upstreamCode);
+        const check = await call(
+          `/login/qr/check?key=${encodeURIComponent(unikey)}`,
+          {},
+          QR_FLOW_ENV,
+        );
+        expect(check.status).toBe(200);
+        expect(await bodyOf(check)).toEqual({
+          code: apiCode,
+          message: apiCode === 802 ? 'QR code scanned' : 'Waiting for QR scan',
+        });
+        expect(info.mock.calls).toContainEqual([
+          'qq-auth.wechat-poll',
+          expect.objectContaining({ outcome: 'status', upstreamCode }),
+        ]);
+        expect(info.mock.calls).toContainEqual([
+          'qq-auth.wechat-qr-check',
+          expect.objectContaining({ sessionMode: 'sealed', apiCode }),
+        ]);
+      }
+      const evidence = info.mock.calls.filter(([name]) =>
+        String(name).startsWith('qq-auth.wechat-'),
+      );
+      for (const secret of [unikey, WX_UUID, WX_CODE, MUSIC_KEY, 'wx_session=abc123'])
+        expect(JSON.stringify(evidence)).not.toContain(secret);
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it('should answer 404 on /create for a unikey sealed with a different deployment secret', async () => {

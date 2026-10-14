@@ -41,6 +41,8 @@ export const createContractUpstream = () => {
   let onEvent: ((event: QrEvent) => void) | undefined;
   const state = {
     credentialCode: 0,
+    /** 换凭证（Login）的单项码；0 表示照常换到凭证。 */
+    loginCode: 0,
     catalogCode: 0,
     bootstrapStatus: 200,
     wechatCode: 408,
@@ -50,6 +52,8 @@ export const createContractUpstream = () => {
     recommendHttpStatus: 0,
     /** 按 songmid 覆盖 UrlGetVkey 的单曲条目，用来模拟部分歌曲取不到链接。 */
     vkeyItems: {} as Record<string, Record<string, unknown>>,
+    /** 按 songmid 覆盖单曲详情的 track_info，用来模拟不同的限制讯号。 */
+    songDetails: {} as Record<string, Record<string, unknown>>,
   };
 
   const rpcData = ({ method, param }: RpcCall): unknown => {
@@ -86,7 +90,7 @@ export const createContractUpstream = () => {
           })),
         };
       case 'get_song_detail_yqq':
-        return { track_info: CONTRACT_SONGS[0] };
+        return { track_info: state.songDetails[param.song_mid] ?? CONTRACT_SONGS[0] };
       case 'GetAlbumList':
         return { list: CONTRACT_ALBUMS };
       case 'get_singer_detail_info':
@@ -147,7 +151,9 @@ export const createContractUpstream = () => {
             ? state.credentialCode
             : ['get_radio_track', 'GetRecommendFeed'].includes(rpc.method)
               ? state.recommendCode
-              : 0;
+              : rpc.method === 'Login'
+                ? state.loginCode
+                : 0;
         response[key] = { code, data: code ? {} : rpcData(call) };
       }
       return Response.json(response);

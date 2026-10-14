@@ -48,6 +48,8 @@ export const playbackQualityOf = (value: unknown): PlaybackQuality => {
 
 /** 对外的形状。`codes` 只来自这首歌的单曲条目，没有可用数字时省略。 */
 export interface PlaybackRestriction {
+  /** 文件守门的失败分类；不改变原有 key 或 HTTP 状态。 */
+  failureReason?: 'quality-file-unavailable' | 'quality-detail-unavailable';
   key: PlaybackRestrictionKey;
   evidence: EvidenceLevel;
   codes?: PlaybackEntryCodes;

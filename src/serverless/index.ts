@@ -11,11 +11,20 @@ import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
+import {
+  playlistCreate,
+  playlistDelete,
+  playlistRename,
+} from '../routes/operations/playlistManagement';
+import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
+import { userVip } from '../routes/operations/userVip';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import {
   createQrLoginService,
@@ -23,8 +32,14 @@ import {
   type QrLoginService,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import {
+  categoryPlaylistsResult,
+  newSongsResult,
+  playlistCategoriesResult,
+} from '../services/recommend/catalog';
 import { guessYouLikeResult } from '../services/recommend/guessYouLike';
 import type { NewRouteResult } from '../services/recommend/newRouteResult';
+import { radioListResult, radioTracksResult } from '../services/recommend/radio';
 import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
@@ -66,6 +81,7 @@ import { createSealedSessionResolver } from './sealedResolver';
 export type { QqQrRelay, QrEvent } from '../services/auth/qrLogin';
 
 export interface ServerlessEnv {
+  QQ_PLAYBACK_HINTS_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
 }
@@ -142,6 +158,14 @@ const routes: Record<string, RouteHandler> = {
   '/logout': operationRoute(logout),
 
   '/user/detail': operationRoute(userDetail),
+  '/user/vip': operationRoute(userVip),
+  '/user/daily-songs': operationRoute(userDailySongs),
+  '/user/playlist/tracks': operationRoute(playlistTracks),
+  '/user/playlist/create': operationRoute(playlistCreate),
+  '/user/playlist/rename': operationRoute(playlistRename),
+  '/user/playlist/delete': operationRoute(playlistDelete),
+  '/user/playlist/subscribe': operationRoute(playlistSubscribe),
+  '/user/subscription-status': operationRoute(subscriptionStatus),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
     fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
@@ -157,6 +181,32 @@ const routes: Record<string, RouteHandler> = {
       ),
     );
   },
+
+  // 公开内容，一律匿名读；没设密钥也能用。
+  '/recommend/categories': async () => fromResult(await playlistCategoriesResult()),
+
+  '/recommend/category-playlists': async ({ url }) =>
+    fromResult(
+      await categoryPlaylistsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        page: url.searchParams.get('page') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/recommend/new-songs': async ({ url }) =>
+    fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
+
+  '/radio/list': async ({ service: getService, token }) =>
+    fromResult(await radioListResult(await (await getService()).resolveSession(token))),
+
+  '/radio/tracks': async ({ url, service: getService, token }) =>
+    fromResult(
+      await radioTracksResult(
+        await (await getService()).resolveSession(token),
+        url.searchParams.get('id'),
+      ),
+    ),
 
   '/user/playlist': operationRoute(getUserPlaylist),
 
@@ -192,11 +242,21 @@ const LOGIN_ROUTES = new Set([
   '/login/status',
   '/logout',
   '/user/detail',
+  '/user/vip',
+  '/user/playlist/tracks',
+  '/user/playlist/create',
+  '/user/playlist/rename',
+  '/user/playlist/delete',
+  '/user/playlist/subscribe',
+  '/user/subscription-status',
   '/user/playlist',
   '/user/albums',
   '/user/liked-songs',
   '/user/playlist-detail',
   '/user/guess-you-like',
+  '/user/daily-songs',
+  '/radio/list',
+  '/radio/tracks',
   '/getMusicPlay/:songmid?',
 ]);
 
@@ -213,6 +273,7 @@ const createServiceFor = async (
   const secrets = secretsOf(env);
   return createQrLoginService({
     http: createFetchAuthHttpClient(),
+    playbackHintsEnabled: !['0', 'false'].includes(env.QQ_PLAYBACK_HINTS_ENABLED ?? ''),
     createSessionHttp: () => createFetchAuthHttpClient(),
     deviceRepository: createMemoryDeviceContextRepository(
       await deriveAndroidDevice(secrets.current),

@@ -9,10 +9,19 @@ import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
 import { loginStatus } from '../routes/operations/loginStatus';
+import {
+  playlistCreate,
+  playlistDelete,
+  playlistRename,
+} from '../routes/operations/playlistManagement';
+import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
+import { userVip } from '../routes/operations/userVip';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
@@ -28,9 +37,11 @@ import getMv from './getMv';
 import getMvByTag from './getMvByTag';
 import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
+import { getRadioList, getRadioTracks } from './getRadio';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
+import { getCategoryPlaylists, getNewSongs, getPlaylistCategories } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
@@ -54,6 +65,20 @@ export default {
   getCookie: withControllerLogging('getCookie', getCookie),
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
+  userVip: withControllerLogging('userVip', operationController(userVip)),
+  userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),
+  playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
+  playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),
+  playlistRename: withControllerLogging('playlistRename', operationController(playlistRename)),
+  playlistDelete: withControllerLogging('playlistDelete', operationController(playlistDelete)),
+  playlistSubscribe: withControllerLogging(
+    'playlistSubscribe',
+    operationController(playlistSubscribe),
+  ),
+  subscriptionStatus: withControllerLogging(
+    'subscriptionStatus',
+    operationController(subscriptionStatus),
+  ),
   getHotKey: withControllerLogging('getHotKey', getHotKey),
   getSearchByKey: withControllerLogging('getSearchByKey', getSearchByKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),
@@ -111,4 +136,9 @@ export default {
   getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),
   getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
   getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
+  getRadioList: withControllerLogging('getRadioList', getRadioList),
+  getRadioTracks: withControllerLogging('getRadioTracks', getRadioTracks),
+  getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
+  getCategoryPlaylists: withControllerLogging('getCategoryPlaylists', getCategoryPlaylists),
+  getNewSongs: withControllerLogging('getNewSongs', getNewSongs),
 };

@@ -1,12 +1,14 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { AuthHttpClient } from '../src/services/auth/httpClient';
 import {
+  createMemoryQrSessionRepository,
   createQrLoginService,
   type QrChannelDriver,
   type QrEvent,
   type QrEventListener,
   type QrSessionRecord,
 } from '../src/services/auth/qrLogin';
+import { logger } from '../src/util/logger';
 
 const QIMEI_16 = 'q'.repeat(36);
 const QIMEI_36 = 'r'.repeat(36);
@@ -192,6 +194,95 @@ describe('QR channel drivers', () => {
     await expect(service.checkQr(key)).resolves.toMatchObject({ code: 800 });
   });
 
+  it('should retain a scanned WeChat QR when a later event says waiting', async () => {
+    const pull = createPullDriverStub();
+    const { service, key } = await startSession('wechat', pull.driver);
+    pull.queue.push([{ type: 'scanned', payload: null }]);
+    await expect(service.checkQr(key)).resolves.toEqual({ code: 802, message: 'QR code scanned' });
+    pull.queue.push([{ type: 'waiting', payload: null }]);
+    await expect(service.checkQr(key)).resolves.toEqual({ code: 802, message: 'QR code scanned' });
+    // Preserving progress must not hide a real cancellation or change the keyed cancel API.
+    service.cancelSession(key);
+    await expect(service.checkQr(key)).resolves.toEqual({ code: 800, message: 'QR code expired' });
+  });
+
+  it('should retain WeChat progress when scanned and waiting arrive in the same check', async () => {
+    const pull = createPullDriverStub();
+    const { service, key } = await startSession('wechat', pull.driver);
+    pull.queue.push([
+      { type: 'scanned', payload: null },
+      { type: 'waiting', payload: null },
+    ]);
+    await expect(service.checkQr(key)).resolves.toEqual({ code: 802, message: 'QR code scanned' });
+  });
+
+  it('should retain an exchanging WeChat QR when a late event says waiting', async () => {
+    const pull = createPullDriverStub();
+    const record: QrSessionRecord = {
+      key: 'fixture-exchanging-key',
+      channel: 'wechat',
+      state: 'exchanging',
+      identifier: 'fixture-uuid',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+    };
+    const service = createQrLoginService({
+      drivers: { wechat: pull.driver },
+      qrSessionRepository: createMemoryQrSessionRepository([record]),
+    });
+    pull.queue.push([{ type: 'waiting', payload: null }]);
+    await expect(service.checkQr(record.key)).resolves.toEqual({
+      code: 802,
+      message: 'QR code scanned',
+    });
+  });
+
+  it('should preserve QQ listener waiting events after a scan', async () => {
+    const push = createPushDriverStub();
+    const { service, key } = await startSession('qq', push.driver);
+    push.emit({ type: 'scanned', payload: null });
+    await expect(service.checkQr(key)).resolves.toMatchObject({ code: 802 });
+    push.emit({ type: 'waiting', payload: null });
+    await expect(service.checkQr(key)).resolves.toEqual({
+      code: 801,
+      message: 'Waiting for QR scan',
+    });
+  });
+
+  it.each([
+    'canceled',
+    'timeout',
+  ] as const)('should still accept WeChat %s after ignoring waiting', async (type) => {
+    const pull = createPullDriverStub();
+    const { service, key } = await startSession('wechat', pull.driver);
+    pull.queue.push([{ type: 'scanned', payload: null }]);
+    await service.checkQr(key);
+    pull.queue.push([{ type: 'waiting', payload: null }]);
+    await service.checkQr(key);
+    pull.queue.push([{ type, payload: null }]);
+    await expect(service.checkQr(key)).resolves.toMatchObject({
+      code: 800,
+      failureStage: 'qr-event',
+      failureReason: type === 'canceled' ? 'user-canceled' : 'qr-timeout',
+    });
+  });
+
+  it('should still fail a scanned WeChat QR after four consecutive poll errors', async () => {
+    const pull = createPullDriverStub();
+    const { service, key } = await startSession('wechat', pull.driver);
+    pull.queue.push([{ type: 'scanned', payload: null }]);
+    await service.checkQr(key);
+    for (let check = 0; check < 3; check += 1) {
+      pull.queue.push(new Error('offline network failure'));
+      await expect(service.checkQr(key)).resolves.toMatchObject({ code: 802 });
+    }
+    pull.queue.push(new Error('offline network failure'));
+    await expect(service.checkQr(key)).resolves.toMatchObject({
+      code: 800,
+      failureStage: 'qr-poll',
+    });
+  });
+
   it('should never poll a push channel and should drive it from its listener', async () => {
     const push = createPushDriverStub();
     const { service, key } = await startSession('qq', push.driver);
@@ -286,5 +377,168 @@ describe('WeChat pull driver long-poll semantics', () => {
     await expect(service.checkQr(key)).resolves.toMatchObject({ code: 801 });
     await expect(service.checkQr(key)).resolves.toMatchObject({ code: 801 });
     expect(polls).toBe(2);
+  });
+
+  it('should retain scanned progress through real 404, 408 and budget-expiry responses', async () => {
+    const queue: Array<number | Error> = [
+      404,
+      408,
+      Object.assign(new Error('timeout'), { name: 'TimeoutError' }),
+    ];
+    const service = createQrLoginService({
+      http: createBootstrapHttp(),
+      createSessionHttp: () =>
+        createWechatHttp(async () => {
+          const next = queue.shift();
+          if (next instanceof Error) throw next;
+          return response(`window.wx_errcode=${next};window.wx_code='';`);
+        }),
+    });
+    const key = await service.createSession('wechat');
+    await service.createQr(key);
+    for (let check = 0; check < 3; check += 1) {
+      await expect(service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+    }
+  });
+
+  it('should keep QR checks working if an optional diagnostic sink throws', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation((event) => {
+      if (
+        ['qq-auth.wechat-poll', 'qq-auth.wechat-qr-state', 'qq-auth.wechat-qr-check'].includes(
+          String(event),
+        )
+      )
+        throw new Error('offline diagnostic sink failure');
+    });
+    try {
+      const queue = [404, 408];
+      const service = createQrLoginService({
+        http: createBootstrapHttp(),
+        createSessionHttp: () =>
+          createWechatHttp(async () =>
+            response(`window.wx_errcode=${queue.shift()};window.wx_code='';`),
+          ),
+      });
+      const key = await service.createSession('wechat');
+      await service.createQr(key);
+      await expect(service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+      await expect(service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it('should log allowlisted poll evidence and the retained API state without secrets', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    const record: QrSessionRecord = {
+      key: 'private-qr-key',
+      channel: 'wechat',
+      state: 'waiting',
+      identifier: 'private-uuid',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+    };
+    const queue: Array<number | Error | string> = [
+      404,
+      408,
+      Object.assign(new Error('private-error-body'), { name: 'TimeoutError' }),
+      Object.assign(new Error('private-cookie=private-token'), {
+        response: { status: 503, data: 'private-body' },
+      }),
+      'private-malformed-body',
+    ];
+    const service = createQrLoginService({
+      createSessionHttp: () =>
+        ({
+          getCookieHeader: () => 'private-cookie',
+          post: jest.fn(),
+          request: async () => {
+            const next = queue.shift();
+            if (next instanceof Error) throw next;
+            return response(
+              typeof next === 'string'
+                ? next
+                : `window.wx_errcode=${next};window.wx_code='private-oauth-code';`,
+            );
+          },
+        }) as unknown as AuthHttpClient,
+      qrSessionRepository: createMemoryQrSessionRepository([record]),
+    });
+    try {
+      for (let check = 0; check < 5; check += 1) await service.checkQr(record.key);
+      const evidence = info.mock.calls.filter(([name]) =>
+        String(name).startsWith('qq-auth.wechat-'),
+      );
+      const polls = evidence
+        .filter(([name]) => name === 'qq-auth.wechat-poll')
+        .map(([, fields]) => fields);
+      expect(polls).toEqual([
+        expect.objectContaining({ outcome: 'status', upstreamCode: 404 }),
+        expect.objectContaining({ outcome: 'status', upstreamCode: 408 }),
+        expect.objectContaining({ outcome: 'budget-expired' }),
+        expect.objectContaining({
+          outcome: 'error',
+          upstreamHttpStatus: 503,
+          failureReason: 'upstream-http-error',
+        }),
+        expect.objectContaining({ outcome: 'error', failureReason: 'upstream-rejected' }),
+      ]);
+      const checks = evidence
+        .filter(([name]) => name === 'qq-auth.wechat-qr-check')
+        .map(([, fields]) => fields);
+      expect(checks).toHaveLength(5);
+      expect(checks).toEqual(
+        Array.from({ length: 5 }, () =>
+          expect.objectContaining({ apiCode: 802, state: 'scanned', sessionMode: 'stored' }),
+        ),
+      );
+      expect(evidence).toContainEqual([
+        'qq-auth.wechat-qr-state',
+        expect.objectContaining({
+          eventType: 'waiting',
+          previousState: 'scanned',
+          state: 'scanned',
+          ignored: true,
+        }),
+      ]);
+      const attempts = new Set(
+        evidence.map(([, fields]) => (fields as { attemptId: number }).attemptId),
+      );
+      expect(attempts.size).toBe(1);
+      expect([...attempts][0]).toEqual(expect.any(Number));
+      const allowed = new Set([
+        'attemptId',
+        'loginChannel',
+        'outcome',
+        'durationMs',
+        'budgetMs',
+        'upstreamCode',
+        'upstreamHttpStatus',
+        'failureReason',
+        'eventType',
+        'previousState',
+        'state',
+        'ignored',
+        'apiCode',
+        'sessionMode',
+        'failureStage',
+        'pollErrors',
+      ]);
+      for (const [, fields] of evidence) {
+        expect(Object.keys(fields as object).every((key) => allowed.has(key))).toBe(true);
+      }
+      expect(JSON.stringify(evidence)).not.toContain('private-');
+    } finally {
+      info.mockRestore();
+    }
   });
 });

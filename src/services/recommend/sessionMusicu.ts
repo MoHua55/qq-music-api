@@ -9,6 +9,8 @@ import { type AuthSession, credentialCookieHeader } from '../auth/qrLogin';
 // 只依赖协议、传输与 auth 的中立模块，Node 和 serverless 共用。
 
 export interface SessionMusicuOptions {
+  /** 已验匿名分类内容请求的 uin；不影响其他匿名路由。 */
+  anonymousUin?: 0;
   /** 测试或宿主注入；不给就用运行时自己的 fetch。 */
   fetcher?: FetchExecutor;
 }
@@ -21,7 +23,11 @@ export const createSessionMusicuClient = (
   options: SessionMusicuOptions = {},
 ) => {
   const http = createFetchTransport(options.fetcher);
-  if (!session) return createMusicuClient({ http, comm: ANONYMOUS_COMM });
+  if (!session)
+    return createMusicuClient({
+      http,
+      comm: options.anonymousUin === 0 ? { ...ANONYMOUS_COMM, uin: 0 } : ANONYMOUS_COMM,
+    });
   // 和既有的带凭证请求同一套 comm、User-Agent 与 Cookie。
   return createMusicuClient({
     http,

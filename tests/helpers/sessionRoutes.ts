@@ -72,6 +72,11 @@ export interface SessionCall {
   rpc: Array<{ module: string; method: string; param: Record<string, unknown> }>;
   params: Record<string, string>;
 }
+interface SessionReply {
+  code?: number;
+  data?: unknown;
+  httpStatus?: number;
+}
 
 export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
   const calls: SessionCall[] = [];
@@ -83,11 +88,22 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     httpStatus?: number;
     anonymousPlaylist?: unknown;
     anonymousPlay?: unknown;
+    /** 单曲详情按 songmid 回 `track_info`；没列到的歌回空的 data。 */
+    songDetails?: Record<string, unknown>;
+    detailBusinessCode?: number;
+    detailNetworkError?: boolean;
+    credentialLoginType?: number;
+    playbackHintsEnabled?: boolean;
+    rpcReplies?: Record<string, SessionReply>;
+    rpcReplyQueues?: Record<string, SessionReply[]>;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
     token: 'a'.repeat(64),
-    credential: CONTRACT_CREDENTIAL,
+    credential: {
+      ...CONTRACT_CREDENTIAL,
+      ...(state.credentialLoginType === undefined ? {} : { loginType: state.credentialLoginType }),
+    },
     device: deviceFixture.device,
     expiresAt,
   });
@@ -95,6 +111,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
   const resetService = (expiresAt: number) => {
     const session = sessionOf(expiresAt);
     mockSessionService = createQrLoginService({
+      ...{ playbackHintsEnabled: state.playbackHintsEnabled },
       http: createAuthHttpClient(),
       createSessionHttp: createAuthHttpClient,
       deviceRepository: createMemoryDeviceContextRepository(deviceFixture.device),
@@ -138,6 +155,46 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       if (state.networkError) throw state.networkError;
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });
+      if (
+        descriptors.some(
+          ([, rpc]) => state.rpcReplies?.[rpc.method] || state.rpcReplyQueues?.[rpc.method]?.length,
+        )
+      ) {
+        const method = descriptors[0][1].method;
+        const reply = state.rpcReplyQueues?.[method]?.shift() ?? state.rpcReplies?.[method];
+        if (reply?.httpStatus)
+          return new Response('fixture-private-body', { status: reply.httpStatus });
+        return Response.json({
+          code: state.globalCode ?? 0,
+          ...Object.fromEntries(
+            descriptors.map(([key, rpc]) => [
+              key,
+              {
+                code:
+                  rpc.method === method
+                    ? (reply?.code ?? 0)
+                    : (state.rpcReplies?.[rpc.method]?.code ?? 0),
+                data:
+                  rpc.method === method
+                    ? (reply?.data ?? {})
+                    : (state.rpcReplies?.[rpc.method]?.data ?? {}),
+              },
+            ]),
+          ),
+        });
+      }
+      const detail = descriptors.find(([, value]) => value.method === 'get_song_detail_yqq');
+      if (detail && state.detailNetworkError) throw new Error('fixture-detail-failure');
+      if (detail && state.songDetails) {
+        const trackInfo = state.songDetails[String(detail[1].param.song_mid)];
+        return Response.json({
+          code: 0,
+          [detail[0]]: {
+            code: state.detailBusinessCode ?? 0,
+            data: trackInfo === undefined ? {} : { track_info: trackInfo },
+          },
+        });
+      }
       if (descriptors.some(([, value]) => value.method === 'CgiGetVkey'))
         return Response.json(
           state.anonymousPlay ?? {
@@ -154,20 +211,25 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
             },
           },
         );
-      const response = descriptors.some(([, value]) => value.method === 'uniform_get_Dissinfo')
+      const response = descriptors.some(([, value]) => value.method === 'SRFVipQuery_V2')
         ? Response.json({
             code: 0,
-            req_0: {
-              code: 0,
-              data: {
-                dirinfo: { id: 70001, title: 'Fixture playlist', songnum: 1 },
-                songlist: [{ mid: 'fixture-song', title: 'Fixture song' }],
-                total_song_num: 1,
-                hasmore: 0,
-              },
-            },
+            ...Object.fromEntries(descriptors.map(([key]) => [key, { code: 0, data: {} }])),
           })
-        : await mockUpstream.fetch(request);
+        : descriptors.some(([, value]) => value.method === 'uniform_get_Dissinfo')
+          ? Response.json({
+              code: 0,
+              req_0: {
+                code: 0,
+                data: {
+                  dirinfo: { id: 70001, title: 'Fixture playlist', songnum: 1 },
+                  songlist: [{ mid: 'fixture-song', title: 'Fixture song' }],
+                  total_song_num: 1,
+                  hasmore: 0,
+                },
+              },
+            })
+          : await mockUpstream.fetch(request);
       if (!musicu && !url.pathname.includes('fcg_get_profile_order_asset')) return response;
       const body = (await response.json()) as Record<string, unknown>;
       if (state.globalCode !== undefined) body.code = state.globalCode;
@@ -208,7 +270,10 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
                 );
       return {
         token,
-        env: { QQ_SESSION_SECRET: CONTRACT_SECRET },
+        env: {
+          QQ_SESSION_SECRET: CONTRACT_SECRET,
+          ...{ QQ_PLAYBACK_HINTS_ENABLED: state.playbackHintsEnabled === false ? '0' : undefined },
+        },
         service: async () => mockSessionService,
         beforeEachLeg: () => resetService(expiresAt),
       };

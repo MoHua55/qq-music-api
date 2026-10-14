@@ -89,6 +89,23 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
+  { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
+  { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
+  { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
+  { name: 'playlistRename', method: 'POST', routePath: '/user/playlist/rename', category: 'User' },
+  { name: 'playlistDelete', method: 'POST', routePath: '/user/playlist/delete', category: 'User' },
+  {
+    name: 'playlistSubscribe',
+    method: 'POST',
+    routePath: '/user/playlist/subscribe',
+    category: 'User',
+  },
+  {
+    name: 'subscriptionStatus',
+    method: 'GET',
+    routePath: '/user/subscription-status',
+    category: 'User',
+  },
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
   { name: 'getUserAlbums', method: 'GET', routePath: '/user/albums', category: 'User' },
   { name: 'getUserLikedSongs', method: 'GET', routePath: '/user/liked-songs', category: 'User' },
@@ -99,12 +116,28 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'User',
   },
   { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
+  { name: 'userDailySongs', method: 'GET', routePath: '/user/daily-songs', category: 'User' },
   {
     name: 'getRecommendPlaylists',
     method: 'GET',
     routePath: '/recommend/playlists',
     category: 'Recommend',
   },
+  {
+    name: 'getPlaylistCategories',
+    method: 'GET',
+    routePath: '/recommend/categories',
+    category: 'Recommend',
+  },
+  {
+    name: 'getCategoryPlaylists',
+    method: 'GET',
+    routePath: '/recommend/category-playlists',
+    category: 'Recommend',
+  },
+  { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
+  { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
+  { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   {
@@ -251,6 +284,55 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
 ];
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  playlistRename: {
+    description:
+      'Rename your own ordinary playlist. The editor read preserves description, tag identifiers, exact cover URL including its query and visibility (only 1 or 2). Non-empty secondary covers remain unsupported until preservation is verified. One write, followed by a matching read; uncertain outcomes must not be retried blindly.',
+    bodyExample: { tid: '70001', name: '新的歌单名称' },
+  },
+  playlistCreate: {
+    description:
+      'Create a playlist with a name of up to 20 characters. Writes are never retried. The name and identifiers are checked through the owned list after writing; upstream write-response names may be garbled. If verification fails, retryable is false and writeAttempted/verification report the uncertain outcome.',
+    bodyExample: { name: '示例歌单' },
+  },
+  playlistDelete: {
+    description:
+      'Delete your own ordinary playlist by tid. The server resolves its directory from your owned list, rejects protected/system directories, sends one delete, checks matching identifiers and reads back absence. No automatic retry and no promise that recovery is possible.',
+    bodyExample: { tid: '70001' },
+  },
+  playlistSubscribe: {
+    description:
+      'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list. Album subscription writes are not enabled.',
+    bodyExample: { tid: '70001', subscribed: true },
+  },
+  subscriptionStatus: {
+    description:
+      'Query verified playlist, album or song subscription protocols, up to 100 identifiers. items report subscribed, not-subscribed or unknown; a failed query returns an error, never false.',
+    queryParams: [
+      {
+        key: 'type',
+        label: 'type',
+        required: true,
+        description: 'playlist, album or song',
+        defaultValue: 'playlist',
+      },
+      {
+        key: 'ids',
+        label: 'ids',
+        required: true,
+        description: 'Comma-separated numeric playlist IDs or album/song MIDs',
+        defaultValue: '70001,70002',
+      },
+    ],
+  },
+  playlistTracks: {
+    description:
+      'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 is an explicit catalog-song declaration, not the Android response type. The response is { code: 200, changed }; changed false means no change was reported, without saying why. There is no per-song result: accurate per-song presence checks are deferred. Likes are not enabled.',
+    bodyExample: { tid: '70001', op: 'add', songs: [{ id: 101, type: 0 }] },
+  },
+  userVip: {
+    description:
+      'Get the membership level of the signed-in account. vipLevel is free, green (green diamond), super (super VIP) or unknown: HugeVip 1 means super, otherwise iVipFlag 1 means green and 0 means free; a missing or unexpected flag stays unknown instead of free. isVip is still true only when iVipFlag equals 1. Neither field decides playback: a free account may still play full songs. Other known flags remain in upstream.',
+  },
   getCookie: {
     description: 'Get safe cookie status information.',
   },
@@ -283,7 +365,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     ],
   },
   qrCheck: {
-    description: 'Poll QR state: 800 expired, 801 waiting, 802 scanned, or 803 confirmed.',
+    description:
+      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. Stored WeChat sessions retain 802 after a later waiting response; only a completed credential exchange returns 803. Sealed serverless checks still reconstruct progress per request. Safe WeChat poll/state/check evidence is available in server logs at info level without adding response fields. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure. A recognised failure adds failureHint with a key and a default English message.',
     queryParams: [
       {
         key: 'key',
@@ -365,6 +448,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
     ],
   },
+  userDailySongs: {
+    description:
+      "Get today's Daily 30 songs for the authenticated user. It reads the account's own daily playlist, so it works whether or not the playlist is in your favorites. Songs keep the upstream format. Without a session it answers 401; when the upstream returns no songs it answers 422. There is no refresh parameter.",
+  },
   getGuessYouLike: {
     description:
       "Get a few songs from QQ Music's Guess You Like radio for the authenticated user (usually 5 per call). Songs keep the upstream format; reasons, when given, are in extras. Without a session it answers 401; when the upstream returns no songs it answers 422.",
@@ -375,6 +462,39 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     queryParams: [
       { key: 'limit', label: 'Limit', description: 'How many playlists, 25 by default, up to 60.' },
     ],
+  },
+  getPlaylistCategories: {
+    description:
+      'List the official playlist categories in groups (id and name). Read anonymously; no session needed.',
+  },
+  getCategoryPlaylists: {
+    description:
+      'Get official playlists of one category, in the same shape as /recommend/playlists, plus total and more. Read anonymously with caller 0. Public pages start at 1; the upstream page is one less. Uses category content total_cnt for total and more, and returns 422 for an empty page.',
+    queryParams: [
+      { key: 'id', label: 'Category id', description: 'Category id from /recommend/categories.' },
+      { key: 'page', label: 'Page', description: 'Page number starting at 1.' },
+      { key: 'limit', label: 'Limit', description: 'Playlists per page, 20 by default, up to 40.' },
+    ],
+  },
+  getNewSongs: {
+    description:
+      'Get new songs for one area (latest by default) with the list of areas. Songs keep the upstream format. Read anonymously.',
+    queryParams: [
+      {
+        key: 'area',
+        label: 'Area',
+        description: 'Area id from the areas list; 5 (latest) by default.',
+      },
+    ],
+  },
+  getRadioList: {
+    description:
+      'List QQ Music radio stations in groups for the authenticated user. Each radio has id, title, picurl and listenNum when known. Without a session it answers 401.',
+  },
+  getRadioTracks: {
+    description:
+      'Get a few songs from one radio station for the authenticated user. Radio 99 is Guess You Like and may add extras with reasons. Songs keep the upstream format. Without a session it answers 401; a bad id answers 400.',
+    queryParams: [{ key: 'id', label: 'Radio id', description: 'Radio id from /radio/list.' }],
   },
   getDownloadQQMusic: {
     description: 'Get download URL information for QQ Music.',
@@ -490,7 +610,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMusicPlay: {
     description:
-      'Get playable music URL by song MID; an opaque QR session enables authenticated playback.',
+      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A missing URL adds restriction (still url_unavailable) and a plain English hint. Authenticated m4a/128 failures may query up to 10 song details: only complete matching features suggest region or membership; unknown features stay unconfirmed. QQ_PLAYBACK_HINTS_ENABLED=0 disables these hints and lookups. WeChat matching features are supported but not yet verified with controlled live tests. ape checks size_ape first (up to 10 songs); no file and failed checks have different hints and optional restriction.failureReason, and neither asks for a URL. preview=1 takes priority, asking for a preview only when size_try is above 0 and a media id is known, marking successful entries preview: true. With a session, a readable detail whose size_try is exactly 0 gets playback.preview-missing (no preview file); other skipped previews get playback.preview-unavailable. quality=best tries flac, then 320, then 128, skipping levels whose size_flac/size_320mp3 is not above 0 (up to 10 detail lookups), and adds quality to each entry with the level actually used; without a readable detail, past the lookup limit, or without a session it asks for 128 directly. With a session, it retries once, in one batched request, the m4a/128 songs (including the last best level) whose final hint is playback.reason-unconfirmed; if the retry still fails or errors, the first result is returned.',
   },
   getAlbumInfo: {
     id: 'get-album-info',

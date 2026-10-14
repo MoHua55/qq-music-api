@@ -1,3 +1,42 @@
+## [3.3.0](https://github.com/yakult-green-tea/qq-music-api/compare/v3.2.0...v3.3.0) (2026-10-14)
+
+这一版补上推荐、电台、歌单编辑和更清楚的播放结果。Folia 已经在用的接口，路径、参数、字段和状态码都没变；下面「对现有调用的影响」列了几处看得出来、但不需要改调用方的行为变化。
+
+### 新功能
+
+- **电台**：`/radio/list` 读电台分组，`/radio/tracks?id=` 读某个电台的歌，都要登录。`id=99` 就是「猜你喜欢」，可能带推荐理由 `extras`。
+- **歌单分类、分类歌单和新歌速递**：`/recommend/categories`、`/recommend/category-playlists?id=&page=&limit=`（带 `total` 和 `more`，可以一页一页往下读）、`/recommend/new-songs?area=`，不登录也能用。
+- **每日 30 首**：`/user/daily-songs`，要登录。直接读账号自己的每日推荐，不用先在 QQ 音乐里收藏它；没有 `refresh` 参数，同一天拿到的是同一批。
+- **编辑自己的歌单**（都要登录、用 POST，只对自己的普通歌单生效，写入只送一次、不自动重试）：
+  - `/user/playlist/tracks`：往歌单里加歌或删歌，回 `{ code, changed }`，`changed` 说明这次有没有真的改动。
+  - `/user/playlist/create`、`/user/playlist/rename`、`/user/playlist/delete`：建立、改名、删除。改名会保留原来的简介、标签、封面和公开设置（设了第二张封面的歌单暂时不能改名）；写完都会读回确认。“我喜欢”和系统歌单不能改。
+- **收藏**：`POST /user/playlist/subscribe` 收藏或取消收藏歌单；`GET /user/subscription-status?type=&ids=` 一次查多个歌单、专辑或歌曲有没有收藏，查不出来时明确回 `unknown`，不会假装成“没收藏”。
+- **会员状态**：`/user/vip` 回 `isVip` 和 `vipLevel`（`free`、`green` 绿钻、`super` 超级会员、`unknown` 判断不出来）。这两个字段只用来显示，能不能播还是看取链接的结果。
+- **播放结果更清楚**（`/getMusicPlay`）：
+  - 拿不到链接的那首会多一个 `restriction`（`key` 一律是 `url_unavailable`）和给人看的 `hint`（`key` 加英文预设文案，前端可以按 `key` 换成自己的说法）。只有经过受控实测的情况才会说“可能是地区限制”或“可能需要会员”，其他一律说“原因尚未确认”。设 `QQ_PLAYBACK_HINTS_ENABLED=0` 可以关掉具体提示。
+  - `preview=1` 改要试听文件，拿到的条目标 `preview: true`。会先确认这首有试听文件才去要；确定没有时提示 `playback.preview-missing`。
+  - `quality=best` 帮你拿这首歌能拿到的最高音质：按 flac、320、128 一级一级试，每个条目多一个 `quality` 说明实际拿到哪一级。不带 `quality` 时和以前一样是 128。
+  - `quality=ape` 会先确认有这个文件才去要，没有文件和查询失败给不同的提示。
+- **扫码失败更好判断**：扫码失败的回应可能多 `upstreamErrorKey` 和 `failureHint`；手机 QQ 通道在换凭证失败时会多给 `primaryFailure`，告诉你被后续检查盖掉的真正原因（例如登录设备数到上限）。
+- `/login/channels` 的 `data.features` 把上面这些新功能标成 `true`；红心、专辑收藏写入等还没验证的功能仍是 `false`。
+
+### 对现有调用的影响
+
+- **扫码失败后的冷却**改成固定 15 秒，不再越失败越久；上游明确说操作太频繁时是 30 秒。
+- **桌面版、Node、Docker 的登录会自动续期**：凭证快到期前 6 小时内，服务会在背景换新凭证，会话 token 不变，不用再大约三天重扫一次。网页版（Serverless）还没有这个能力。
+- **原因没确认时会再取一次链接**：带登录的 `m4a`／`128` 有歌拿不到链接、原因又判断不出来时，服务会用同一会话马上再要一次（这几首合成一个请求，每首最多多一次）。拿到了就直接回链接；还是没有就回第一次的结果。
+- **微信扫码后不会再跳回“等待扫码”**：手机已经扫了、还没按确认时，`/login/qr/check` 会一直回 `802`。手机 QQ 通道不变；网页版每次检查仍会重建状态，还没有完全修好。
+
+### 改进
+
+- 开发日志更安全：请求日志只留方法、路由模板、参数键名和数量、白名单里的数字码和耗时，不记歌曲 id、播放链接或参数值。拿不到链接的歌会在 debug 日志里记一条 `playback.url-unavailable`（匿名播放也记）。
+- 微信扫码新增三类 info 日志（`qq-auth.wechat-poll`、`qq-auth.wechat-qr-state`、`qq-auth.wechat-qr-check`），只记状态、耗时和安全数字码，方便分清是扫码、换凭证还是画面显示的问题。回应没有新增字段。
+
+### 文档
+
+- 使用文档补上 Serverless 部署须知：网页版可能有几首歌拿不到链接，新的部署会算成新登录设备。
+- 新功能都写进了[使用文档](./docs/README.md)和 API Explorer 的说明。
+
 ## [3.2.0](https://github.com/yakult-green-tea/qq-music-api/compare/v3.1.5...v3.2.0) (2026-10-13)
 
 ### 新功能

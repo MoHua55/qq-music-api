@@ -278,8 +278,8 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     );
   });
 
-  // 开发日志：取不到链接的那几首各记一条，只带白名单里的安全整数；对外回应完全不变。
-  it('keeps playback answers unchanged and logs safe numbers for each failed song', async () => {
+  // 开发日志：取不到链接的那几首各记一条，只带白名单里的安全整数；回应只多可选的 restriction。
+  it('adds an optional restriction and logs safe numbers for each failed song', async () => {
     const debug = jest.spyOn(logger, 'debug').mockImplementation(() => undefined);
     mockUpstream.state.vkeyItems = {
       'fixture-song-b': {
@@ -294,6 +294,9 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
       },
       'fixture-song-c': { purl: '', result: 1.5, code: 2 ** 60, subcode: 'abc', errtype: { n: 1 } },
     };
+    mockUpstream.state.songDetails = {
+      'fixture-song-b': { mid: 'fixture-song-b', action: { msgid: 23 }, pay: { pay_play: 0 } },
+    };
 
     const result = await call('/getMusicPlay/fixture-song-a,fixture-song-b,fixture-song-c', {
       token,
@@ -304,8 +307,25 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
       data: {
         playUrl: {
           'fixture-song-a': { url: 'https://stream.invalid/fixture.mp3', error: false },
-          'fixture-song-b': { url: '', error: '暂无播放链接' },
-          'fixture-song-c': { url: '', error: '暂无播放链接' },
+          'fixture-song-b': {
+            url: '',
+            error: '暂无播放链接',
+            restriction: {
+              key: 'url_unavailable',
+              evidence: 'observed-response',
+              codes: { result: 104003, errtype: 3, code: 0 },
+              hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
+            },
+          },
+          'fixture-song-c': {
+            url: '',
+            error: '暂无播放链接',
+            restriction: {
+              key: 'url_unavailable',
+              evidence: 'observed-response',
+              hint: { key: 'playback.reason-unconfirmed', message: expect.any(String) },
+            },
+          },
         },
       },
     });
@@ -550,10 +570,10 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     mockUpstream.state.bootstrapStatus = 503;
     const result = await call('/login/qr/key?channel=wechat');
     expect(result.status).toBe(502);
-    expect(result.headers['retry-after']).toBe('30');
+    expect(result.headers['retry-after']).toBe('15');
     expect(result.body).toMatchObject({
       code: 502,
-      retryAfterMs: 30000,
+      retryAfterMs: 15000,
       failureStage: 'device-bootstrap',
       failureReason: 'upstream-http-error',
       upstreamHttpStatus: 503,
@@ -562,8 +582,8 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     if (runtime === 'node') {
       const retry = await call('/login/qr/key?channel=wechat');
       expect(retry.status).toBe(429);
-      expect(retry.headers['retry-after']).toBe('30');
-      expect(retry.body.retryAfterMs).toBe(30000);
+      expect(retry.headers['retry-after']).toBe('15');
+      expect(retry.body.retryAfterMs).toBe(15000);
     }
   });
 

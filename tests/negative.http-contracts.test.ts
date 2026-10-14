@@ -187,13 +187,24 @@ describe.each(['node', 'serverless'] as const)('negative HTTP baselines: %s', (r
             item.songmid,
             item.purl
               ? { url: `https://stream.invalid/${item.purl}`, error: false }
-              : { url: '', error: '暂无播放链接' },
+              : {
+                  url: '',
+                  error: '暂无播放链接',
+                  restriction: expect.objectContaining({
+                    key: 'url_unavailable',
+                    evidence: 'observed-response',
+                  }),
+                },
           ]),
         ),
       },
     });
     expect(result.headers).not.toHaveProperty('retry-after');
-    expect(rpcMethods.filter((method) => method === 'UrlGetVkey')).toHaveLength(1);
+    // 拿不到链接、原因没确认的歌会用同一会话再取一次：整批最多多一个请求，再取仍失败时回应不变、会话照旧。
+    const unavailable = entries.filter((item) => !item.purl).length;
+    expect(rpcMethods.filter((method) => method === 'UrlGetVkey')).toHaveLength(
+      unavailable ? 2 : 1,
+    );
     const status = await call('/login/status');
     expect(status.status).toBe(200);
     expect(status.body).toEqual({ code: 200, data: { profile: CONTRACT_PROFILE } });
