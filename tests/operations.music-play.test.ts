@@ -157,6 +157,8 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 共用处理与真实宿主契约
     'invalid',
     '',
   ])('音质 %s 与 mediaId', async (quality) => {
+    if (quality === 'ape')
+      upstream.state.songDetails = { 'fixture-song': { file: { size_ape: 12 } } };
     const legs = await parity(
       runtime,
       '/getMusicPlay/fixture-song?quality=' + quality + '&mediaId=fixture-media',
@@ -170,9 +172,10 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 共用处理与真实宿主契约
       flac: 'F000fixture-songfixture-media.flac',
       '320': 'M800fixture-songfixture-media.mp3',
     };
-    expect(legs.operation.calls[0].rpc[0].param.filename).toEqual([
-      file[quality as keyof typeof file] ?? 'M500fixture-songfixture-media.mp3',
-    ]);
+    expect(
+      legs.operation.calls.flatMap((call) => call.rpc).find((rpc) => rpc.method === 'UrlGetVkey')
+        ?.param.filename,
+    ).toEqual([file[quality as keyof typeof file] ?? 'M500fixture-songfixture-media.mp3']);
     expect(legs.host).toEqual(legs.operation);
   });
   if (runtime === 'serverless')

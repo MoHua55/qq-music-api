@@ -31,6 +31,24 @@ describe.each(CATALOG_RUNTIMES)('ape 文件守门（%s）', (runtime) => {
   });
   const modes: ('valid' | 'missing')[] = runtime === 'node' ? ['valid', 'missing'] : ['valid'];
   describe.each(modes)('会话 %s', (mode) => {
+    it.each([
+      'network',
+      'business',
+    ])('详情 %s 失败，即使响应带有文件字段也不放行', async (failure) => {
+      upstream.state.songDetails = { 'fixture-song': { file: { size_ape: 12 } } };
+      if (failure === 'network') upstream.state.detailNetworkError = true;
+      else upstream.state.detailBusinessCode = 1000;
+      const legs = await play('fixture-song', 'quality=ape', mode);
+      expect(urls(legs.operation.body)['fixture-song']).toEqual(
+        blocked('quality-detail-unavailable', 'playback.quality-detail-unavailable'),
+      );
+      expect(
+        legs.operation.calls
+          .flatMap((c) => c.rpc)
+          .some((r) => ['UrlGetVkey', 'CgiGetVkey'].includes(r.method)),
+      ).toBe(false);
+      expect(legs.host).toEqual(legs.operation);
+    });
     it.each([0, -1])('size_ape %s 确认没文件，不要链接', async (size) => {
       upstream.state.songDetails = { 'fixture-song': { file: { size_ape: size } } };
       const legs = await play('fixture-song', 'quality=ape', mode);

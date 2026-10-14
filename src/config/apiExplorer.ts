@@ -539,7 +539,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMusicPlay: {
     description:
-      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A missing URL adds restriction (still url_unavailable) and a plain English hint. Authenticated m4a/128 failures may query up to 10 song details: only complete matching features suggest region or membership; unknown features stay unconfirmed. QQ_PLAYBACK_HINTS_ENABLED=0 disables these hints and lookups. WeChat matching features are supported but not yet verified with controlled live tests. preview=1 asks for a preview only when size_try is above 0 and a media id is known, marking successful entries preview: true.',
+      'Get playable music URL by song MID; an opaque QR session enables authenticated playback. A missing URL adds restriction (still url_unavailable) and a plain English hint. Authenticated m4a/128 failures may query up to 10 song details: only complete matching features suggest region or membership; unknown features stay unconfirmed. QQ_PLAYBACK_HINTS_ENABLED=0 disables these hints and lookups. WeChat matching features are supported but not yet verified with controlled live tests. ape checks size_ape first (up to 10 songs); no file and failed checks have different hints and optional restriction.failureReason, and neither asks for a URL. preview=1 takes priority, asking for a preview only when size_try is above 0 and a media id is known, marking successful entries preview: true.',
   },
   getAlbumInfo: {
     id: 'get-album-info',

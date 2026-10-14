@@ -63,7 +63,7 @@ describe.each(CATALOG_RUNTIMES)('完整播放提示特征（%s）', (runtime) =>
       expect(legs.host).toEqual(legs.operation);
     });
   });
-  it.each(['320', 'flac', 'ape'])('音质 %s 不查原因详情', async (quality) => {
+  it.each(['320', 'flac'])('音质 %s 不查原因详情', async (quality) => {
     const legs = await play(`?quality=${quality}`);
     expect(hintOf(legs.operation.body)).toBe('playback.reason-unconfirmed');
     expect(

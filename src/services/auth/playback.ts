@@ -11,6 +11,7 @@ import {
   previewUnavailableRestriction,
   validMediaIdOf,
 } from '../../protocol/previewFile';
+import { apeFileFailureOf, qualityFileRestriction } from '../../protocol/qualityFile';
 import { logger } from '../../util/logger';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
@@ -63,7 +64,7 @@ const songDetailOf = async (
   http: AuthHttpClient,
   auth: AuthSession,
   songmid: string,
-  phase: 'get-playback-hint' | 'get-preview-detail',
+  phase: 'get-playback-hint' | 'get-preview-detail' | 'get-quality-detail',
 ): Promise<unknown> => {
   try {
     const data = await callMusicu(
@@ -128,7 +129,7 @@ export const getAuthenticatedPlayUrls = async (
   const previewMediaIds = options.preview
     ? await previewMediaIdsOf(http, auth, requestedList, mediaId)
     : undefined;
-  const songmidList = previewMediaIds
+  let songmidList = previewMediaIds
     ? requestedList.filter((mid) => previewMediaIds.has(mid))
     : requestedList;
   const skipped: Dictionary = Object.fromEntries(
@@ -139,7 +140,27 @@ export const getAuthenticatedPlayUrls = async (
         { url: '', error: '暂无播放链接', restriction: previewUnavailableRestriction(true) },
       ]),
   );
-  if (!songmidList.length && previewMediaIds) return skipped;
+  if (!options.preview && String(quality) === 'ape') {
+    const looked = [...new Set(requestedList)].slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
+    const details = new Map(
+      await Promise.all(
+        looked.map(
+          async (mid) => [mid, await songDetailOf(http, auth, mid, 'get-quality-detail')] as const,
+        ),
+      ),
+    );
+    songmidList = requestedList.filter((mid) => {
+      const reason = apeFileFailureOf(details.get(mid));
+      if (!reason) return true;
+      skipped[mid] = {
+        url: '',
+        error: '暂无播放链接',
+        restriction: qualityFileRestriction(true, reason),
+      };
+      return false;
+    });
+  }
+  if (!songmidList.length && (previewMediaIds || String(quality) === 'ape')) return skipped;
   const qualityKey = String(quality) as keyof typeof MUSIC_FILE_TYPES;
   const fileType = MUSIC_FILE_TYPES[qualityKey] ?? MUSIC_FILE_TYPES[128];
   // `globalThis.crypto` is the Web Crypto API global: identical on Node ≥20, Electron, Cloudflare
@@ -230,6 +251,7 @@ export const getAuthenticatedPlayUrls = async (
     const item = dictionaryOf(entry);
     const mid = identifierOf(item.songmid);
     if (!mid) continue;
+    if (skipped[mid]) continue;
     const purl = stringOf(item.purl);
     // 开发日志（debug）：没链接的那首只记位置、音质和白名单里的数字，不记歌曲 id。
     if (!purl)

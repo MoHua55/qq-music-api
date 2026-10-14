@@ -85,6 +85,8 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     anonymousPlay?: unknown;
     /** 单曲详情按 songmid 回 `track_info`；没列到的歌回空的 data。 */
     songDetails?: Record<string, unknown>;
+    detailBusinessCode?: number;
+    detailNetworkError?: boolean;
     credentialLoginType?: number;
     playbackHintsEnabled?: boolean;
   } = {};
@@ -147,11 +149,15 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });
       const detail = descriptors.find(([, value]) => value.method === 'get_song_detail_yqq');
+      if (detail && state.detailNetworkError) throw new Error('fixture-detail-failure');
       if (detail && state.songDetails) {
         const trackInfo = state.songDetails[String(detail[1].param.song_mid)];
         return Response.json({
           code: 0,
-          [detail[0]]: { code: 0, data: trackInfo === undefined ? {} : { track_info: trackInfo } },
+          [detail[0]]: {
+            code: state.detailBusinessCode ?? 0,
+            data: trackInfo === undefined ? {} : { track_info: trackInfo },
+          },
         });
       }
       if (descriptors.some(([, value]) => value.method === 'CgiGetVkey'))

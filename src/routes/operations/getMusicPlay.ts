@@ -14,6 +14,7 @@ import {
   previewUnavailableRestriction,
   validMediaIdOf,
 } from '../../protocol/previewFile';
+import { apeFileFailureOf, qualityFileRestriction } from '../../protocol/qualityFile';
 import { previewFilenameOf } from '../../services/auth/playback';
 import UCommon from '../../services/UCommon/UCommon';
 import { logger } from '../../util/logger';
@@ -58,8 +59,10 @@ const anonymousSongDetail = async (songmid: string): Promise<unknown> => {
       },
       option: {},
     });
-    const body = res.data as { req_0?: { data?: { track_info?: unknown } } } | undefined;
-    return body?.req_0?.data?.track_info;
+    const body = res.data as
+      | { code?: number; req_0?: { code?: number; data?: { track_info?: unknown } } }
+      | undefined;
+    return body?.code === 0 && body.req_0?.code === 0 ? body.req_0.data?.track_info : undefined;
   } catch {
     return undefined;
   }
@@ -117,7 +120,7 @@ export const createGetMusicPlay =
         if (media) previewMediaIds.set(mid, media);
       });
     }
-    const songmidList = preview
+    let songmidList = preview
       ? requestedList.filter((mid) => previewMediaIds.has(mid))
       : requestedList;
     const skipped: Record<string, AnonymousPlayEntry> = Object.fromEntries(
@@ -128,8 +131,26 @@ export const createGetMusicPlay =
           { url: '', error: '暂无播放链接', restriction: previewUnavailableRestriction(false) },
         ]),
     );
-    // 全部都不要试听文件时不打取链接的请求，回应只有 playUrl。
-    if (preview && !songmidList.length)
+    if (!preview && quality === 'ape') {
+      const looked = [...new Set(requestedList)].slice(0, MAX_HINT_LOOKUPS);
+      const details = new Map(
+        await Promise.all(
+          looked.map(async (mid) => [mid, await anonymousSongDetail(mid)] as const),
+        ),
+      );
+      songmidList = requestedList.filter((mid) => {
+        const reason = apeFileFailureOf(details.get(mid));
+        if (!reason) return true;
+        skipped[mid] = {
+          url: '',
+          error: '暂无播放链接',
+          restriction: qualityFileRestriction(false, reason),
+        };
+        return false;
+      });
+    }
+    // 文件守门全部挡下时不打取链接请求，回应只有 playUrl。
+    if ((preview || quality === 'ape') && !songmidList.length)
       return { status: 200, headers: {}, body: { data: { playUrl: skipped } } };
     const fileInfo = fileType[quality as keyof typeof fileType] ?? fileType[128];
     const file = songmidList.map((mid) =>
@@ -181,6 +202,7 @@ export const createGetMusicPlay =
         : String(quality);
     (midurlinfo === undefined ? [] : midurlinfo).forEach(
       (item: { songmid: string; purl: string }, index: number) => {
+        if (skipped[item.songmid]) return;
         if (item.purl) {
           playUrl[item.songmid] = {
             url: `${domain}${item.purl}`,

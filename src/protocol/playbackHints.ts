@@ -8,6 +8,8 @@
 export type PlaybackHintKey =
   | 'playback.reason-unconfirmed'
   | 'playback.preview-unavailable'
+  | 'playback.quality-file-unavailable'
+  | 'playback.quality-detail-unavailable'
   | 'playback.maybe-region-restricted'
   | 'playback.maybe-music-pack'
   | 'playback.maybe-membership'
@@ -19,6 +21,9 @@ export interface PlaybackHint {
 }
 
 export const PLAYBACK_HINT_MESSAGES: Readonly<Record<PlaybackHintKey, string>> = {
+  'playback.quality-file-unavailable': 'No audio file is available for this quality.',
+  'playback.quality-detail-unavailable':
+    'This quality could not be checked. Please try again later.',
   'playback.reason-unconfirmed':
     "This song can't be played right now. The exact reason isn't confirmed yet.",
   'playback.preview-unavailable':
