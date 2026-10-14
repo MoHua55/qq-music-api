@@ -38,6 +38,7 @@ describe.each(CATALOG_RUNTIMES)('/user/vip（%s）', (runtime) => {
     expect(result.body).toEqual({
       code: 200,
       isVip: flag === 1,
+      vipLevel: ['free', 'green', 'unknown'][flag],
       upstream: { iVipFlag: flag, iSuperVip: 1, iNewSuperVip: 1, HugeVip: 0, UnionFreeEndTs: 123 },
     });
     const rpc = upstream.calls.flatMap((c) => c.rpc);
@@ -46,6 +47,22 @@ describe.each(CATALOG_RUNTIMES)('/user/vip（%s）', (runtime) => {
     ]);
     expect(JSON.stringify(result.body)).not.toContain('fixture-private');
     expect(result.body).not.toHaveProperty('isSvip');
+  });
+  it.each([
+    [{ HugeVip: 1, iVipFlag: 1 }, 'super'],
+    [{ HugeVip: 1, iVipFlag: 0 }, 'super'],
+    [{ HugeVip: 0, iVipFlag: 1 }, 'green'],
+    [{ HugeVip: 0, iVipFlag: 0 }, 'free'],
+    [{ iVipFlag: 0 }, 'unknown'],
+    [{ iVipFlag: 1 }, 'unknown'],
+    [{ HugeVip: '1', iVipFlag: 1 }, 'unknown'],
+    [{ HugeVip: 2, iVipFlag: 0 }, 'unknown'],
+    [{ HugeVip: 0, iVipFlag: 2 }, 'unknown'],
+  ])('会员等级 %j 判为 %s；缺字段或没见过的值不当成免费', async (flags, level) => {
+    upstream.state.data = { infoMap: { [uin]: { iSuperVip: 1, ...flags } } };
+    const result = await call();
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({ vipLevel: level, isVip: flags.iVipFlag === 1 });
   });
   it.each([
     'missing',
@@ -67,6 +84,7 @@ describe.each(CATALOG_RUNTIMES)('/user/vip（%s）', (runtime) => {
     expect(result.status).toBe(502);
     expect(result.body).toMatchObject({ errorKey: 'upstream.invalid-response' });
     expect(result.body).not.toHaveProperty('isVip');
+    expect(result.body).not.toHaveProperty('vipLevel');
   });
   it.each([
     1000, 104400, 104401, 999999,
@@ -96,4 +114,7 @@ it('能力和 Explorer 宣告会员状态查询', async () => {
   expect(apiExplorerMetadata.endpoints.some((endpoint) => endpoint.routePath === '/user/vip')).toBe(
     true,
   );
+  expect(
+    apiExplorerMetadata.endpoints.find(({ routePath }) => routePath === '/user/vip')?.description,
+  ).toContain('vipLevel');
 });
