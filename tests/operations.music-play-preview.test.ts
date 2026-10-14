@@ -1,4 +1,6 @@
 import './helpers/sessionRoutes';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import musicPlayOperationController from '../src/controllers/musicPlayOperation';
 import { getMusicPlay } from '../src/routes/operations/getMusicPlay';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
@@ -47,6 +49,15 @@ const PREVIEW_UNAVAILABLE = {
   },
 };
 
+/** 带会话、详情可靠且 size_try 是 0：确定这首没有试听文件。 */
+const PREVIEW_MISSING = {
+  ...PREVIEW_UNAVAILABLE,
+  restriction: {
+    ...PREVIEW_UNAVAILABLE.restriction,
+    hint: { key: 'playback.preview-missing', message: 'This song has no preview.' },
+  },
+};
+
 type PlayBody = { data: { playUrl: Record<string, Record<string, unknown>> } };
 const playUrlOf = (body: unknown) => (body as PlayBody).data.playUrl;
 
@@ -65,6 +76,13 @@ const granted = (songmid: string, media: string) => ({
   purl: `RS02${media}.mp3?vkey=fixture`,
 });
 
+it('文档与 Explorer 说明确定没有试听文件的提示', () => {
+  const readme = readFileSync(resolve(__dirname, '../docs/README.md'), 'utf8');
+  expect(readme).toContain('playback.preview-missing');
+  const explorer = readFileSync(resolve(__dirname, '../src/config/apiExplorer.ts'), 'utf8');
+  expect(explorer).toContain('playback.preview-missing');
+});
+
 describe.each(CATALOG_RUNTIMES)('/getMusicPlay 试听（%s）', (runtime) => {
   const upstream = useSessionUpstream(runtime);
   beforeEach(() => {
@@ -80,7 +98,7 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 试听（%s）', (runtime) => {
       session === 'valid' ? await upstream.options() : await upstream.options('missing'),
     );
 
-  it('带会话：只对有试听的歌要试听文件，size_try 0 的直接回试听不可用', async () => {
+  it('带会话：只对有试听的歌要试听文件，size_try 0 的直接回没有试听文件', async () => {
     upstream.state.data = {
       sip: ['https://stream.invalid/'],
       midurlinfo: [granted('fixture-a', MEDIA_A)],
@@ -98,9 +116,37 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 试听（%s）', (runtime) => {
         error: false,
         preview: true,
       },
-      'fixture-b': PREVIEW_UNAVAILABLE,
+      'fixture-b': PREVIEW_MISSING,
     });
     expect(legs.host).toEqual(legs.operation);
+  });
+
+  it.each([
+    ['size_try 是数字 0', track(0, MEDIA_B), ''],
+    ['size_try 是字符串 "0"', track('0', MEDIA_B), ''],
+    ['前端给了有效 mediaId 也一样', track(0, MEDIA_B), `&mediaId=${CALLER_MEDIA}`],
+    ['没有 media_mid 也一样', track(0, ''), ''],
+  ])('带会话：%s 时确定没有试听文件，不去要', async (_label, detail, mediaQuery) => {
+    upstream.state.songDetails = { 'fixture-b': detail };
+    upstream.state.data = { sip: ['https://stream.invalid/'], midurlinfo: [] };
+
+    const legs = await play(`fixture-b?preview=1${mediaQuery}`);
+
+    expect(legs.operation.status).toBe(200);
+    expect(vkeyCallsOf(legs.operation.calls)).toEqual([]);
+    expect(legs.operation.body).toEqual({ data: { playUrl: { 'fixture-b': PREVIEW_MISSING } } });
+    expect(legs.host).toEqual(legs.operation);
+  });
+
+  it('带会话：超过 10 首查询上限、没查详情的 size_try 0 歌仍是试听不可用', async () => {
+    const mids = Array.from({ length: 11 }, (_, index) => `fixture-${index}`);
+    upstream.state.songDetails = Object.fromEntries(mids.map((mid) => [mid, track(0, MEDIA_A)]));
+    upstream.state.data = { sip: ['https://stream.invalid/'], midurlinfo: [] };
+
+    const legs = await play(`${mids.join(',')}?preview=1`);
+
+    expect(playUrlOf(legs.operation.body)['fixture-0']).toEqual(PREVIEW_MISSING);
+    expect(playUrlOf(legs.operation.body)['fixture-10']).toEqual(PREVIEW_UNAVAILABLE);
   });
 
   it.each([
@@ -189,7 +235,7 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 试听（%s）', (runtime) => {
   });
 
   if (runtime === 'node') {
-    it('匿名带 preview=1 同样先查详情，只要有试听的歌', async () => {
+    it('匿名带 preview=1 同样先查详情，只要有试听的歌；size_try 0 仍只说试听不可用', async () => {
       upstream.state.anonymousPlay = {
         code: 0,
         req_0: {
