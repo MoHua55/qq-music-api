@@ -112,17 +112,21 @@ describe.each(CATALOG_RUNTIMES)('红心写入（%s）', (runtime) => {
     expect(upstream.calls).toHaveLength(0);
   });
   it('GET 不执行写入', async () => {
-    expect((await callRoute(runtime, '/user/song/like')).status).toBe(405);
+    const options = await upstream.options('missing');
+    expect((await callRoute(runtime, '/user/song/like', { env: options.env })).status).toBe(405);
     expect(upstream.calls).toHaveLength(0);
   });
   it.each([
     { id: 102, mid: song.mid },
     { id: 101, mid: 'FixtureOther' },
-    { id: 101, mid: song.mid, type: 1 },
-  ])('标识不一致或类型不支持时拒绝', async (detail) => {
+  ])('标识不一致时拒绝', async (detail) => {
     upstream.state.songDetails![song.mid] = detail;
     expect((await call()).status).toBe(400);
     expect(methods()).toEqual(['get_song_detail_yqq']);
+  });
+  it('读取条目的 type 不当成写入编码', async () => {
+    upstream.state.songDetails![song.mid] = { id: 101, mid: song.mid, type: 1, songtype: 13 };
+    expect((await call()).body).toEqual({ code: 200, liked: true });
   });
   it.each([{}, { id: 101 }])('歌曲关联无法确认时不写', async (detail) => {
     upstream.state.songDetails![song.mid] = detail;
