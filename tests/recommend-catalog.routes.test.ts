@@ -121,6 +121,7 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
       const offset = page * size;
       reply = {
         data: {
+          total: 0,
           retcode: 0,
           content: {
             total_cnt: 203,

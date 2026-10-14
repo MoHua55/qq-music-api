@@ -283,6 +283,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `GET /recommend/category-playlists?id=<分类 id>&page=1&limit=20` 读一个分类下的歌单。`page` 从 1 开始；`limit` 默认 20、最多 40。歌单字段和 `/recommend/playlists` 一样（`tid`、`title`、`desc`、`picurl`、`play_cnt`、`creator`），拿 `tid` 调 `/getSongListDetail` 就能读歌；另外带上游给的 `total` 和 `more`（这一页之后还有没有）。`id` 缺了或不是正整数回 `400`。
 
+分页使用官方分类内容接口：匿名 `caller` 是字符串 `"0"`、账号值为数字 `0`，上游页码是对外 `page - 1`。`total` 只取这一份内容的 `total_cnt`，`more` 按页码和数量判断，空页仍回 422，不把别的页面总数混进来。内容和排序跟旧分类接口可能不同；目前验证的是普通分类，AI 分类没有验证。
+
 `GET /recommend/new-songs?area=<地区>` 读新歌速递，不给 `area` 就是「最新」（5）。`songs` 保持上游原来的格式；`areas` 列出可选的地区（`id`、`name`），`area` 是这次实际读的地区：
 
 ```json

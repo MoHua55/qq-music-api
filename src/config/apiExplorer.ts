@@ -446,7 +446,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getCategoryPlaylists: {
     description:
-      'Get official playlists of one category, in the same shape as /recommend/playlists, plus total and more. Read anonymously.',
+      'Get official playlists of one category, in the same shape as /recommend/playlists, plus total and more. Read anonymously with caller 0. Public pages start at 1; the upstream page is one less. Uses category content total_cnt for total and more, and returns 422 for an empty page.',
     queryParams: [
       { key: 'id', label: 'Category id', description: 'Category id from /recommend/categories.' },
       { key: 'page', label: 'Page', description: 'Page number starting at 1.' },

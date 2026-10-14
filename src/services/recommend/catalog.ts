@@ -8,7 +8,7 @@ import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionM
 //
 // `/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`：公开内容，一律匿名读，
 // 带了会话也不用。Node 与 serverless 共用。实测（2026-10，匿名）：分类是 `get_hot_category`，分类歌单是
-// `get_playlist_by_category`（`total`＋`v_playlist[]`），新歌是 `get_new_song_info`（`songlist` 与
+// `get_category_content`（`content.total_cnt`＋`v_item[].basic`），新歌是 `get_new_song_info`（`songlist` 与
 // `track_info` 同形、`lanlist` 是地区）。
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -16,8 +16,6 @@ const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 40;
 /** 上游的「最新」。 */
 const DEFAULT_NEW_SONG_AREA = 5;
-/** 分类歌单的排序方式；网页和旧路由都用 5，其他值的意思没验证过，所以不开放。 */
-const CATEGORY_ORDER = 5;
 
 const positiveIdOf = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
@@ -103,9 +101,9 @@ const categoryPlaylists = (
   page: number,
   size: number,
 ): MusicuDescriptor<Dictionary> => ({
-  module: 'playlist.PlayListPlazaServer',
-  method: 'get_playlist_by_category',
-  param: { id, curPage: page, size, order: CATEGORY_ORDER, titleid: id },
+  module: 'music.playlist.PlayListCategory',
+  method: 'get_category_content',
+  param: { caller: '0', category_id: id, page: page - 1, size, use_page: 1 },
   readOnly: true,
   operation: 'recommend.category-playlists',
   decode: decodeDictionary,
@@ -130,25 +128,26 @@ const creatorOf = (creator: Dictionary): Dictionary => {
 
 /** 和 `/recommend/playlists` 同一套字段名；没有可用 tid 的跳过，数字缺失就不给。 */
 const toPlaylist = (entry: unknown): Dictionary | null => {
-  const item = dictionaryOf(entry);
+  const item = dictionaryOf(dictionaryOf(entry).basic);
   const tid = positiveIdOf(item.tid);
   if (tid === undefined) return null;
-  const playCount = countOf(item.access_num);
+  const playCount = countOf(item.play_cnt);
+  const cover = dictionaryOf(item.cover);
   return {
     tid,
     title: stringOf(item.title),
     desc: stringOf(item.desc),
     picurl:
-      [item.cover_url_big, item.cover_url_medium, item.cover_url_small]
+      [cover.big_url, cover.medium_url, cover.small_url, cover.default_url]
         .map(stringOf)
         .find((url) => url !== '') ?? '',
     ...(playCount === undefined ? {} : { play_cnt: playCount }),
-    creator: creatorOf(dictionaryOf(item.creator_info)),
+    creator: creatorOf(dictionaryOf(item.creator)),
   };
 };
 
 /**
- * `page` 从 1 开始。`more` 用上游的 `total` 算（这一页之后还有没有），`total` 缺失时当作没有下一页。
+ * 对外 page 从 1 开始，上游 page 减 1；total 只看 content.total_cnt，不混用其他来源的 total。
  * 空页回 422；给了条目却一张都读不出来回 502。
  */
 export const categoryPlaylistsResult = async (
@@ -159,12 +158,19 @@ export const categoryPlaylistsResult = async (
     const id = requiredIdOf(raw.id);
     const page = pagingOf(raw.page, 1);
     const size = pagingOf(raw.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-    const data = await anonymous(options).execute(categoryPlaylists(id, page, size));
-    const entries = listOf(data.v_playlist);
+    const data = await anonymous({ ...options, anonymousUin: 0 }).execute(
+      categoryPlaylists(id, page, size),
+    );
+    if (typeof data.retcode !== 'number' || !Number.isSafeInteger(data.retcode))
+      throw new QqApiError('invalid-response');
+    if (data.retcode !== 0) throw new QqApiError('upstream-business');
+    if (!isDictionary(data.content) || !Array.isArray(data.content.v_item))
+      throw new QqApiError('invalid-response');
+    const entries = listOf(data.content.v_item);
     if (!entries.length) throw new QqApiError('not-found');
     const playlists = entries.map(toPlaylist).filter(Boolean);
     if (!playlists.length) throw new QqApiError('invalid-response');
-    const total = countOf(data.total);
+    const total = countOf(data.content.total_cnt);
     return okResult({
       playlists,
       ...(total === undefined ? {} : { total }),
