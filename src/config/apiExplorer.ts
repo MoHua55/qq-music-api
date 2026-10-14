@@ -89,6 +89,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
+  { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
   { name: 'getUserAlbums', method: 'GET', routePath: '/user/albums', category: 'User' },
   { name: 'getUserLikedSongs', method: 'GET', routePath: '/user/liked-songs', category: 'User' },
@@ -266,6 +267,10 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
 ];
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  userVip: {
+    description:
+      'Get membership flags for the signed-in account. isVip is true only when iVipFlag equals 1; false does not mean songs cannot play. Other known flags remain in upstream. No super-membership classification.',
+  },
   getCookie: {
     description: 'Get safe cookie status information.',
   },

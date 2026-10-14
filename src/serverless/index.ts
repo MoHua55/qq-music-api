@@ -16,6 +16,7 @@ import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { userDetail } from '../routes/operations/userDetail';
+import { userVip } from '../routes/operations/userVip';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import {
   createQrLoginService,
@@ -149,6 +150,7 @@ const routes: Record<string, RouteHandler> = {
   '/logout': operationRoute(logout),
 
   '/user/detail': operationRoute(userDetail),
+  '/user/vip': operationRoute(userVip),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
     fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
@@ -225,6 +227,7 @@ const LOGIN_ROUTES = new Set([
   '/login/status',
   '/logout',
   '/user/detail',
+  '/user/vip',
   '/user/playlist',
   '/user/albums',
   '/user/liked-songs',

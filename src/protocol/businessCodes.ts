@@ -22,6 +22,8 @@ export const UPSTREAM_OPERATIONS = [
   'login.wechat.credential-refresh',
   /** 登录之后带凭证的 musicu 读取（资料、歌单、喜欢、取播放链接等）。 */
   'session.authenticated-read',
+  /** 会员状态；未验证的非零码不按其他读取推断为凭证失效。 */
+  'user.vip',
   /** 猜你喜欢（`get_radio_track` id 99）。 */
   'recommend.guess-you-like',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */

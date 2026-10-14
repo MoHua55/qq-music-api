@@ -13,6 +13,7 @@ import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { userDetail } from '../routes/operations/userDetail';
+import { userVip } from '../routes/operations/userVip';
 import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
@@ -56,6 +57,7 @@ export default {
   getCookie: withControllerLogging('getCookie', getCookie),
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
+  userVip: withControllerLogging('userVip', operationController(userVip)),
   getHotKey: withControllerLogging('getHotKey', getHotKey),
   getSearchByKey: withControllerLogging('getSearchByKey', getSearchByKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),

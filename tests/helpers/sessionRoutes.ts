@@ -176,20 +176,25 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
             },
           },
         );
-      const response = descriptors.some(([, value]) => value.method === 'uniform_get_Dissinfo')
+      const response = descriptors.some(([, value]) => value.method === 'SRFVipQuery_V2')
         ? Response.json({
             code: 0,
-            req_0: {
-              code: 0,
-              data: {
-                dirinfo: { id: 70001, title: 'Fixture playlist', songnum: 1 },
-                songlist: [{ mid: 'fixture-song', title: 'Fixture song' }],
-                total_song_num: 1,
-                hasmore: 0,
-              },
-            },
+            ...Object.fromEntries(descriptors.map(([key]) => [key, { code: 0, data: {} }])),
           })
-        : await mockUpstream.fetch(request);
+        : descriptors.some(([, value]) => value.method === 'uniform_get_Dissinfo')
+          ? Response.json({
+              code: 0,
+              req_0: {
+                code: 0,
+                data: {
+                  dirinfo: { id: 70001, title: 'Fixture playlist', songnum: 1 },
+                  songlist: [{ mid: 'fixture-song', title: 'Fixture song' }],
+                  total_song_num: 1,
+                  hasmore: 0,
+                },
+              },
+            })
+          : await mockUpstream.fetch(request);
       if (!musicu && !url.pathname.includes('fcg_get_profile_order_asset')) return response;
       const body = (await response.json()) as Record<string, unknown>;
       if (state.globalCode !== undefined) body.code = state.globalCode;
