@@ -78,7 +78,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | 环境变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `PORT` | `3200` | HTTP 服务端口 |
-| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 只在受控测试部署设为 `1`，开启尚未完成真账号验证的专辑写入；能力声明仍为 false |
+| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 只在受控测试部署设为 `1`，开启尚未完成真账号验证的专辑写入；专辑能力仍 false，红心不依赖此开关 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
@@ -178,6 +178,9 @@ id 是 1–64 位字母或数字组成的专辑 MID 字符串，不收数字专�
 默认回 `501`＋`feature.unavailable`，受控测试部署明确设置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才可使用。
 Serverless 未配置会话密钥时仍按既有规则回 `501`。
 `features.mutations.subscribeAlbum` 仍 false，离线测试不能证明 Android 实写已可用。
+专辑状态读取与写入优先使用凭证中的精确字符串 owner，不从不安全 number 回建账号。
+安全范围的状态参数保持数字；超范围的 19 位 owner 以十进制字符串发送，写入始终用字符串。
+超范围字符串的上游接受度尚待真账号确认；初始状态未知或被拒时不会写入。
 
 ## QQ 音乐原生扫码登录
 

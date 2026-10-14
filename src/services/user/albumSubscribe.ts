@@ -1,10 +1,10 @@
 import { QqApiError } from '../../protocol/errors';
-import { credentialMusicId } from '../auth/androidDevice';
 import type { AuthSession } from '../auth/qrLogin';
 import { isDictionary } from '../auth/values';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
-import { exactObjectOf, positiveIntegerOf } from './writeInput';
+import { albumOwnerOf } from './albumOwner';
+import { exactObjectOf } from './writeInput';
 
 export const albumSubscribeResult = async (
   session: AuthSession | null,
@@ -22,15 +22,13 @@ export const albumSubscribeResult = async (
       throw new QqApiError('input');
     const id = input.id,
       subscribed = input.subscribed;
-    const uin = credentialMusicId(session.credential);
-    const numericUin = positiveIntegerOf(uin);
-    if (numericUin === undefined) throw new QqApiError('invalid-response');
+    const { uin, statusUin } = albumOwnerOf(session.credential);
     const client = createSessionMusicuClient(session, { ...options, maxRetries: 0 });
     const read = () =>
       client.execute({
         module: 'music.musicasset.AlbumFavRead',
         method: 'IsAlbumFan',
-        param: { uin: numericUin, v_albumMid: [id] },
+        param: { uin: statusUin, v_albumMid: [id] },
         readOnly: true,
         operation: 'subscription.album-status',
         decode: (data) => {

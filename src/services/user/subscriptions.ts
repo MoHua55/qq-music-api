@@ -5,6 +5,7 @@ import type { AuthSession } from '../auth/qrLogin';
 import { isDictionary } from '../auth/values';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
+import { albumOwnerOf } from './albumOwner';
 import { exactObjectOf, positiveIntegerOf } from './writeInput';
 
 export const playlistSubscribeResult = async (
@@ -62,9 +63,7 @@ const STATUS_PROTOCOLS: Record<
     method: 'IsAlbumFan',
     operation: 'subscription.album-status',
     param: (ids, session) => {
-      const uin = positiveIntegerOf(credentialMusicId(session.credential));
-      if (!uin) throw new QqApiError('invalid-response');
-      return { uin, v_albumMid: ids };
+      return { uin: albumOwnerOf(session.credential).statusUin, v_albumMid: ids };
     },
   },
   song: {
