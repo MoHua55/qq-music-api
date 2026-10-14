@@ -89,6 +89,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     detailNetworkError?: boolean;
     credentialLoginType?: number;
     playbackHintsEnabled?: boolean;
+    rpcReplies?: Record<string, { code?: number; data?: unknown; httpStatus?: number }>;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
@@ -148,6 +149,23 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       if (state.networkError) throw state.networkError;
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });
+      if (state.rpcReplies && descriptors.some(([, rpc]) => state.rpcReplies?.[rpc.method])) {
+        const reply = state.rpcReplies[descriptors[0][1].method];
+        if (reply?.httpStatus)
+          return new Response('fixture-private-body', { status: reply.httpStatus });
+        return Response.json({
+          code: state.globalCode ?? 0,
+          ...Object.fromEntries(
+            descriptors.map(([key, rpc]) => [
+              key,
+              {
+                code: state.rpcReplies?.[rpc.method]?.code ?? 0,
+                data: state.rpcReplies?.[rpc.method]?.data ?? {},
+              },
+            ]),
+          ),
+        });
+      }
       const detail = descriptors.find(([, value]) => value.method === 'get_song_detail_yqq');
       if (detail && state.detailNetworkError) throw new Error('fixture-detail-failure');
       if (detail && state.songDetails) {

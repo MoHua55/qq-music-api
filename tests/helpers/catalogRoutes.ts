@@ -25,6 +25,8 @@ export interface RouteResult {
 }
 
 export interface RouteCallOptions {
+  method?: 'GET' | 'POST';
+  body?: unknown;
   headers?: Record<string, string>;
   env?: ServerlessEnv;
   options?: ServerlessOptions;
@@ -156,9 +158,11 @@ export const callRoute = async (
   options: RouteCallOptions = {},
 ): Promise<RouteResult> => {
   if (runtime === 'node') {
-    const response = await request(server)
-      .get(path)
-      .set(options.headers ?? {});
+    const pending =
+      options.method === 'POST' ? request(server).post(path) : request(server).get(path);
+    pending.set(options.headers ?? {});
+    if (options.body !== undefined) pending.send(options.body);
+    const response = await pending;
     return {
       status: response.status,
       body: response.body,
@@ -166,7 +170,14 @@ export const callRoute = async (
     };
   }
   const response = await handleRequest(
-    new Request(`https://worker.invalid${path}`, { headers: options.headers }),
+    new Request(`https://worker.invalid${path}`, {
+      method: options.method ?? 'GET',
+      headers: {
+        ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...options.headers,
+      },
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    }),
     options.env ?? {},
     options.options ?? {},
   );
