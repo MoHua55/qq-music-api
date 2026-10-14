@@ -5,7 +5,7 @@
 // 所以只有单曲详情里确认 `size_try > 0`、又有可信的
 // media id 才去要；其他一律不要，也不拿 songmid 猜。只依赖 protocol 里的纯模块，两个运行时共用。
 
-import { type PlaybackHint, previewUnavailableHint } from './playbackHints';
+import { type PlaybackHint, previewMissingHint, previewUnavailableHint } from './playbackHints';
 import {
   classifyPlaybackRestriction,
   type PlaybackRestriction,
@@ -48,14 +48,19 @@ export const previewMediaIdOf = (
   return callerMediaId ?? validMediaIdOf(read(file, 'media_mid'));
 };
 
+/** 详情里 `size_try` 正好是 0（整数或纯数字字符串）才算确定没有试听文件；缺字段、负数、读不到都不算。 */
+export const previewFileMissingOf = (trackInfo: unknown): boolean =>
+  integerOf(read(read(trackInfo, 'file'), 'size_try')) === 0;
+
 /** 不要试听文件的那首歌：和拿不到链接一样是 `url_unavailable`，提示是「试听不可用」。 */
 export const previewUnavailableRestriction = (
   authenticated: boolean,
+  missing = false,
 ): PlaybackRestriction & { hint: PlaybackHint } => ({
   ...classifyPlaybackRestriction({
     quality: playbackQualityOf('preview'),
     authenticated,
     codes: {},
   }),
-  hint: previewUnavailableHint(),
+  hint: missing ? previewMissingHint() : previewUnavailableHint(),
 });

@@ -7,6 +7,7 @@ import {
 } from '../../protocol/playbackHints';
 import { classifyPlaybackRestriction, playbackQualityOf } from '../../protocol/playbackRestriction';
 import {
+  previewFileMissingOf,
   previewMediaIdOf,
   previewUnavailableRestriction,
   validMediaIdOf,
@@ -90,25 +91,27 @@ export const previewFilenameOf = (mediaId: string): string => `RS02${mediaId}.mp
 
 /**
  * 试听：每首先查一次单曲详情（并行，最多 `MAX_PLAYBACK_HINT_LOOKUPS` 首，后面的当作查不到），
- * 回能要试听文件的歌和文件名要用的 media id。
+ * 回能要试听文件的歌和文件名要用的 media id，以及详情确认没有试听文件的歌。
  */
 const previewMediaIdsOf = async (
   http: AuthHttpClient,
   auth: AuthSession,
   songmids: string[],
   mediaId: unknown,
-): Promise<Map<string, string>> => {
+): Promise<{ mediaIds: Map<string, string>; missing: Set<string> }> => {
   const callerMediaId = validMediaIdOf(mediaId);
   const looked = [...new Set(songmids)].slice(0, MAX_PLAYBACK_HINT_LOOKUPS);
   const details = await Promise.all(
     looked.map((mid) => songDetailOf(http, auth, mid, 'get-preview-detail')),
   );
   const mediaIds = new Map<string, string>();
+  const missing = new Set<string>();
   for (const [index, mid] of looked.entries()) {
     const media = previewMediaIdOf(details[index], callerMediaId);
     if (media) mediaIds.set(mid, media);
+    else if (previewFileMissingOf(details[index])) missing.add(mid);
   }
-  return mediaIds;
+  return { mediaIds, missing };
 };
 
 export const getAuthenticatedPlayUrls = async (
@@ -125,10 +128,11 @@ export const getAuthenticatedPlayUrls = async (
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
-  // 试听只要确认有试听文件的歌；其他的直接回「试听不可用」，不去要。
-  const previewMediaIds = options.preview
+  // 试听只要确认有试听文件的歌；确定没有的回「没有试听」，其他的回「试听不可用」，都不去要。
+  const preview = options.preview
     ? await previewMediaIdsOf(http, auth, requestedList, mediaId)
     : undefined;
+  const previewMediaIds = preview?.mediaIds;
   let songmidList = previewMediaIds
     ? requestedList.filter((mid) => previewMediaIds.has(mid))
     : requestedList;
@@ -137,7 +141,11 @@ export const getAuthenticatedPlayUrls = async (
       .filter((mid) => previewMediaIds && !previewMediaIds.has(mid))
       .map((mid) => [
         mid,
-        { url: '', error: '暂无播放链接', restriction: previewUnavailableRestriction(true) },
+        {
+          url: '',
+          error: '暂无播放链接',
+          restriction: previewUnavailableRestriction(true, preview?.missing.has(mid)),
+        },
       ]),
   );
   if (!options.preview && String(quality) === 'ape') {

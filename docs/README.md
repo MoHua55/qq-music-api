@@ -514,7 +514,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 **ape 文件检查**：只有 `quality=ape` 会先查详情中的 `file.size_ape`（每首一次、重复共用、最多 10 首）。确认没有文件时，不取链接，提示 `playback.quality-file-unavailable`，可选 `restriction.failureReason` 为 `quality-file-unavailable`；查询失败、数字缺失或超限时同样不放行，提示 `playback.quality-detail-unavailable`，分类为 `quality-detail-unavailable`。原有 `restriction.key` 仍是 `url_unavailable`，HTTP 状态不变。`320`／`flac` 沿用原行为；`preview=1` 优先按试听规则处理，不检查 ape。
 
-**试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`；`file.size_try` 大于 0 代表有试听文件，不代表文件大小），播完算正常结束，不是错误。要之前服务会先查一次这首歌的详情（每首一个请求，一次最多查 10 首）：只有确认 `file.size_try` 大于 0、又知道试听文件名要用的 media id（前端给的有效 `mediaId` 优先，否则用详情里的 `file.media_mid`）才去要。其他情况（没有试听文件、详情查不到、超过 10 首的部分）不会去要，直接回 `url_unavailable`，`hint.key` 是 `playback.preview-unavailable`（试听不可用或原因尚未确认）；要了上游却没给链接也是这句。不会拿 `songmid` 猜试听文件名，也不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。
+**试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`；`file.size_try` 大于 0 代表有试听文件，不代表文件大小），播完算正常结束，不是错误。要之前服务会先查一次这首歌的详情（每首一个请求，一次最多查 10 首）：只有确认 `file.size_try` 大于 0、又知道试听文件名要用的 media id（前端给的有效 `mediaId` 优先，否则用详情里的 `file.media_mid`）才去要。其他情况都不会去要，直接回 `url_unavailable`：带会话、详情读得到而且 `file.size_try` 正好是 `0` 时，`hint.key` 是 `playback.preview-missing`（这首确定没有试听文件，前端可以按会员等级决定要不要建议升级）；详情查不到、media id 不可信、超过 10 首的部分，以及没带会话的匿名请求，`hint.key` 是 `playback.preview-unavailable`（试听不可用或原因尚未确认）；要了上游却没给链接也是这句。不会拿 `songmid` 猜试听文件名，也不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。
 
 用 `LOG_LEVEL=debug` 启动 Node 服务后，没拿到链接的条目会记录 `playback.url-unavailable`。日志只留 `phase`、`index`、`quality` 和 `entryCodes` 中的安全整数，不记录歌曲 id、凭证或播放链接。上游数字的含义没确认时不替它命名。
 

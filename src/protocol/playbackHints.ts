@@ -2,12 +2,13 @@
 //
 // 某首歌拿不到播放链接时，给使用者看的原因（`restriction.hint`）。只是提示：不改 `restriction.key`、
 // 不改证据等级。原因不能猜：会员、付费音乐包、地区、下架只有受控对照验证过的规则才能说（在
-// `PLAYBACK_HINT_RULES` 里加），其他一律是「原因尚未确认」；要试听却没有可用的试听文件时是「试听不可用」。文案是英文预设，前端可以按 key 换成自己的。
+// `PLAYBACK_HINT_RULES` 里加），其他一律是「原因尚未确认」；要试听却没有可用的试听文件时是「试听不可用」，带会话确认没有试听文件时是「没有试听」。文案是英文预设，前端可以按 key 换成自己的。
 // 零依赖，两个运行时共用。
 
 export type PlaybackHintKey =
   | 'playback.reason-unconfirmed'
   | 'playback.preview-unavailable'
+  | 'playback.preview-missing'
   | 'playback.quality-file-unavailable'
   | 'playback.quality-detail-unavailable'
   | 'playback.maybe-region-restricted'
@@ -28,6 +29,7 @@ export const PLAYBACK_HINT_MESSAGES: Readonly<Record<PlaybackHintKey, string>> =
     "This song can't be played right now. The exact reason isn't confirmed yet.",
   'playback.preview-unavailable':
     "A preview isn't available for this song, or the reason isn't confirmed yet.",
+  'playback.preview-missing': 'This song has no preview.',
   'playback.maybe-region-restricted': 'This song may not be available in your region.',
   'playback.maybe-music-pack': 'This song may need a paid music pack to play.',
   'playback.maybe-membership': 'This song may need a VIP membership to play in full.',
@@ -42,7 +44,10 @@ export interface PlaybackHintContext {
 }
 
 export interface PlaybackHintRule {
-  key: Exclude<PlaybackHintKey, 'playback.reason-unconfirmed' | 'playback.preview-unavailable'>;
+  key: Exclude<
+    PlaybackHintKey,
+    'playback.reason-unconfirmed' | 'playback.preview-unavailable' | 'playback.preview-missing'
+  >;
   matches: (trackInfo: unknown, context?: PlaybackHintContext) => boolean;
 }
 
@@ -123,3 +128,6 @@ export const playbackHintOf = (
 
 /** 要试听却没有可用的试听文件（或要了也没给链接）时的那一句。 */
 export const previewUnavailableHint = (): PlaybackHint => hint('playback.preview-unavailable');
+
+/** 同一会话读到的详情可靠、`size_try` 正好是 0：确定这首没有试听文件。 */
+export const previewMissingHint = (): PlaybackHint => hint('playback.preview-missing');
