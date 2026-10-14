@@ -1759,6 +1759,51 @@ describe('QQ login channel routing', () => {
     expect(harness.calls).not.toContain('CreateQRCode');
   });
 
+  it('should retain a WeChat scan after 408 and still exchange a later 405 with the existing session cookie', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      const harness = createProtocolHarness({
+        wechatStatuses: [wxStatusBody(404), wxStatusBody(408), wxStatusBody(405, WX_CODE)],
+      });
+      const key = await harness.service.createSession('wechat');
+      await harness.service.createQr(key);
+      await expect(harness.service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+      await expect(harness.service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+      const confirmed = await harness.service.checkQr(key);
+      expect(confirmed).toEqual({
+        code: 803,
+        message: 'Authorization login successful',
+        cookie: expect.stringMatching(/^qqmusic_session=/),
+      });
+      await expect(
+        harness.service.getLoginStatus(confirmed.cookie!.split('=')[1]),
+      ).resolves.toEqual(expect.any(Object));
+      expect(loginParamOf(harness)).toEqual({ code: WX_CODE, strAppid: 'wx48db31d50e334801' });
+      const diagnostics = info.mock.calls.filter(([name]) =>
+        String(name).startsWith('qq-auth.wechat-'),
+      );
+      expect(diagnostics).toContainEqual([
+        'qq-auth.wechat-poll',
+        expect.objectContaining({ outcome: 'status', upstreamCode: 405 }),
+      ]);
+      expect(diagnostics).toContainEqual([
+        'qq-auth.wechat-qr-check',
+        expect.objectContaining({ apiCode: 803, state: 'confirmed' }),
+      ]);
+      const text = JSON.stringify(diagnostics);
+      for (const secret of [key, WX_UUID, WX_CODE, confirmed.cookie!, 'wechat-credential-key'])
+        expect(text).not.toContain(secret);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it('should carry the WeChat login type into later authenticated requests', async () => {
     const harness = createProtocolHarness();
     const key = await harness.service.createSession('wechat');
