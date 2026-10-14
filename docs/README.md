@@ -164,8 +164,6 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增还回逐首 `songs: [{ id, existed }]`，重复加入当成没有变更。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心、其他歌曲类型等待各自实测再开放。能力 `features.mutations.updatePlaylistTracks` 为 true，`likeSong` 仍为 false。
 
-### 收藏歌单分页
-
 ### 收藏与查询收藏状态
 
 `POST /user/playlist/subscribe`：`{ "tid": "70001", "subscribed": true }` 收藏歌单，`false` 取消收藏。只接受本人的会话，账号参数由服务器填；只有上游 `result: 0` 且失败清单为空才回 `{ code: 200, subscribed }`，写入不自动重试。失败后先读回状态再决定下一步，不盲目重送。
