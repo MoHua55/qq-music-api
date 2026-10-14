@@ -19,6 +19,10 @@ Releases are maintainer-authorized operations. Merging a pull request, creating 
    ```
 
 5. Inspect the generated package contents and verify `LICENSE`, `ATTRIBUTION.md`, `README.md`, and `dist/src/app.js` are present.
+6. Credit chthollyphile's [QIMEI clock-skew recovery](https://github.com/yakult-green-tea/qq-music-api/pull/20)
+   in the next changelog and GitHub release notes: the bounded server-time signing retry,
+   regression tests, and safe diagnostic-log assertions. Keep the contributor credit in
+   `README.md` and `ATTRIBUTION.md` consistent with the release text.
 
 ## Publishing
 

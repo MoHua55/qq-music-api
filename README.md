@@ -67,7 +67,7 @@ npm start
 
 本项目是 [Rain120/qq-music-api](https://github.com/Rain120/qq-music-api) 的社区维护 fork，并以 `@yakult-green-tea/qq-music-api` 发布。感谢原作者 [Rain120](https://github.com/Rain120) 以及所有贡献者。
 
-- [chthollyphile](https://github.com/chthollyphile)：Axios 请求隔离、可注入认证会话仓库、Serverless 集成与登录态播放改进。
+- [chthollyphile](https://github.com/chthollyphile)：Axios 请求隔离、可注入认证会话仓库、Serverless 集成与登录态播放改进；[QIMEI 时钟偏差修正](https://github.com/yakult-green-tea/qq-music-api/pull/20) 在引导被拒且响应时间显示偏差超过一分钟时重签一次，并补充回归测试与安全日志断言。
 - [lantudou](https://github.com/lantudou)：登录态自建歌单详情与不公开歌单读取支持。
 - 完整贡献记录保留在 Git 历史与 [ATTRIBUTION.md](./ATTRIBUTION.md) 中。
 

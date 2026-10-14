@@ -6,7 +6,10 @@ This repository is a maintained downstream fork of
 - Original project and author: Rain120
 - Current downstream repository and npm distribution: yakult-green-tea
 - Downstream contributor: [chthollyphile](https://github.com/chthollyphile) —
-  Axios request isolation and injectable authentication-session repository
+  Axios request isolation and injectable authentication-session repository;
+  [QIMEI clock-skew recovery](https://github.com/yakult-green-tea/qq-music-api/pull/20),
+  including one server-time signing retry after rejection, regression tests,
+  and safe diagnostic-log assertions
 - Downstream contributor: [lantudou](https://github.com/lantudou) —
   authenticated owned-playlist details and private-playlist access
 - Additional contributors: recorded in the retained Git history
