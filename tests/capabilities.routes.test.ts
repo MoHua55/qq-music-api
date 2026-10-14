@@ -38,7 +38,7 @@ const expectedFeatures = (node: boolean) => ({
   lyrics: { getLyrics: node, getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,
-    getDailySongs: false,
+    getDailySongs: true,
     getRecommendedCollections: true,
     getHistoryEntries: false,
     getHistoryDates: false,
