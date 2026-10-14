@@ -1,5 +1,6 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
 import {
+  canLookupPlaybackHint,
   PLAYBACK_HINT_RULES,
   playbackHintOf,
   previewUnavailableHint,
@@ -117,6 +118,7 @@ export const getAuthenticatedPlayUrls = async (
   quality: string | number = 128,
   mediaId?: string,
   options: PlaybackOptions = {},
+  playbackHintsEnabled = true,
 ): Promise<Dictionary> => {
   const requestedList = songmid
     .split(',')
@@ -259,14 +261,32 @@ export const getAuthenticatedPlayUrls = async (
     unavailable.push({ mid, restriction });
   }
   // 试听拿不到链接一律是「试听不可用」；其他的在还没有验证过的规则时挑不出具体原因，不用多查。
-  const details = await Promise.all(
-    unavailable
-      .slice(0, PLAYBACK_HINT_RULES.length && !options.preview ? MAX_PLAYBACK_HINT_LOOKUPS : 0)
-      .map(({ mid }) => songDetailOf(http, auth, String(mid), 'get-playback-hint')),
+  const contextOf = (restriction: Dictionary) => ({
+    authenticated: true,
+    quality: String(loggedQuality),
+    codes: (restriction.codes ?? {}) as { result?: number; subcode?: number },
+  });
+  const looked =
+    playbackHintsEnabled && !options.preview && PLAYBACK_HINT_RULES.length
+      ? unavailable
+          .filter(({ restriction }) => canLookupPlaybackHint(contextOf(restriction as Dictionary)))
+          .slice(0, MAX_PLAYBACK_HINT_LOOKUPS)
+      : [];
+  const details = new Map(
+    await Promise.all(
+      looked.map(
+        async ({ mid }) =>
+          [mid, await songDetailOf(http, auth, String(mid), 'get-playback-hint')] as const,
+      ),
+    ),
   );
-  for (const [index, { restriction }] of unavailable.entries())
+  for (const { mid, restriction } of unavailable)
     (restriction as Dictionary).hint = options.preview
       ? previewUnavailableHint()
-      : playbackHintOf(details[index]);
+      : playbackHintOf(
+          details.get(mid),
+          playbackHintsEnabled ? PLAYBACK_HINT_RULES : [],
+          contextOf(restriction as Dictionary),
+        );
   return playUrl;
 };

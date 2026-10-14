@@ -38,6 +38,9 @@ describe.each(CATALOG_RUNTIMES)('完整播放提示特征（%s）', (runtime) =>
     );
   const hintOf = (body: unknown) => (body as any).data.playUrl['fixture-song'].restriction.hint.key;
   beforeEach(() => {
+    jest
+      .spyOn(globalThis.crypto, 'randomUUID')
+      .mockReturnValue('00000000-0000-4000-8000-000000000001');
     upstream.state.data = {
       sip: ['https://stream.invalid/'],
       midurlinfo: [{ songmid: 'fixture-song', purl: '', result: 104003, subcode: 1 }],
@@ -81,6 +84,26 @@ describe.each(CATALOG_RUNTIMES)('完整播放提示特征（%s）', (runtime) =>
     upstream.state.songDetails = { 'fixture-song': detail(1, 23, 0, 0) };
     upstream.state.data = { midurlinfo: [{ songmid: 'fixture-song', purl: '', result: 104003 }] };
     expect(hintOf((await play()).operation.body)).toBe('playback.reason-unconfirmed');
+  });
+  it('m4a 同规则，超过十首不查且保持未知', async () => {
+    const mids = Array.from({ length: 12 }, (_, index) => `fixture-${index}`);
+    upstream.state.data = {
+      midurlinfo: mids.map((songmid) => ({ songmid, purl: '', result: 104003, subcode: 1 })),
+    };
+    upstream.state.songDetails = Object.fromEntries(mids.map((mid) => [mid, detail(1, 23, 0, 0)]));
+    const legs = await parity(
+      runtime,
+      `/getMusicPlay/${mids.join(',')}?quality=m4a`,
+      upstream.calls,
+      await upstream.options(),
+    );
+    expect(
+      legs.operation.calls.flatMap((c) => c.rpc).filter((r) => r.method === 'get_song_detail_yqq'),
+    ).toHaveLength(10);
+    expect(legs.host).toEqual(legs.operation);
+    const urls = (legs.operation.body as any).data.playUrl;
+    expect(urls['fixture-9'].restriction.hint.key).toBe('playback.maybe-region-restricted');
+    expect(urls['fixture-10'].restriction.hint.key).toBe('playback.reason-unconfirmed');
   });
   if (runtime === 'node')
     it('匿名路径不套用带会话规则、不查原因详情', async () => {

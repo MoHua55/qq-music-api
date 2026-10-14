@@ -281,6 +281,8 @@ export interface SessionResolver {
 }
 
 export interface QrLoginDependencies {
+  /** 全局停用具体播放提示；不改变播放、授权或重试。默认启用。 */
+  playbackHintsEnabled?: boolean;
   http?: AuthHttpClient;
   streamUrlProbe?: StreamUrlProbe;
   /** Builds the per-QR-session client used by the web login channels. */

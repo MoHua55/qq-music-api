@@ -72,6 +72,7 @@ import { createSealedSessionResolver } from './sealedResolver';
 export type { QqQrRelay, QrEvent } from '../services/auth/qrLogin';
 
 export interface ServerlessEnv {
+  QQ_PLAYBACK_HINTS_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
 }
@@ -247,6 +248,7 @@ const createServiceFor = async (
   const secrets = secretsOf(env);
   return createQrLoginService({
     http: createFetchAuthHttpClient(),
+    playbackHintsEnabled: !['0', 'false'].includes(env.QQ_PLAYBACK_HINTS_ENABLED ?? ''),
     createSessionHttp: () => createFetchAuthHttpClient(),
     deviceRepository: createMemoryDeviceContextRepository(
       await deriveAndroidDevice(secrets.current),

@@ -1,6 +1,5 @@
 import { playbackEntryCodesOf, playbackUnavailableLogOf } from '../../protocol/playbackDiagnostics';
 import {
-  PLAYBACK_HINT_RULES,
   type PlaybackHint,
   playbackHintOf,
   previewUnavailableHint,
@@ -213,16 +212,9 @@ export const createGetMusicPlay =
     );
     const unavailable = Object.entries(playUrl).filter(([, entry]) => entry.restriction);
     // 试听拿不到链接一律是「试听不可用」；其他的在还没有验证过的规则时挑不出具体原因，不用多查。
-    const details = await Promise.all(
-      unavailable
-        .slice(0, PLAYBACK_HINT_RULES.length && !preview ? MAX_HINT_LOOKUPS : 0)
-        .map(([mid]) => anonymousSongDetail(mid)),
-    );
-    unavailable.forEach(([, entry], index) => {
+    unavailable.forEach(([, entry]) => {
       if (entry.restriction)
-        entry.restriction.hint = preview
-          ? previewUnavailableHint()
-          : playbackHintOf(details[index]);
+        entry.restriction.hint = preview ? previewUnavailableHint() : playbackHintOf(undefined);
     });
     Object.assign(playUrl, skipped);
     response.playUrl = playUrl;

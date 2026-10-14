@@ -473,7 +473,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 - `key` 目前只会是 `url_unavailable`（拿不到链接，原因还没确认）。以后有了可靠的对照实验，才会出现 `membership_required`、`region_restricted` 这类更具体的值，所以请把不认识的值也当成「拿不到链接」处理。
 - `evidence` 说明这个判断有多可靠；`url_unavailable` 永远是 `observed-response`（只是看到上游没给链接）。
 - `codes` 只放这首歌条目里的安全整数（`result`、`subcode`、`errtype`、`code`），一个都没有就省略。这些数字的含义还没确认，不要拿来推断原因。
-- `hint` 是给使用者看的原因。原因不靠猜：目前一律是 `playback.reason-unconfirmed`（暂时无法播放，具体原因尚未确认）。以后有了可靠的对照实验，才会出现 `playback.maybe-region-restricted`（可能是地区限制）、`playback.maybe-music-pack`（可能要付费音乐包）、`playback.maybe-membership`（可能要会员）、`playback.maybe-taken-down`（可能已下架）。`message` 是英文预设文案，前端可以直接显示，也可以按 `key` 换成自己的文字；不认识的 `key` 当成「原因尚未确认」就好。`hint` 不会改变 `key` 和 `evidence`。
+- `hint` 是给使用者看的原因。带会话的 `m4a`／`128` 失败时，最多为 10 首补查同一会话、同一出口的详情；只有播放条目码 `104003`／`1` 与详情的 `switch`、`msgid`、`alert`、`pay_play` 完整组合吻合，才提示 `playback.maybe-region-restricted`（可能是地区限制）或 `playback.maybe-membership`（可能缺少会员权益）。规则来自一个手机 QQ 免费账号的受控重复实验候选；微信相同特征可复用提示，属于尚未实测的跨通道外推。缺字段、未知特征、查不到详情、匿名或其他音质一律 `playback.reason-unconfirmed`。音乐包和下架仍不分类。`message` 是保留 may 的英文预设，前端可按 key 换文案；提示不改变 `restriction.key`、`evidence`、播放、授权或重试。设置 `QQ_PLAYBACK_HINTS_ENABLED=0`（或 `false`）可全局停用具体提示与额外查询，Node 与 Serverless 都支持。
 - 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
 
 **试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`；`file.size_try` 大于 0 代表有试听文件，不代表文件大小），播完算正常结束，不是错误。要之前服务会先查一次这首歌的详情（每首一个请求，一次最多查 10 首）：只有确认 `file.size_try` 大于 0、又知道试听文件名要用的 media id（前端给的有效 `mediaId` 优先，否则用详情里的 `file.media_mid`）才去要。其他情况（没有试听文件、详情查不到、超过 10 首的部分）不会去要，直接回 `url_unavailable`，`hint.key` 是 `playback.preview-unavailable`（试听不可用或原因尚未确认）；要了上游却没给链接也是这句。不会拿 `songmid` 猜试听文件名，也不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。

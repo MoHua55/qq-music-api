@@ -98,6 +98,7 @@ const isRateLimitedFailure = (details: QrFailureDetails): boolean =>
 
 export class QrLoginServiceImpl implements QrLoginService {
   private readonly http: AuthHttpClient;
+  private readonly playbackHintsEnabled: boolean;
   private readonly streamCdnSelector: StreamCdnSelector;
   private readonly createSessionHttp: () => AuthHttpClient;
   private readonly now: () => number;
@@ -115,6 +116,7 @@ export class QrLoginServiceImpl implements QrLoginService {
 
   public constructor(dependencies: QrLoginDependencies) {
     this.http = dependencies.http ?? unavailableHttpClient();
+    this.playbackHintsEnabled = dependencies.playbackHintsEnabled !== false;
     this.streamCdnSelector = new StreamCdnSelector(
       dependencies.streamUrlProbe ?? createStreamUrlProbe(this.http),
       dependencies.now ?? Date.now,
@@ -672,6 +674,7 @@ export class QrLoginServiceImpl implements QrLoginService {
             quality,
             mediaId,
             options,
+            this.playbackHintsEnabled,
           ),
         )
       : null;

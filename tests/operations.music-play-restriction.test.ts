@@ -73,7 +73,9 @@ describe.each(CATALOG_RUNTIMES)('/getMusicPlay 的 restriction（%s）', (runtim
     expect(legs.operation.body).toEqual({ data: { playUrl: EXPECTED_PLAY_URL } });
     expect(JSON.stringify(legs.operation.body)).not.toContain('fixture-private');
     expect(legs.host).toEqual(legs.operation);
-    expect(methodsOf(upstream.calls)).not.toContain('get_song_detail_yqq');
+    expect(
+      methodsOf(upstream.calls).filter((method) => method === 'get_song_detail_yqq'),
+    ).toHaveLength(1);
   });
 
   it('带会话：全部拿到链接时没有任何 restriction', async () => {

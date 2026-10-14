@@ -30,24 +30,78 @@ export const PLAYBACK_HINT_MESSAGES: Readonly<Record<PlaybackHintKey, string>> =
 };
 
 /** 一条验证过的规则：`trackInfo` 是同一个会话读到的单曲详情（`track_info`），读不到时是 `undefined`。 */
+export interface PlaybackHintContext {
+  authenticated: boolean;
+  quality: string;
+  codes: { result?: number; subcode?: number };
+}
+
 export interface PlaybackHintRule {
   key: Exclude<PlaybackHintKey, 'playback.reason-unconfirmed' | 'playback.preview-unavailable'>;
-  matches: (trackInfo: unknown) => boolean;
+  matches: (trackInfo: unknown, context?: PlaybackHintContext) => boolean;
 }
 
 /**
- * 受控对照下验证过的规则，按顺序挑第一条命中的。目前一条都没有；空的时候调用方不用为了挑提示去查单曲详情。
+ * 单一手机 QQ 免费账号、同会话出口及权益受控重复实验的候选。微信同特征可复用提示，但尚未实测。
+ * 只认完整数值组合，不扩展位元含义；不是结构化授权分类。其他特征保持未知。
  */
-export const PLAYBACK_HINT_RULES: readonly PlaybackHintRule[] = [];
+const read = (value: unknown, key: string): unknown =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined;
+const integer = (value: unknown): number | undefined => {
+  const parsed = typeof value === 'string' && /^\d{1,15}$/.test(value) ? Number(value) : value;
+  return typeof parsed === 'number' && Number.isSafeInteger(parsed) ? parsed : undefined;
+};
+const tupleOf = (track: unknown): string => {
+  const action = read(track, 'action');
+  return [
+    read(action, 'switch'),
+    read(action, 'msgid'),
+    read(action, 'alert'),
+    read(read(track, 'pay'), 'pay_play'),
+  ]
+    .map(integer)
+    .join('/');
+};
+export const canLookupPlaybackHint = (context: PlaybackHintContext): boolean =>
+  context.authenticated &&
+  ['m4a', '128'].includes(context.quality) &&
+  context.codes.result === 104003 &&
+  context.codes.subcode === 1;
+export const PLAYBACK_HINT_RULES: readonly PlaybackHintRule[] = [
+  {
+    key: 'playback.maybe-region-restricted',
+    matches: (track, context) =>
+      Boolean(
+        context &&
+          canLookupPlaybackHint(context) &&
+          ['1/23/0/0', '769/0/35/0', '769/0/35/1'].includes(tupleOf(track)),
+      ),
+  },
+  {
+    key: 'playback.maybe-membership',
+    matches: (track, context) =>
+      Boolean(
+        context &&
+          canLookupPlaybackHint(context) &&
+          [`${0x101d701}/13/21/1`, `${0x101d701}/13/41/1`, `${0x1019701}/13/41/1`].includes(
+            tupleOf(track),
+          ),
+      ),
+  },
+];
 
 const hint = (key: PlaybackHintKey): PlaybackHint => ({
   key,
   message: PLAYBACK_HINT_MESSAGES[key],
 });
 
-const matches = (rule: PlaybackHintRule, trackInfo: unknown): boolean => {
+const matches = (
+  rule: PlaybackHintRule,
+  trackInfo: unknown,
+  context?: PlaybackHintContext,
+): boolean => {
   try {
-    return rule.matches(trackInfo);
+    return rule.matches(trackInfo, context);
   } catch {
     return false;
   }
@@ -56,8 +110,9 @@ const matches = (rule: PlaybackHintRule, trackInfo: unknown): boolean => {
 export const playbackHintOf = (
   trackInfo: unknown,
   rules: readonly PlaybackHintRule[] = PLAYBACK_HINT_RULES,
+  context?: PlaybackHintContext,
 ): PlaybackHint => {
-  const rule = rules.find((candidate) => matches(candidate, trackInfo));
+  const rule = rules.find((candidate) => matches(candidate, trackInfo, context));
   return hint(rule?.key ?? 'playback.reason-unconfirmed');
 };
 

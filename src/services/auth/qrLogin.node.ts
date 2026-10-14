@@ -33,6 +33,7 @@ const WebSocketRuntime = require('ws') as WebSocketConstructor;
 export const createNodeQrLoginService = (): QrLoginService =>
   createQrLoginService({
     http: createAuthHttpClient(),
+    playbackHintsEnabled: !['0', 'false'].includes(process.env.QQ_PLAYBACK_HINTS_ENABLED ?? ''),
     createSessionHttp: createAuthHttpClient,
     deviceRepository: createDefaultDeviceContextRepository(),
     listen: createMqttListen(WebSocketRuntime),

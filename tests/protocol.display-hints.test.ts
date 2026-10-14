@@ -21,8 +21,14 @@ const UNCONFIRMED = {
 };
 
 describe('playback display hints', () => {
-  it('has no verified rule yet, so nothing needs the song detail', () => {
-    expect(PLAYBACK_HINT_RULES).toEqual([]);
+  it('完整规则只有地区与会员候选，不带播放上下文时保持未知', () => {
+    expect(PLAYBACK_HINT_RULES.map((rule) => rule.key)).toEqual([
+      'playback.maybe-region-restricted',
+      'playback.maybe-membership',
+    ]);
+    expect(playbackHintOf(track({ action: { switch: 1, msgid: 23, alert: 0 } }))).toEqual(
+      UNCONFIRMED,
+    );
   });
 
   // 以前按这些讯号猜原因；没有受控证据之前都只能说原因尚未确认。
