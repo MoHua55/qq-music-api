@@ -37,7 +37,7 @@ describe('preview media id', () => {
       'MediaFixtureA1',
     ],
     [
-      'numeric string size',
+      'numeric string preview presence marker',
       track({ size_try: '960887', media_mid: 'MediaFixtureA1' }),
       undefined,
       'MediaFixtureA1',

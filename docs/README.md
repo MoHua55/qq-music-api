@@ -476,7 +476,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 - `hint` 是给使用者看的原因。原因不靠猜：目前一律是 `playback.reason-unconfirmed`（暂时无法播放，具体原因尚未确认）。以后有了可靠的对照实验，才会出现 `playback.maybe-region-restricted`（可能是地区限制）、`playback.maybe-music-pack`（可能要付费音乐包）、`playback.maybe-membership`（可能要会员）、`playback.maybe-taken-down`（可能已下架）。`message` 是英文预设文案，前端可以直接显示，也可以按 `key` 换成自己的文字；不认识的 `key` 当成「原因尚未确认」就好。`hint` 不会改变 `key` 和 `evidence`。
 - 带会话和匿名两条路径都有；`resType=all` 时完整结果照旧，只有 `playUrl` 里多这个字段。
 
-**试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`，大小是 `file.size_try`），播完算正常结束，不是错误。要之前服务会先查一次这首歌的详情（每首一个请求，一次最多查 10 首）：只有确认 `file.size_try` 大于 0、又知道试听文件名要用的 media id（前端给的有效 `mediaId` 优先，否则用详情里的 `file.media_mid`）才去要。其他情况（没有试听文件、详情查不到、超过 10 首的部分）不会去要，直接回 `url_unavailable`，`hint.key` 是 `playback.preview-unavailable`（试听不可用或原因尚未确认）；要了上游却没给链接也是这句。不会拿 `songmid` 猜试听文件名，也不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。
+**试听**：带 `preview=1` 时改要歌曲的试听文件。拿到链接的那首会多 `"preview": true`，前端应该把它当成试听来播（长度看歌曲详情的 `file.e_30s`；`file.size_try` 大于 0 代表有试听文件，不代表文件大小），播完算正常结束，不是错误。要之前服务会先查一次这首歌的详情（每首一个请求，一次最多查 10 首）：只有确认 `file.size_try` 大于 0、又知道试听文件名要用的 media id（前端给的有效 `mediaId` 优先，否则用详情里的 `file.media_mid`）才去要。其他情况（没有试听文件、详情查不到、超过 10 首的部分）不会去要，直接回 `url_unavailable`，`hint.key` 是 `playback.preview-unavailable`（试听不可用或原因尚未确认）；要了上游却没给链接也是这句。不会拿 `songmid` 猜试听文件名，也不会假装有试听。服务不会自动改要试听，要前端明确要求。能力声明里 `playback.preview` 为 `true` 表示支持这个参数。
 
 用 `LOG_LEVEL=debug` 启动 Node 服务后，没拿到链接的条目会记录 `playback.url-unavailable`。日志只留 `phase`、`index`、`quality` 和 `entryCodes` 中的安全整数，不记录歌曲 id、凭证或播放链接。上游数字的含义没确认时不替它命名。
 

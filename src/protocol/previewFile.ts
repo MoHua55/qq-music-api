@@ -1,7 +1,8 @@
 // src/protocol/previewFile.ts
 //
 // 试听文件（`RS02{media id}.mp3`）要不要去要。2026-10 真账号实测：`size_try` 是 0 的歌上游照样给 RS02 链接，
-// CDN 却 404；文件名用 songmid 代替 media_mid 也会 404。所以只有单曲详情里确认 `size_try > 0`、又有可信的
+// CDN 却 404；size_try 大于 0 代表有试听文件，不代表文件大小。文件名用 songmid 代替 media_mid 也会 404。
+// 所以只有单曲详情里确认 `size_try > 0`、又有可信的
 // media id 才去要；其他一律不要，也不拿 songmid 猜。只依赖 protocol 里的纯模块，两个运行时共用。
 
 import { type PlaybackHint, previewUnavailableHint } from './playbackHints';
