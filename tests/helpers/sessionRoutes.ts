@@ -72,6 +72,11 @@ export interface SessionCall {
   rpc: Array<{ module: string; method: string; param: Record<string, unknown> }>;
   params: Record<string, string>;
 }
+interface SessionReply {
+  code?: number;
+  data?: unknown;
+  httpStatus?: number;
+}
 
 export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
   const calls: SessionCall[] = [];
@@ -89,7 +94,8 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     detailNetworkError?: boolean;
     credentialLoginType?: number;
     playbackHintsEnabled?: boolean;
-    rpcReplies?: Record<string, { code?: number; data?: unknown; httpStatus?: number }>;
+    rpcReplies?: Record<string, SessionReply>;
+    rpcReplyQueues?: Record<string, SessionReply[]>;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
@@ -149,8 +155,13 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       if (state.networkError) throw state.networkError;
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });
-      if (state.rpcReplies && descriptors.some(([, rpc]) => state.rpcReplies?.[rpc.method])) {
-        const reply = state.rpcReplies[descriptors[0][1].method];
+      if (
+        descriptors.some(
+          ([, rpc]) => state.rpcReplies?.[rpc.method] || state.rpcReplyQueues?.[rpc.method]?.length,
+        )
+      ) {
+        const method = descriptors[0][1].method;
+        const reply = state.rpcReplyQueues?.[method]?.shift() ?? state.rpcReplies?.[method];
         if (reply?.httpStatus)
           return new Response('fixture-private-body', { status: reply.httpStatus });
         return Response.json({
@@ -159,8 +170,14 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
             descriptors.map(([key, rpc]) => [
               key,
               {
-                code: state.rpcReplies?.[rpc.method]?.code ?? 0,
-                data: state.rpcReplies?.[rpc.method]?.data ?? {},
+                code:
+                  rpc.method === method
+                    ? (reply?.code ?? 0)
+                    : (state.rpcReplies?.[rpc.method]?.code ?? 0),
+                data:
+                  rpc.method === method
+                    ? (reply?.data ?? {})
+                    : (state.rpcReplies?.[rpc.method]?.data ?? {}),
               },
             ]),
           ),
