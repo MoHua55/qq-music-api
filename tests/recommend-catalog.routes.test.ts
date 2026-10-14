@@ -46,26 +46,30 @@ const CATEGORIES = {
 };
 
 const playlist = (tid: unknown, overrides: Record<string, unknown> = {}) => ({
-  access_num: 4321,
-  album_pic_mid: '',
-  cover_url_big: 'https://y.gtimg.cn/fixture-big.jpg',
-  cover_url_medium: 'https://y.gtimg.cn/fixture-medium.jpg',
-  cover_url_small: 'https://y.gtimg.cn/fixture-small.jpg',
-  creator_info: {
-    avatar: 'https://y.gtimg.cn/fixture-avatar.jpg',
-    is_dj: 0,
-    nick: 'Fixture creator',
-    uin: 30001,
-    vip_type: 0,
+  basic: {
+    play_cnt: 4321,
+    cover: {
+      big_url: 'https://y.gtimg.cn/fixture-big.jpg',
+      medium_url: 'https://y.gtimg.cn/fixture-medium.jpg',
+      small_url: 'https://y.gtimg.cn/fixture-small.jpg',
+    },
+    creator: {
+      avatar: 'https://y.gtimg.cn/fixture-avatar.jpg',
+      is_dj: 0,
+      nick: 'Fixture creator',
+      uin: 30001,
+      vip_type: 0,
+    },
+    creator_uin: 30001,
+    desc: 'Fixture description',
+    dirid: 3,
+    fav_num: 12,
+    song_ids: [1, 2],
+    tid,
+    title: `Fixture playlist ${String(tid)}`,
+    ...overrides,
   },
-  creator_uin: 30001,
-  desc: 'Fixture description',
-  dirid: 3,
-  fav_num: 12,
-  song_ids: [1, 2],
-  tid,
-  title: `Fixture playlist ${String(tid)}`,
-  ...overrides,
+  text: '',
 });
 
 const flattened = (tid: number) => ({
@@ -99,6 +103,7 @@ const NEW_SONGS = {
 describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (runtime) => {
   let recorded: Recorded[];
   let replies: Record<string, Reply>;
+  let paged = false;
 
   const upstream = async (input: string | URL | Request, init?: RequestInit) => {
     const fetched = new Request(input, init);
@@ -110,7 +115,22 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
       .filter(([key]) => key.startsWith('req_'))
       .map(([, value]) => value as Rpc);
     recorded.push({ comm: payload.comm, cookie: fetched.headers.get('cookie'), rpcs });
-    const reply = replies[rpcs[0]?.method] ?? {};
+    let reply = replies[rpcs[0]?.method] ?? {};
+    if (paged && rpcs[0]?.method === 'get_category_content') {
+      const { page, size } = rpcs[0].param as { page: number; size: number };
+      const offset = page * size;
+      reply = {
+        data: {
+          retcode: 0,
+          content: {
+            total_cnt: 203,
+            v_item: Array.from({ length: Math.max(0, Math.min(size, 203 - offset)) }, (_, i) =>
+              playlist(80001 + offset + i),
+            ),
+          },
+        },
+      };
+    }
     if (reply.httpStatus && reply.httpStatus >= 400)
       return new Response('fixture-private-error-page', { status: reply.httpStatus });
     return Response.json({
@@ -138,10 +158,14 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
     jest.spyOn(global, 'fetch').mockImplementation(upstream);
     app.silent = true;
     recorded = [];
+    paged = false;
     replies = {
       get_hot_category: { data: CATEGORIES },
-      get_playlist_by_category: {
-        data: { total: 45, v_playlist: [playlist(80001), playlist(80002)] },
+      get_category_content: {
+        data: {
+          retcode: 0,
+          content: { total_cnt: 45, v_item: [playlist(80001), playlist(80002)] },
+        },
       },
       get_new_song_info: { data: NEW_SONGS },
     };
@@ -158,7 +182,11 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
 
     expect(result.status).toBe(200);
     expect(recorded).toHaveLength(1);
-    expect(recorded[0].comm).toEqual({ ct: 24, cv: 0 });
+    expect(recorded[0].comm).toEqual(
+      path.startsWith('/recommend/category-playlists')
+        ? { ct: 24, cv: 0, uin: 0 }
+        : { ct: 24, cv: 0 },
+    );
     expect(recorded[0].cookie).toBeNull();
   });
 
@@ -236,9 +264,9 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
       });
       expect(recorded[0].rpcs).toEqual([
         {
-          module: 'playlist.PlayListPlazaServer',
-          method: 'get_playlist_by_category',
-          param: { id: 8, curPage: 1, size: 20, order: 5, titleid: 8 },
+          module: 'music.playlist.PlayListCategory',
+          method: 'get_category_content',
+          param: { caller: '0', category_id: 8, page: 0, size: 20, use_page: 1 },
         },
       ]);
     });
@@ -253,11 +281,11 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
       const result = await call(`/recommend/category-playlists${query}`);
 
       expect(recorded[0].rpcs[0].param).toEqual({
-        id: 8,
-        curPage: page,
+        caller: '0',
+        category_id: 8,
+        page: page - 1,
         size,
-        order: 5,
-        titleid: 8,
+        use_page: 1,
       });
       expect(result.body.more).toBe(more);
     });
@@ -277,17 +305,20 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
     });
 
     it('skips playlists without a usable tid and leaves missing numbers out', async () => {
-      replies.get_playlist_by_category = {
+      replies.get_category_content = {
         data: {
-          total: 2,
-          v_playlist: [
-            playlist(0),
-            playlist(80003, {
-              access_num: 'many',
-              cover_url_big: '',
-              creator_info: { nick: 'Fixture creator', uin: 'x' },
-            }),
-          ],
+          retcode: 0,
+          content: {
+            total_cnt: 2,
+            v_item: [
+              playlist(0),
+              playlist(80003, {
+                play_cnt: 'many',
+                cover: { medium_url: 'https://y.gtimg.cn/fixture-medium.jpg' },
+                creator: { nick: 'Fixture creator', uin: 'x' },
+              }),
+            ],
+          },
         },
       };
 
@@ -305,16 +336,29 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
     });
 
     it.each([
-      ['an empty page', { total: 0, v_playlist: [] }, 422, 'resource.not-found'],
+      [
+        'an empty page',
+        { retcode: 0, content: { total_cnt: 0, v_item: [] } },
+        422,
+        'resource.not-found',
+      ],
       [
         'only unusable entries',
-        { total: 1, v_playlist: [playlist(0)] },
+        { retcode: 0, content: { total_cnt: 1, v_item: [playlist(0)] } },
         502,
         'upstream.invalid-response',
       ],
-      ['a non-list', { v_playlist: {} }, 502, 'upstream.invalid-response'],
+      ['a non-list', { retcode: 0, content: { v_item: {} } }, 502, 'upstream.invalid-response'],
+      ['missing content', { retcode: 0 }, 502, 'upstream.invalid-response'],
+      ['missing items', { retcode: 0, content: {} }, 502, 'upstream.invalid-response'],
+      [
+        'inner rejection',
+        { retcode: 1, content: { total_cnt: 0, v_item: [] } },
+        502,
+        'upstream.unknown',
+      ],
     ])('answers for %s', async (_label, data, status, errorKey) => {
-      replies.get_playlist_by_category = { data };
+      replies.get_category_content = { data };
 
       const result = await call('/recommend/category-playlists?id=8');
 
@@ -323,19 +367,12 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
     });
 
     describe('paging against the observed upstream', () => {
-      // 2026-10 真账号实测：照现在的参数（`curPage` 从 1）要第 2 页，上游给回第 1 页同样的 20 张、同样的顺序，
-      // `total` 照样是 203。这里的假上游只重现这个现象；换参数或换接口时，要照验证过的协议改它。
-      const TOTAL = 203;
+      // 匿名实测：caller 是字符串 0、page 从 0 起算、size 20/40 均可用；位移是 page * size。
       const tidsOf = (result: HttpResult): number[] =>
         result.status === 200 ? result.body.playlists.map((item: { tid: number }) => item.tid) : [];
 
       beforeEach(() => {
-        replies.get_playlist_by_category = {
-          data: {
-            total: TOTAL,
-            v_playlist: Array.from({ length: 20 }, (_, index) => playlist(80001 + index)),
-          },
-        };
+        paged = true;
       });
 
       it('does not serve page 1 again as page 2', async () => {
@@ -351,6 +388,20 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
         const second = await call('/recommend/category-playlists?id=8&page=2');
 
         expect(firstPage.body.more).toBe(tidsOf(second).some((tid) => !first.has(tid)));
+      });
+      it('size 40 is the same ordered first two pages of size 20', async () => {
+        const first = tidsOf(await call('/recommend/category-playlists?id=8&page=1&limit=20'));
+        const second = tidsOf(await call('/recommend/category-playlists?id=8&page=2&limit=20'));
+        expect(tidsOf(await call('/recommend/category-playlists?id=8&page=1&limit=40'))).toEqual([
+          ...first,
+          ...second,
+        ]);
+      });
+      it('uses total_cnt at the last and empty page, never an unrelated total', async () => {
+        const last = await call('/recommend/category-playlists?id=8&page=11');
+        expect(tidsOf(last)).toHaveLength(3);
+        expect(last.body).toMatchObject({ total: 203, more: false });
+        expect((await call('/recommend/category-playlists?id=8&page=12')).status).toBe(422);
       });
     });
   });
@@ -409,7 +460,7 @@ describe.each(['node', 'serverless'] as const)('recommend catalog routes: %s', (
 
   it.each([
     ['get_hot_category', '/recommend/categories'],
-    ['get_playlist_by_category', '/recommend/category-playlists?id=8'],
+    ['get_category_content', '/recommend/category-playlists?id=8'],
     ['get_new_song_info', '/recommend/new-songs'],
   ])('%s: an upstream business code becomes 502 and keeps the number', async (method, path) => {
     replies[method] = { code: 1000 };
