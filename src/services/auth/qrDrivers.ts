@@ -1,6 +1,8 @@
 import { type AndroidDevice } from './androidDevice';
 import { createNativeQr } from './bootstrap';
 import type { AuthHttpClient } from './httpClient';
+import { logWechatQr } from './qrDiagnostics';
+import { qrFailureDetailsOf } from './qrFailures';
 import {
   type QrChannelDriver,
   type QrEvent,
@@ -140,17 +142,41 @@ export const createWechatQrDriver = (options: {
   },
   advance: async (session, budgetMs, signal) => {
     if (!session.identifier) return [];
+    const startedAt = Date.now();
     try {
       const status = await pollWechatQr(options.http(session), session.identifier, {
         budgetMs,
         signal,
       });
-      return [eventForWechatStatus(status)];
+      const event = eventForWechatStatus(status);
+      logWechatQr(session, 'poll', {
+        outcome: 'status',
+        upstreamCode: status.upstreamCode,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        budgetMs,
+      });
+      return [event];
     } catch (error) {
       // The budget elapsing is the normal outcome of a long poll that saw no state change, so it
       // reports "nothing happened" rather than an upstream failure. A caller-driven abort is a
       // real cancellation and stays an error.
-      if (isAbortError(error) && signal?.aborted !== true) return [];
+      if (isAbortError(error) && signal?.aborted !== true) {
+        logWechatQr(session, 'poll', {
+          outcome: 'budget-expired',
+          durationMs: Math.max(0, Date.now() - startedAt),
+          budgetMs,
+        });
+        return [];
+      }
+      const failure = qrFailureDetailsOf(error, 'qr-poll', 'wechat');
+      logWechatQr(session, 'poll', {
+        outcome: 'error',
+        durationMs: Math.max(0, Date.now() - startedAt),
+        budgetMs,
+        failureReason: failure.failureReason,
+        upstreamCode: failure.upstreamCode,
+        upstreamHttpStatus: failure.upstreamHttpStatus,
+      });
       throw error;
     }
   },

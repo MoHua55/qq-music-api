@@ -25,6 +25,38 @@ const authorized = {
   },
 };
 
+describe('Node WeChat checks through the existing HTTP controller', () => {
+  const upstream = useQrUpstream('node');
+  it('retains 802 after 408 and still returns the existing 803 body and HttpOnly cookie', async () => {
+    const options = await upstream.options('check', { channel: 'wechat' });
+    await options.beforeEachLeg?.();
+    const host = new Koa();
+    const router = new Router();
+    router.get('/login/qr/check', qrCheckOperationController);
+    host.use(router.routes());
+    for (const [wechatCode, apiCode] of [
+      [404, 802],
+      [408, 802],
+      [405, 803],
+    ]) {
+      upstream.state.wechatCode = wechatCode;
+      const response = await request(host.callback()).get(`/login/qr/check?key=${options.key}`);
+      expect(response.status).toBe(200);
+      if (apiCode === 802) {
+        expect(response.body).toEqual({ code: 802, message: 'QR code scanned' });
+        expect(response.headers['set-cookie']).toBeUndefined();
+      } else {
+        expect(response.body).toEqual({
+          code: 803,
+          message: 'Authorization login successful',
+          cookie: expect.stringMatching(/^qqmusic_session=/),
+        });
+        expect(response.headers['set-cookie']).toEqual([expect.stringContaining('; httponly')]);
+      }
+    }
+  });
+});
+
 it.each([
   ['', undefined],
   ['other=value', undefined],

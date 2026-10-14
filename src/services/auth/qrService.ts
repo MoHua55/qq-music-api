@@ -29,6 +29,7 @@ import {
 import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
+import { logWechatQr } from './qrDiagnostics';
 import { createQqQrDriver, createWechatQrDriver } from './qrDrivers';
 import {
   confirmingState,
@@ -361,6 +362,22 @@ export class QrLoginServiceImpl implements QrLoginService {
 
   private onQrEvent(session: QrSessionRecord, event: QrEvent): void {
     if (terminalState(session.state)) return;
+    const previousState = session.state;
+    // A later WeChat waiting response is not evidence that the phone's scan was undone.
+    // Keep the QQ listener's existing semantics and still accept cancellation/expiry events.
+    if (
+      session.channel === 'wechat' &&
+      event.type === 'waiting' &&
+      confirmingState(session.state)
+    ) {
+      logWechatQr(session, 'qr-state', {
+        eventType: 'waiting',
+        previousState,
+        state: session.state,
+        ignored: true,
+      });
+      return;
+    }
     if (event.type === 'waiting') session.state = 'waiting';
     else if (event.type === 'scanned') session.state = 'scanned';
     else if (event.type === 'cookies' || event.type === 'authorized') {
@@ -384,6 +401,24 @@ export class QrLoginServiceImpl implements QrLoginService {
       session.retryAfterMs = this.backoff(session);
     }
     this.qrSessionStore.persist();
+    if (session.channel === 'wechat' && session.state !== previousState) {
+      const eventType =
+        event.type === 'waiting' ||
+        event.type === 'scanned' ||
+        event.type === 'authorized' ||
+        event.type === 'cookies' ||
+        event.type === 'canceled' ||
+        event.type === 'timeout' ||
+        event.type === 'loginFailed'
+          ? event.type
+          : 'unknown';
+      logWechatQr(session, 'qr-state', {
+        eventType,
+        previousState,
+        state: session.state,
+        ignored: false,
+      });
+    }
   }
 
   /**
@@ -548,20 +583,34 @@ export class QrLoginServiceImpl implements QrLoginService {
       const session = this.sessionFor(key);
       await this.advanceSession(session, budgetMs);
       if (session.state === 'confirmed' && session.authToken) {
-        return {
+        return this.observedCheckResult(session, {
           code: 803,
           message: 'Authorization login successful',
           cookie: `qqmusic_session=${session.authToken}`,
-        };
+        });
       }
       if (session.state === 'scanned' || session.state === 'exchanging')
-        return { code: 802, message: 'QR code scanned' };
+        return this.observedCheckResult(session, { code: 802, message: 'QR code scanned' });
       if (session.state === 'expired' || session.state === 'failed')
-        return this.failedCheckResult(session);
-      return { code: 801, message: 'Waiting for QR scan' };
+        return this.observedCheckResult(session, this.failedCheckResult(session));
+      return this.observedCheckResult(session, { code: 801, message: 'Waiting for QR scan' });
     } catch {
       return { code: 800, message: 'QR code expired' };
     }
+  }
+
+  private observedCheckResult(session: QrSessionRecord, result: QrCheckResult): QrCheckResult {
+    if (session.channel !== 'wechat') return result;
+    const failure = failureDetailsOf(session);
+    logWechatQr(session, 'qr-check', {
+      state: session.state,
+      apiCode: result.code,
+      sessionMode: this.capabilities.sessionMode,
+      pollErrors: this.qrRuntimes.get(session.key)?.pollErrors ?? 0,
+      failureStage: failure.failureStage,
+      failureReason: failure.failureReason,
+    });
+    return result;
   }
 
   private failedCheckResult(session: QrSessionRecord): QrCheckResult {

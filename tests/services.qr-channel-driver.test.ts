@@ -249,6 +249,40 @@ describe('QR channel drivers', () => {
     });
   });
 
+  it.each([
+    'canceled',
+    'timeout',
+  ] as const)('should still accept WeChat %s after ignoring waiting', async (type) => {
+    const pull = createPullDriverStub();
+    const { service, key } = await startSession('wechat', pull.driver);
+    pull.queue.push([{ type: 'scanned', payload: null }]);
+    await service.checkQr(key);
+    pull.queue.push([{ type: 'waiting', payload: null }]);
+    await service.checkQr(key);
+    pull.queue.push([{ type, payload: null }]);
+    await expect(service.checkQr(key)).resolves.toMatchObject({
+      code: 800,
+      failureStage: 'qr-event',
+      failureReason: type === 'canceled' ? 'user-canceled' : 'qr-timeout',
+    });
+  });
+
+  it('should still fail a scanned WeChat QR after four consecutive poll errors', async () => {
+    const pull = createPullDriverStub();
+    const { service, key } = await startSession('wechat', pull.driver);
+    pull.queue.push([{ type: 'scanned', payload: null }]);
+    await service.checkQr(key);
+    for (let check = 0; check < 3; check += 1) {
+      pull.queue.push(new Error('offline network failure'));
+      await expect(service.checkQr(key)).resolves.toMatchObject({ code: 802 });
+    }
+    pull.queue.push(new Error('offline network failure'));
+    await expect(service.checkQr(key)).resolves.toMatchObject({
+      code: 800,
+      failureStage: 'qr-poll',
+    });
+  });
+
   it('should never poll a push channel and should drive it from its listener', async () => {
     const push = createPushDriverStub();
     const { service, key } = await startSession('qq', push.driver);
@@ -367,6 +401,39 @@ describe('WeChat pull driver long-poll semantics', () => {
         code: 802,
         message: 'QR code scanned',
       });
+    }
+  });
+
+  it('should keep QR checks working if an optional diagnostic sink throws', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation((event) => {
+      if (
+        ['qq-auth.wechat-poll', 'qq-auth.wechat-qr-state', 'qq-auth.wechat-qr-check'].includes(
+          String(event),
+        )
+      )
+        throw new Error('offline diagnostic sink failure');
+    });
+    try {
+      const queue = [404, 408];
+      const service = createQrLoginService({
+        http: createBootstrapHttp(),
+        createSessionHttp: () =>
+          createWechatHttp(async () =>
+            response(`window.wx_errcode=${queue.shift()};window.wx_code='';`),
+          ),
+      });
+      const key = await service.createSession('wechat');
+      await service.createQr(key);
+      await expect(service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+      await expect(service.checkQr(key)).resolves.toEqual({
+        code: 802,
+        message: 'QR code scanned',
+      });
+    } finally {
+      info.mockRestore();
     }
   });
 

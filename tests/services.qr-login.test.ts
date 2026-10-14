@@ -1782,7 +1782,7 @@ describe('QQ login channel routing', () => {
         cookie: expect.stringMatching(/^qqmusic_session=/),
       });
       await expect(
-        harness.service.getLoginStatus(confirmed.cookie!.split('=')[1]),
+        harness.service.getLoginStatus(confirmed.cookie?.split('=')[1]),
       ).resolves.toEqual(expect.any(Object));
       expect(loginParamOf(harness)).toEqual({ code: WX_CODE, strAppid: 'wx48db31d50e334801' });
       const diagnostics = info.mock.calls.filter(([name]) =>
@@ -1797,7 +1797,7 @@ describe('QQ login channel routing', () => {
         expect.objectContaining({ apiCode: 803, state: 'confirmed' }),
       ]);
       const text = JSON.stringify(diagnostics);
-      for (const secret of [key, WX_UUID, WX_CODE, confirmed.cookie!, 'wechat-credential-key'])
+      for (const secret of [key, WX_UUID, WX_CODE, confirmed.cookie ?? '', 'wechat-credential-key'])
         expect(text).not.toContain(secret);
     } finally {
       info.mockRestore();
