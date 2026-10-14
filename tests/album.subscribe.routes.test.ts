@@ -54,6 +54,45 @@ describe.each(CATALOG_RUNTIMES)('专辑收藏写入（%s）', (runtime) => {
       'data.features.mutations.subscribeAlbum',
       false,
     );
+    expect((await callRoute(runtime, '/login/channels')).body).toHaveProperty(
+      'data.features.mutations.likeSong',
+      true,
+    );
+  });
+  it.each([
+    true,
+    false,
+  ])('超安全范围 owner 在目标 %s 的读写中保持精确字符串', async (subscribed) => {
+    const owner = '1234567890123456789';
+    upstream.state.credentialOverrides = { str_musicid: owner, musicid: 1234567890123456800 };
+    upstream.state.rpcReplyQueues!.IsAlbumFan = [
+      { data: { m_fan: { [id]: !subscribed } } },
+      { data: { m_fan: { [id]: subscribed } } },
+    ];
+    expect(await call({ id, subscribed })).toMatchObject({ status: 200, body: { subscribed } });
+    expect(rpc().map((c) => c.param.uin)).toEqual([owner, owner, owner]);
+    expect(rpc().map((c) => c.method)).toEqual([
+      'IsAlbumFan',
+      subscribed ? 'FavAlbum' : 'CancelFavAlbum',
+      'IsAlbumFan',
+    ]);
+  });
+  it('超安全范围初始状态未知时只读一次、不写', async () => {
+    upstream.state.credentialOverrides = { str_musicid: '1234567890123456789' };
+    upstream.state.rpcReplyQueues!.IsAlbumFan = [{ data: { m_fan: {} } }];
+    expect(await call()).toMatchObject({ status: 502, body: { retryable: false } });
+    expect(rpc().map((c) => c.method)).toEqual(['IsAlbumFan']);
+  });
+  it.each([
+    { str_musicid: '', musicid: 1234567890123456800 },
+    { str_musicid: '0', musicid: 1234567890123456800 },
+    { str_musicid: '1e18' },
+    { str_musicid: '-1' },
+    { str_musicid: '0', musicid: 0 },
+  ])('无保真 owner 时不请求上游', async (credentialOverrides) => {
+    upstream.state.credentialOverrides = credentialOverrides;
+    expect(await call()).toMatchObject({ status: 502, body: { retryable: false } });
+    expect(upstream.calls).toHaveLength(0);
   });
   it.each([true, false])('目标 %s 要写入一次并读回', async (subscribed) => {
     upstream.state.rpcReplyQueues!.IsAlbumFan = [
