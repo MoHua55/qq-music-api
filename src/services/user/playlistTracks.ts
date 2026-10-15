@@ -20,6 +20,70 @@ const ownedList = (session: AuthSession): MusicuDescriptor<unknown[]> => ({
   },
 });
 
+/** 只读一页，不把未读到的歌曲猜成不存在，也不让核对失败覆盖已经收到的写入结果。 */
+const verifyTrackPresence = async (
+  session: AuthSession,
+  tid: number,
+  dirId: number,
+  ids: number[],
+  options: SessionMusicuOptions,
+): Promise<'present' | 'absent' | 'unknown'> => {
+  const encryptedUin = session.credential.encryptUin;
+  if (typeof encryptedUin !== 'string' || !encryptedUin) return 'unknown';
+  try {
+    const data = await createSessionMusicuClient(session, { ...options, maxRetries: 0 }).execute({
+      module: 'music.srfDissInfo.DissInfo',
+      method: 'CgiGetDiss',
+      param: {
+        disstid: tid,
+        dirid: dirId,
+        tag: true,
+        song_begin: 0,
+        song_num: 100,
+        userinfo: true,
+        orderlist: true,
+        enc_host_uin: encryptedUin,
+      },
+      readOnly: true,
+      operation: 'playlist.track-verification',
+    });
+    if (
+      !isDictionary(data) ||
+      !Array.isArray(data.songlist) ||
+      (data.code !== undefined && data.code !== 0) ||
+      (data.subcode !== undefined && data.subcode !== 0)
+    )
+      return 'unknown';
+    const found = new Set<number>();
+    let valid = true;
+    for (const song of data.songlist) {
+      if (!isDictionary(song)) {
+        valid = false;
+        continue;
+      }
+      const id = positiveIntegerOf(song.id ?? song.songid);
+      if (
+        id === undefined ||
+        (song.id != null && song.songid != null && positiveIntegerOf(song.songid) !== id)
+      ) {
+        valid = false;
+        continue;
+      }
+      found.add(id);
+    }
+    if (ids.every((id) => found.has(id))) return 'present';
+    const complete =
+      valid &&
+      found.size === data.songlist.length &&
+      Number.isSafeInteger(data.total_song_num) &&
+      data.total_song_num === data.songlist.length &&
+      (data.hasmore === 0 || data.hasmore === false);
+    return complete && ids.every((id) => !found.has(id)) ? 'absent' : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+};
+
 export const playlistTracksResult = async (
   session: AuthSession | null,
   raw: unknown,
@@ -67,7 +131,22 @@ export const playlistTracksResult = async (
     if (!changed && !(data.dirId === 0 && (data.tid === 0 || data.tid === '0')))
       throw new QqApiError('invalid-response');
     // 回应里的逐首 existed 实测不能说明歌曲原本在不在，所以不回传，整体变更只看 changed。
-    return okResult({ changed });
+    return okResult({
+      changed,
+      ...(!changed
+        ? {
+            verification: {
+              status: await verifyTrackPresence(
+                session,
+                tid,
+                dirId,
+                songs.map((song) => song.songId),
+                options,
+              ),
+            },
+          }
+        : {}),
+    });
   } catch (error) {
     return failureResult('playlist-track-write', error);
   }

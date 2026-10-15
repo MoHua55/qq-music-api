@@ -26,6 +26,8 @@ export const UPSTREAM_OPERATIONS = [
   'user.vip',
   /** 写入前的自建清单核对；不借用其他操作的非零码语义。 */
   'playlist.owned-list',
+  /** 无变更后的单次内容核对；失败只让可选说明为 unknown，不改变原写入结果。 */
+  'playlist.track-verification',
   /** 已验证调用形状，非零码的含义尚未确认，保持未知。 */
   'playlist.subscribe',
   'playlist.unsubscribe',
