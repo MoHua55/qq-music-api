@@ -284,6 +284,21 @@ export interface SessionResolver {
   revoke(token: string): Promise<void>;
   cleanup?(): void;
   useRepository?(repository: AuthSessionRepository): void;
+  /**
+   * Sealed only: renew a nearly expired credential and hand out a new token. `null` means the token
+   * does not resolve at all. Stored has no use for it — its silent refresh keeps the same token.
+   */
+  rotate?(
+    token: string,
+    refresh: (session: AuthSession) => Promise<QqCredential>,
+  ): Promise<SessionRotation | null>;
+}
+
+/** What `POST /login/refresh` answers: the token to keep using, and whether it changed. */
+export interface SessionRotation {
+  token: string;
+  expiresAt: number;
+  rotated: boolean;
 }
 
 export interface QrLoginDependencies {
@@ -366,6 +381,8 @@ export interface QrLoginService {
   ): Promise<Dictionary | null>;
   /** 新路由用：解析会话并交给共用实现建自己的上游客户端。解不开、过期都返回 `null`。 */
   resolveSession(token?: string): Promise<AuthSession | null>;
+  /** The explicit renewal behind `POST /login/refresh`; `null` when the token is not logged in. */
+  refreshSession(token?: string): Promise<SessionRotation | null>;
   configureAuthSessionRepository(repository: AuthSessionRepository): void;
   logout(token?: string): Promise<void>;
 }

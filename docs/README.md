@@ -115,7 +115,9 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 
 会话仓库必须由宿主加密。完整凭证不能进入 renderer、浏览器存储、普通 JSON 文件或日志；renderer 只保存 opaque `qqmusic_session`。Electron 可在主进程使用 `safeStorage`，但只有明文后端时不应保存凭证。仓库读写失败会退回内存行为，不阻断重新扫码。
 
-**自动续期**：Node、Electron、Docker 这类把凭证存在服务端的部署（`sessionMode: stored`），会在 QQ 凭证到期前 6 小时内、有请求进来时自动续期一次，`qqmusic_session` 不变，前端不用做任何事。续期失败时继续用还没到期的旧凭证，5 分钟后才再试；登出和续期同时发生时以登出为准。凭证里没有续期材料（例如手机 QQ 扫码走备用验证得到的凭证）就不续。Serverless 部署（`sealed`）目前不自动续期，凭证到期后要重新扫码。
+**自动续期**：Node、Electron、Docker 这类把凭证存在服务端的部署（`sessionMode: stored`），会在 QQ 凭证到期前 6 小时内、有请求进来时自动续期一次，`qqmusic_session` 不变，前端不用做任何事。续期失败时继续用还没到期的旧凭证，5 分钟后才再试；登出和续期同时发生时以登出为准。凭证里没有续期材料（例如手机 QQ 扫码走备用验证得到的凭证）就不续。Serverless 部署（`sealed`）的凭证放在 token 里，后端没法偷偷换，所以要前端主动调 `POST /login/refresh`（见下一段）；不调就和以前一样，凭证到期后要重新扫码。
+
+**主动续期 `POST /login/refresh`**：带着当前会话调用（和其他接口一样放在 `X-QQ-Session` 或 `cookie` 里），回 `{ code: 200, data: { token, rotated, expiresAt } }`。只有离到期不到 6 小时时才会真的去续，平时调用不会多打上游，可以在启动时或定时调一次。`rotated` 是 `true` 时把 `token` 存下来、之后改用它；旧 token 照原来的到期时间继续可用，所以没存到也只是下次再续。Node、Electron、Docker 这类部署会照常静默续期，`token` 不变、`rotated` 是 `false`。Serverless 从第一次扫码算起最多续到 30 天，之后要重新扫码；续期失败时照用原来的 token，同一个实例 5 分钟内不再试。会话无效回 `401`；没设 `QQ_SESSION_SECRET` 的 Serverless 回 `501`。
 
 ## 接口一览
 
@@ -129,6 +131,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /login/qr/check` | 否 | 查扫码进度，成功时拿到会话 | ✓ |
 | `GET /login/qr/cancel` | 否 | 取消这张二维码 | ✓ |
 | `GET /login/status`、`/logout` | 是 | 查登录状态、登出 | ✓ |
+| `POST /login/refresh` | 是 | 主动续期，Serverless 会在快到期时交出新 token | ✓ |
 | **个人资料与歌单** | | | |
 | `GET /user/detail` | 是 | 头像、昵称等资料 | ✓ |
 | `GET /user/vip` | 是 | 会员等级 `vipLevel` | ✓ |
@@ -199,6 +202,7 @@ Node 支持手机 QQ、微信和 QQ 音乐 App 扫码。`qq` 指手机 QQ 扫码
 | 4 | `/login/qr/check?key=<unikey>` | `801` 等待、`802` 已扫描、`803` 已确认、`800` 过期或失败 |
 | 关闭登录界面 | `/login/qr/cancel?key=<unikey>` | 取消二维码会话 |
 | 登录后 | `/login/status` | 读取 `data.profile`；未登录时 `data` 为空 |
+| 定时 | `POST /login/refresh` | `rotated` 为 `true` 时改存 `data.token` |
 | 退出 | `/logout` | 清除当前会话，也删除注入仓库中的记录 |
 
 手机 QQ 图片目前为 PNG，微信图片目前为 JPEG，不要固定写死图片类型。服务同一时间只允许一个二维码会话；新会话会接管尚未扫码的旧会话。

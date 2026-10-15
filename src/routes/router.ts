@@ -16,6 +16,7 @@ router.get('/login/qr/cancel', context.qrCancel);
 router.get('/login/status', context.loginStatus);
 router.get('/login/channels', context.loginChannels);
 router.get('/logout', context.logout);
+router.post('/login/refresh', context.loginRefresh);
 router.get('/user/detail', context.userDetail);
 router.get('/user/vip', context.userVip);
 router.post('/user/song/like', context.songLike);

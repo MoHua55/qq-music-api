@@ -225,7 +225,8 @@ describe('sealed 轮替', () => {
         }),
     );
     const pending = Promise.all([rotate(token, refresh), rotate(token, refresh)]);
-    await new Promise((resolve) => setImmediate(resolve));
+    // 等第一次真的打到上游（打开 token 要走几轮异步加密）再放行。
+    while (refresh.mock.calls.length === 0) await new Promise((resolve) => setImmediate(resolve));
     release(refreshed());
     const [first, second] = await pending;
     expect(refresh).toHaveBeenCalledTimes(1);

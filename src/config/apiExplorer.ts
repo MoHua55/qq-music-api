@@ -88,6 +88,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'loginStatus', method: 'GET', routePath: '/login/status', category: 'Login' },
   { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
+  { name: 'loginRefresh', method: 'POST', routePath: '/login/refresh', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'songLike', method: 'POST', routePath: '/user/song/like', category: 'User' },
@@ -397,6 +398,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   loginStatus: {
     description: 'Get the authenticated QQ Music profile for the current session.',
+  },
+  loginRefresh: {
+    description:
+      'Renew the current session on request. Answers { token, rotated, expiresAt }. Only within 6 hours of expiry does it call upstream; serverless then hands out a new token (keep it when rotated is true; the old one stays valid until its own expiry), capped at 30 days from the first login. Stored deployments refresh silently and keep the same token. A failed refresh keeps the current token and waits 5 minutes on that instance. 401 without a valid session.',
   },
   logout: {
     description: 'Clear the current in-memory QQ Music login session.',

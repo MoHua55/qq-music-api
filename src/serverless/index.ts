@@ -11,6 +11,7 @@ import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
+import { loginRefresh } from '../routes/operations/loginRefresh';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
 import {
@@ -161,6 +162,7 @@ const routes: Record<string, RouteHandler> = {
   '/login/status': operationRoute(loginStatus),
 
   '/logout': operationRoute(logout),
+  '/login/refresh': operationRoute(loginRefresh),
 
   '/user/detail': operationRoute(userDetail),
   '/user/vip': operationRoute(userVip),
@@ -264,6 +266,7 @@ const LOGIN_ROUTES = new Set([
   '/login/qr/check',
   '/login/qr/cancel',
   '/login/status',
+  '/login/refresh',
   '/logout',
   '/user/detail',
   '/user/vip',

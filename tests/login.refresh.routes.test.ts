@@ -90,8 +90,10 @@ describe.each(CATALOG_RUNTIMES)('POST /login/refresh（%s）', (runtime) => {
 
   it('只收 POST', async () => {
     const result = await call('valid', 'GET');
+    // Node 由路由层直接回 405，和其他只收 POST 的路由一样；serverless 由共用处理回。
     expect(result.status).toBe(405);
-    expect(result.body).toEqual({ code: 405, message: 'POST required' });
+    if (runtime === 'serverless')
+      expect(result.body).toEqual({ code: 405, message: 'POST required' });
     expect(refreshCalls()).toHaveLength(0);
   });
 });

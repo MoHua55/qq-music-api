@@ -9,6 +9,7 @@ import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
+import { loginRefresh } from '../routes/operations/loginRefresh';
 import { loginStatus } from '../routes/operations/loginStatus';
 import {
   playlistCreate,
@@ -68,6 +69,7 @@ export default {
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
+  loginRefresh: withControllerLogging('loginRefresh', operationController(loginRefresh)),
   songLike: withControllerLogging('songLike', operationController(songLike)),
   albumSubscribe: withControllerLogging('albumSubscribe', operationController(albumSubscribe)),
   userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),

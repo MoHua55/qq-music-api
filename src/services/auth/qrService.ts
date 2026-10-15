@@ -60,6 +60,7 @@ import {
   type QrSessionRuntime,
   type RuntimeCapabilities,
   type SessionResolver,
+  type SessionRotation,
 } from './qrTypes';
 import {
   createMemoryAuthSessionRepository,
@@ -755,6 +756,19 @@ export class QrLoginServiceImpl implements QrLoginService {
 
   public async resolveSession(token?: string): Promise<AuthSession | null> {
     return this.authFor(token);
+  }
+
+  /**
+   * `POST /login/refresh`. Resolving already runs the stored silent refresh, which keeps the same
+   * token; a sealed resolver additionally renews inside its final window and seals a new token.
+   */
+  public async refreshSession(token?: string): Promise<SessionRotation | null> {
+    const session = await this.authFor(token);
+    if (!session || !token) return null;
+    const rotation = await this.sessionResolver.rotate?.(token, (current) =>
+      refreshLoginCredential(this.http, current.device, current.credential),
+    );
+    return rotation ?? { token, expiresAt: session.expiresAt, rotated: false };
   }
 
   /**
