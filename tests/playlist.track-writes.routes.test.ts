@@ -2,6 +2,7 @@ import './helpers/sessionRoutes';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CATALOG_RUNTIMES, callRoute } from './helpers/catalogRoutes';
+import { CONTRACT_CREDENTIAL } from './helpers/contractUpstream';
 import { useSessionUpstream } from './helpers/sessionRoutes';
 
 it('文档与 Explorer 不再提逐首 existed，整体变更只看 changed', () => {
@@ -43,6 +44,9 @@ describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
         },
       },
       DelSonglist: { data: { retCode: 0, result: { dirId: 11, tid: 70001, songlist: [] } } },
+      CgiGetDiss: {
+        data: { songlist: [{ id: 101 }], total_song_num: 1, hasmore: 0 },
+      },
     };
   });
   it.each(['add', 'del'])('%s 分别验证请求协议和结果', async (op) => {
@@ -102,7 +106,16 @@ describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
         songlist: op === 'add' ? [{ songId: 101, songType: 0, existed: 1 }] : [],
       },
     };
-    expect((await call({ ...input, op })).body).toEqual({ code: 200, changed: false });
+    upstream.state.rpcReplies!.CgiGetDiss.data = {
+      songlist: op === 'add' ? [{ id: 101 }] : [],
+      total_song_num: op === 'add' ? 1 : 0,
+      hasmore: 0,
+    };
+    expect((await call({ ...input, op })).body).toEqual({
+      code: 200,
+      changed: false,
+      verification: { status: op === 'add' ? 'present' : 'absent' },
+    });
   });
   it.each([
     [{ dirId: 11, tid: 70001, songlist: [{ songId: 101, songType: 0, existed: 2 }] }, true],
@@ -113,7 +126,100 @@ describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
     upstream.state.rpcReplies!.AddSonglist.data = { retCode: 0, result };
     const response = await call();
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ code: 200, changed });
+    expect(response.body).toEqual({
+      code: 200,
+      changed,
+      ...(!changed ? { verification: { status: 'present' } } : {}),
+    });
+    expect(upstream.calls.flatMap((c) => c.rpc).map((r) => r.method)).toEqual([
+      'GetPlaylistByUin',
+      'AddSonglist',
+      ...(!changed ? ['CgiGetDiss'] : []),
+    ]);
+  });
+  it.each([
+    [
+      { songlist: [{ id: 101 }, { id: 102 }], total_song_num: 2, hasmore: 0 },
+      [101, 102],
+      'present',
+    ],
+    [{ songlist: [{ songid: '101' }], total_song_num: 1, hasmore: false }, [101], 'present'],
+    [{ songlist: [{ id: 101 }], total_song_num: 300, hasmore: 1 }, [101], 'present'],
+    [{ songlist: [{ id: 101 }, {}], total_song_num: 2, hasmore: 0 }, [101], 'present'],
+    [{ songlist: [], total_song_num: 0, hasmore: 0 }, [101, 102], 'absent'],
+    [{ songlist: [{ id: 103 }], total_song_num: 1, hasmore: false }, [101, 102], 'absent'],
+    [{ songlist: [{ id: 101 }], total_song_num: 1, hasmore: 0 }, [101, 102], 'unknown'],
+    [{ songlist: [{ id: 103 }], total_song_num: 300, hasmore: 1 }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }], total_song_num: 1, hasmore: 1 }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }], total_song_num: 1 }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }], hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }], total_song_num: 0, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }], total_song_num: -1, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }], total_song_num: 1, hasmore: 'false' }, [101], 'unknown'],
+    [{ songlist: [{ id: 103 }, { id: 103 }], total_song_num: 2, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [{ id: 101, songid: 102 }], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [{}], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [{ id: 9007199254740992 }], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: null, total_song_num: 0, hasmore: 0 }, [101], 'unknown'],
+    [null, [101], 'unknown'],
+  ] as const)('无变更只根据实际读回判定 %s', async (data, ids, status) => {
+    upstream.state.rpcReplies!.AddSonglist.data = { retCode: 0, result: { dirId: 0, tid: 0 } };
+    upstream.state.rpcReplies!.CgiGetDiss.data = data;
+    const result = await call({ ...input, songs: ids.map((id) => ({ id, type: 0 })) });
+    expect(result).toMatchObject({
+      status: 200,
+      body: { code: 200, changed: false, verification: { status } },
+    });
+    const reads = upstream.calls.flatMap((c) => c.rpc).filter((r) => r.method === 'CgiGetDiss');
+    expect(reads).toEqual([
+      {
+        module: 'music.srfDissInfo.DissInfo',
+        method: 'CgiGetDiss',
+        param: {
+          disstid: 70001,
+          dirid: 11,
+          tag: true,
+          song_begin: 0,
+          song_num: 100,
+          userinfo: true,
+          orderlist: true,
+          enc_host_uin: CONTRACT_CREDENTIAL.encryptUin,
+        },
+      },
+    ]);
+    expect(
+      upstream.calls.flatMap((c) => c.rpc).filter((r) => r.method === 'AddSonglist'),
+    ).toHaveLength(1);
+  });
+  it.each([
+    { httpStatus: 503 },
+    { httpStatus: 429 },
+    { code: 1000 },
+    { code: 500003 },
+    { data: { message: 'fixture-private-read-error' } },
+  ])('读回失败只加 unknown，保留无变更结果且不重送', async (reply) => {
+    upstream.state.rpcReplies!.AddSonglist.data = { retCode: 0, result: { dirId: 0, tid: 0 } };
+    upstream.state.rpcReplies!.CgiGetDiss = reply;
+    const response = await call();
+    expect(response).toMatchObject({
+      status: 200,
+      body: { code: 200, changed: false, verification: { status: 'unknown' } },
+    });
+    expect(JSON.stringify(response.body)).not.toContain('fixture-private');
+    expect(upstream.calls.flatMap((c) => c.rpc).map((r) => r.method)).toEqual([
+      'GetPlaylistByUin',
+      'AddSonglist',
+      'CgiGetDiss',
+    ]);
+  });
+  it('缺少详情所需凭证时返回 unknown，不重新写入', async () => {
+    upstream.state.credentialOverrides = { encryptUin: '' };
+    upstream.state.rpcReplies!.AddSonglist.data = { retCode: 0, result: { dirId: 0, tid: 0 } };
+    expect((await call()).body).toEqual({
+      code: 200,
+      changed: false,
+      verification: { status: 'unknown' },
+    });
     expect(upstream.calls.flatMap((c) => c.rpc).map((r) => r.method)).toEqual([
       'GetPlaylistByUin',
       'AddSonglist',

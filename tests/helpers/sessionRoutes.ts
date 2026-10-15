@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import type { QrLoginService } from '../../src/services/auth/qrLogin';
+import type { QqCredential, QrLoginService } from '../../src/services/auth/qrLogin';
 import type { createContractUpstream } from './contractUpstream';
 
 let mockUpstream: ReturnType<typeof createContractUpstream>;
@@ -93,6 +93,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     detailBusinessCode?: number;
     detailNetworkError?: boolean;
     credentialLoginType?: number;
+    credentialOverrides?: Partial<QqCredential>;
     playbackHintsEnabled?: boolean;
     rpcReplies?: Record<string, SessionReply>;
     rpcReplyQueues?: Record<string, SessionReply[]>;
@@ -103,6 +104,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     credential: {
       ...CONTRACT_CREDENTIAL,
       ...(state.credentialLoginType === undefined ? {} : { loginType: state.credentialLoginType }),
+      ...state.credentialOverrides,
     },
     device: deviceFixture.device,
     expiresAt,
