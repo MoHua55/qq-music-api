@@ -67,10 +67,18 @@ export const logQqCookies = (payload: unknown, loginChannel: 'qq' | 'qqmusic' = 
         : typeof raw === 'string' && /^\d{1,3}$/.test(raw)
           ? Number(raw)
           : undefined;
+    // 账号 id 只记位数：微信账号是 19 位，超过 JavaScript 能精确表示的整数，排查换凭证时要知道。
+    const uinEntry = cookies.qqmusic_uin;
+    const uin =
+      uinEntry !== null && typeof uinEntry === 'object'
+        ? (uinEntry as Record<string, unknown>).value
+        : undefined;
+    const uinDigits = typeof uin === 'string' && /^\d{1,30}$/.test(uin) ? uin.length : undefined;
     logger.info('qq-auth.qq-cookies', {
       loginChannel,
       cookieNames,
       ...(tmeLoginType === undefined ? {} : { tmeLoginType }),
+      ...(uinDigits === undefined ? {} : { uinDigits }),
       hasCommConf: body.commConf !== null && typeof body.commConf === 'object',
     });
   } catch {

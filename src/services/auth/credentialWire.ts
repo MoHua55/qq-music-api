@@ -10,6 +10,16 @@ import { WECHAT_APP_ID, WECHAT_LOGIN_TYPE } from './wechatLogin';
 
 export const MOBILE_LOGIN_TYPE = 6;
 
+/**
+ * The account id as the exchange sends it. QQ ids fit in a number; WeChat ids are 19 digits, past
+ * `Number.MAX_SAFE_INTEGER`, and `Number()` would silently send a different account — those go as
+ * the exact decimal string instead, the same rule the album writes already follow.
+ */
+export const exchangeMusicIdOf = (musicid: string): number | string =>
+  /^\d{1,19}$/.test(musicid) && BigInt(musicid) <= BigInt(Number.MAX_SAFE_INTEGER)
+    ? Number(musicid)
+    : musicid;
+
 export const credentialFrom = (value: Dictionary, defaultLoginType: number): QqCredential => {
   const musicid = value.musicid ?? value.str_musicid;
   const musickey = stringOf(value.musickey);
@@ -66,7 +76,7 @@ export const exchangeCredential = async (
       'credential-exchange',
       'music.login.LoginServer',
       'Login',
-      { musicid: Number(musicid), qrCodeID: qrcodeId, token },
+      { musicid: exchangeMusicIdOf(musicid), qrCodeID: qrcodeId, token },
       undefined,
       { tmeLoginType: loginType },
     ),

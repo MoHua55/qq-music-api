@@ -1783,6 +1783,7 @@ describe('QQ login channel routing', () => {
         loginChannel: 'qq',
         cookieNames: ['qqmusic_key', 'qqmusic_key_at', 'qqmusic_uin', 'qrcode_id', 'tmeLoginType'],
         tmeLoginType: 2,
+        uinDigits: 3,
         hasCommConf: true,
       });
       const text = JSON.stringify(info.mock.calls);
