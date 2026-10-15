@@ -277,7 +277,14 @@ describe.each(CATALOG_RUNTIMES)('/user/playlist 播放数（%s）', (runtime) =>
       };
       const result = await call();
       expect(cgiCalls).toHaveLength(4);
-      expect(result.body).toMatchObject({ playlist: [{ tid: 70001, play_cnt: 1300 }] });
+      expect(result.body).toMatchObject({
+        playlist: [
+          { tid: 70001, play_cnt: 1300 },
+          { tid: 70002 },
+          { tid: 80001, play_cnt: 55 },
+          { tid: 80002 },
+        ],
+      });
     });
 
     it('缓存期内多出来的歌单不重扫，等过期再补', async () => {
@@ -294,7 +301,13 @@ describe.each(CATALOG_RUNTIMES)('/user/playlist 播放数（%s）', (runtime) =>
       const result = await call();
       expect(cgiCalls).toHaveLength(2);
       expect(result.body).toMatchObject({
-        playlist: [{ tid: 70001, play_cnt: 1234 }, { tid: 70002 }, { tid: 70003 }],
+        playlist: [
+          { tid: 70001, play_cnt: 1234 },
+          { tid: 70002 },
+          { tid: 70003 },
+          { tid: 80001, play_cnt: 55 },
+          { tid: 80002 },
+        ],
       });
       expect(
         (result.body as { playlist: Array<Record<string, unknown>> }).playlist[2],
@@ -326,7 +339,12 @@ describe.each(CATALOG_RUNTIMES)('/user/playlist 播放数（%s）', (runtime) =>
       expect(callsTo(CREATED_PATH)).toHaveLength(2);
       expect(callsTo(FAVORITE_PATH)).toHaveLength(1);
       expect(result.body).toMatchObject({
-        playlist: [{ tid: 70001, play_cnt: 1234 }],
+        playlist: [
+          { tid: 70001, play_cnt: 1234 },
+          { tid: 70002 },
+          { tid: 80001, play_cnt: 55 },
+          { tid: 80002 },
+        ],
         playCountComplete: true,
       });
     });
