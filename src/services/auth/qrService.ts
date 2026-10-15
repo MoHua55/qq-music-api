@@ -20,7 +20,12 @@ import {
   withCredentialRejectionMapped,
 } from './authenticatedReads';
 import { ensureQimei, refreshAndroidSession } from './bootstrap';
-import { exchangeCredential, exchangeWechatCredential, MOBILE_LOGIN_TYPE } from './credentialWire';
+import {
+  exchangeAppCredential,
+  exchangeCredential,
+  exchangeWechatCredential,
+  MOBILE_LOGIN_TYPE,
+} from './credentialWire';
 import {
   createDeviceContextStore,
   createMemoryDeviceContextRepository,
@@ -307,14 +312,17 @@ export class QrLoginServiceImpl implements QrLoginService {
     const device = this.deviceStore.get();
     session.failureStage = 'credential-exchange';
     try {
-      return await exchangeCredential(
-        this.http,
-        device,
-        session.qrcodeId,
-        musicid,
-        mqttToken,
-        loginType,
-      );
+      // 两个通道都送 6；QQ 音乐 App 通道照官方客户端送不失真的 id，账号类型以回包为准。
+      return session.channel === 'qqmusic'
+        ? await exchangeAppCredential(
+            this.http,
+            device,
+            session.qrcodeId,
+            musicid,
+            mqttToken,
+            loginType,
+          )
+        : await exchangeCredential(this.http, device, session.qrcodeId, musicid, mqttToken);
     } catch (error) {
       // The fallback below replaces this failure on top whatever it returns, so it is kept here.
       session.primaryFailure = primaryFailureOf(error, 'credential-exchange', session.channel);

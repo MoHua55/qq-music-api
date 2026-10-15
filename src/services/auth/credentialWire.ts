@@ -1,6 +1,6 @@
 import { type AndroidDevice } from './androidDevice';
 import type { AuthHttpClient } from './httpClient';
-import { callMusicu } from './musicuProtocol';
+import { callMusicu, ExactInteger } from './musicuProtocol';
 import { type QqCredential } from './qrTypes';
 import { type Dictionary, isDictionary, numberOf, stringOf } from './values';
 import { WECHAT_APP_ID, WECHAT_LOGIN_TYPE } from './wechatLogin';
@@ -11,14 +11,16 @@ import { WECHAT_APP_ID, WECHAT_LOGIN_TYPE } from './wechatLogin';
 export const MOBILE_LOGIN_TYPE = 6;
 
 /**
- * The account id as the exchange sends it. QQ ids fit in a number; WeChat ids are 19 digits, past
- * `Number.MAX_SAFE_INTEGER`, and `Number()` would silently send a different account — those go as
- * the exact decimal string instead, the same rule the album writes already follow.
+ * QQ 音乐 App 通道换凭证时的账号 id。QQ 账号的 id 放得进数字；微信账号是 19 位，超过安全整数。
+ * 实测官方客户端送的是不带引号、不失真的整数字面量：`Number()` 会变成另一个账号（50006），
+ * 送字符串会被拒（10006），所以长 id 用 `ExactInteger` 原样写进请求体。
  */
-export const exchangeMusicIdOf = (musicid: string): number | string =>
-  /^\d{1,19}$/.test(musicid) && BigInt(musicid) <= BigInt(Number.MAX_SAFE_INTEGER)
+export const exchangeMusicIdOf = (musicid: string): number | string | ExactInteger => {
+  if (!/^\d{1,19}$/.test(musicid)) return musicid;
+  return BigInt(musicid) <= BigInt(Number.MAX_SAFE_INTEGER)
     ? Number(musicid)
-    : musicid;
+    : new ExactInteger(musicid);
+};
 
 export const credentialFrom = (value: Dictionary, defaultLoginType: number): QqCredential => {
   const musicid = value.musicid ?? value.str_musicid;
@@ -57,9 +59,8 @@ export const sanitizePublicValue = (value: unknown): unknown => {
 };
 
 /**
- * MQTT channels' exchange. `loginType` is what the comm sends as `tmeLoginType`: mobile QQ and a
- * QQ Music app signed in with a QQ account take 6; an app signed in with WeChat reports 1 in its
- * callback and is only accepted with 1.
+ * 手机 QQ 通道换凭证，照 3.3.1 送数字。QQ 账号的 id 不会超过安全整数；微信账号的 App 扫到这张码时 id 会失真，
+ * 上游回 50006，前端据此提示改用 QQ 音乐 App 登录，所以这里不改。
  */
 export const exchangeCredential = async (
   http: AuthHttpClient,
@@ -67,7 +68,33 @@ export const exchangeCredential = async (
   qrcodeId: string,
   musicid: string,
   token: string,
-  loginType: number = MOBILE_LOGIN_TYPE,
+): Promise<QqCredential> =>
+  credentialFrom(
+    await callMusicu(
+      http,
+      device,
+      'credential-exchange',
+      'music.login.LoginServer',
+      'Login',
+      { musicid: Number(musicid), qrCodeID: qrcodeId, token },
+      undefined,
+      { tmeLoginType: MOBILE_LOGIN_TYPE },
+    ),
+    MOBILE_LOGIN_TYPE,
+  );
+
+/**
+ * QQ 音乐 App 通道换凭证，照官方客户端的实测：不管 App 登的是 QQ 还是微信账号，comm 一律送 6，
+ * 账号 id 原样送（见 `exchangeMusicIdOf`）。账号类型以回包的 `loginType` 为准，回包没给才用回调里的；
+ * 之后的请求要照这个类型送，微信账号是 1。
+ */
+export const exchangeAppCredential = async (
+  http: AuthHttpClient,
+  device: AndroidDevice,
+  qrcodeId: string,
+  musicid: string,
+  token: string,
+  accountLoginType: number,
 ): Promise<QqCredential> =>
   credentialFrom(
     await callMusicu(
@@ -78,9 +105,9 @@ export const exchangeCredential = async (
       'Login',
       { musicid: exchangeMusicIdOf(musicid), qrCodeID: qrcodeId, token },
       undefined,
-      { tmeLoginType: loginType },
+      { tmeLoginType: MOBILE_LOGIN_TYPE },
     ),
-    loginType,
+    accountLoginType,
   );
 
 /**

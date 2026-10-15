@@ -65,6 +65,30 @@ export const credentialCookieHeader = (credential: QqCredential): string => {
   ].join('; ');
 };
 
+/**
+ * 要原样写进请求体的十进位整数。微信账号的 id 是 19 位，超过 JavaScript 能精确表示的整数；
+ * 上游要的是不带引号的数字，`Number()` 会变成另一个数，送字符串又会被拒。
+ */
+export class ExactInteger {
+  constructor(readonly digits: string) {
+    if (!/^\d{1,40}$/.test(digits)) throw new Error('ExactInteger needs decimal digits');
+  }
+}
+
+const EXACT_MARK = '\u0000exact:';
+
+const hasExactInteger = (value: unknown): boolean =>
+  value instanceof ExactInteger ||
+  (Array.isArray(value)
+    ? value.some(hasExactInteger)
+    : typeof value === 'object' && value !== null && Object.values(value).some(hasExactInteger));
+
+/** 先序列化，再把占位的字符串换回不带引号的数字。只有带 `ExactInteger` 的请求才走这里。 */
+export const serializeWithExactIntegers = (value: unknown): string =>
+  JSON.stringify(value, (_key, entry) =>
+    entry instanceof ExactInteger ? `${EXACT_MARK}${entry.digits}` : entry,
+  ).replace(/"\\u0000exact:(\d+)"/g, '$1');
+
 export const callMusicu = async (
   http: AuthHttpClient,
   device: AndroidDevice,
@@ -76,15 +100,19 @@ export const callMusicu = async (
   overrides: Dictionary = {},
 ): Promise<Dictionary> => {
   const credentialCookies = credential ? credentialCookieHeader(credential) : '';
+  const request = {
+    comm: buildAndroidComm(device, credential, overrides),
+    req_0: { module, method, param },
+  };
+  // 带不失真长整数的请求自己先序列化（两个宿主的 HTTP 客户端都会原样送出字符串），其他请求照旧。
+  const exact = hasExactInteger(param);
   const response = await http.post<unknown>(
     MUSICU_URL,
-    {
-      comm: buildAndroidComm(device, credential, overrides),
-      req_0: { module, method, param },
-    },
+    exact ? serializeWithExactIntegers(request) : request,
     {
       headers: {
         'User-Agent': `QQMusic 14090008(android ${device.osRelease})`,
+        ...(exact ? { 'Content-Type': 'application/json' } : {}),
         ...(credentialCookies ? { Cookie: credentialCookies } : {}),
       },
     },

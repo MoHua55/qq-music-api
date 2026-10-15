@@ -102,6 +102,7 @@ const KNOWN_REASONS = new Set([
   'Another QR login is already active',
   'CreateQRCode response missing a valid PNG/qrcodeID',
   'Decrypted state is not valid JSON',
+  'ExactInteger needs decimal digits',
   'GetSession response missing uid/sid',
   'Login credential is missing encryptUin',
   'Login response missing credential',
