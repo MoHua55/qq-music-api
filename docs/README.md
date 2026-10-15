@@ -157,7 +157,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
-MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，计划在 3.3.2 移除，搜索请改用 `/search`。
+MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，计划在 3.3.3 移除，搜索请改用 `/search`。
 
 ## 红心写入
 
@@ -315,7 +315,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 - 自建与收藏各自按官方网页的分页方式读，每份最多 10 页（100 张）；只读本轮列表里有的那一类。
 - 按歌单 id 对上、而且是非负整数才给 `play_cnt`；对不上、上游给负数或读失败的条目**不带** `play_cnt`（Android 自建列表原本那个总是 0 的值也会拿掉，不当成真的播放数）。
-- 补播放数失败不会让列表失败，路由照样回 `200`；顶层多一个 `playCountComplete`，只有两份清单都完整读到尾才是 `true`。
+- 补播放数失败不会让列表失败，路由照样回 `200`；顶层多一个 `playCountComplete`，只有两份清单都完整读到尾才是 `true`。上游没给能判断有没有下一页的信号时，补到的照给，但算没读完。
+- 同一个账号 10 分钟内再带 `playCount=1`，直接用上次读到的播放数，不再多打上游；所以播放数最多晚 10 分钟更新，这段时间里新建的歌单也要等过期才有数字。读失败的那份不会记下来，下次会重读。认不出账号时不缓存。
 
 ### 选对歌单详情接口
 
@@ -692,7 +693,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取搜索结果
 
-旧接口，不建议再用，计划在 3.3.2 移除：上游常常出错，而且实际只会搜歌曲。请改用上面的 [`/search`](#关键字搜索)。
+旧接口，不建议再用，计划在 3.3.3 移除：上游常常出错，而且实际只会搜歌曲。请改用上面的 [`/search`](#关键字搜索)。
 
 `GET /getSearchByKey?key=示例关键词&limit=10&page=1` 查询搜索结果。`key` 必填，`limit` 默认 10、`page` 默认 1。可选 `remoteplace` 默认 `song`，其他值包括 `album`、`mv`、`playlist`、`user`、`lyric`；注意参数拼写是 `remoteplace`。
 
