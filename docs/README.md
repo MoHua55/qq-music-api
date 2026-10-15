@@ -249,7 +249,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `/user/vip` | 会话 | 当前账号会员状态 `{ code: 200, isVip, vipLevel, upstream }`，分免费、绿钻、超级会员 |
 | `/user/playlist` | 可选 `uid`、`favoriteOffset`、`playCount=1` | 自建与收藏歌单；`playCount=1` 时补播放数 |
 | `/user/liked-songs` | `offset`、`limit`，最多 100 | 内建“我喜欢”的歌曲分页 |
-| `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`，最多 100 | 登录用户自己歌单的歌曲分页，包括不公开歌单 |
+| `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`（最多 100）、`playCount=1` | 登录用户自己歌单的歌曲分页，包括不公开歌单；`playCount=1` 时带上这张歌单的播放数 |
 | `/user/albums` | `offset`、`limit`，默认 20、最多 100 | 收藏专辑分页 |
 
 `/user/playlist` 只支持当前账号。`uid` 不传就是本人，传其他账号会回 `400`，说明为 `uid must be the logged-in account`。
@@ -323,6 +323,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 内建“我喜欢”走 `/user/liked-songs`。它的 `dirId: 201` 不是普通歌单 id，不要把它当作通用 `disstid`。
 
 自建歌单走 `/user/playlist-detail`，建议总是传 `tid`；`tid` 与 `dirid` 至少传一个，否则回 `400`。只传 `dirid` 仅适用于当前账号自己的目录。
+
+想在歌单页显示播放数，就带 `playCount=1`：回包顶层多一个 `play_cnt`，数字和这次读详情的回包一起来，不会多打上游。不公开的歌单是 `0`；“我喜欢”在官方客户端不显示播放数，这里也不给；上游没给可用的数字时同样不给，歌曲列表照常。只看一张歌单的播放数时，用这个比 `/user/playlist?playCount=1` 省得多。
 
 收藏的他人歌单走 `/getSongListDetail`。收藏条目也可能有 `dirId`，所以不能凭它判断归属；自建条目常有 `dirName` / `songNum`，收藏条目常用 `name` / `songnum` / `orderTime`，还要结合创建者判断。把收藏歌单送到自己的歌单接口，可能读不到完整歌曲。
 

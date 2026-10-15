@@ -459,6 +459,12 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
       { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
+      {
+        key: 'playCount',
+        label: 'Play count',
+        description:
+          'Set to 1 to add play_cnt from the same detail reply, with no extra upstream request. Private playlists show 0; liked songs and unusable values are left out. Without it the answer is unchanged.',
+      },
     ],
   },
   userDailySongs: {
