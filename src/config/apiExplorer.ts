@@ -577,7 +577,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getLyric: {
     id: 'get-lyric',
     description:
-      'Get song lyrics as LRC text on Node and serverless, no login needed. isFormat=true also splits it into timed lines. trans is passed through as upstream returns it and is often empty.',
+      'Get song lyrics as LRC text on Node and serverless, no login needed. isFormat=true also splits it into timed lines. trans is passed through as upstream returns it and is often empty; trans=1 asks a second lyric endpoint once when it is empty.',
     queryParams: [
       {
         key: 'songmid',
@@ -594,6 +594,12 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         placeholder: 'false',
         description: 'true/1 to format LRC text.',
         defaultValue: false,
+      },
+      {
+        key: 'trans',
+        label: 'Translation',
+        description:
+          'Set to 1 to fill an empty trans from a second lyric endpoint (one extra request, tried once, base64 LRC like the original). Without it the request and answer are unchanged.',
       },
     ],
   },

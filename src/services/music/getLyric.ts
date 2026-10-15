@@ -8,9 +8,12 @@ import {
 } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
+import { playLyricTranslation } from './playLyricTranslation';
 
 export interface GetLyricParams extends BaseServiceParams {
   isFormat?: boolean;
+  /** 旧接口成功但翻译是空的时，补打一次新接口要翻译。 */
+  trans?: boolean;
 }
 
 const upstream = '/lyric/fcgi-bin/fcg_query_lyric_new.fcg';
@@ -24,7 +27,9 @@ export default ({
   params = {},
   options = {},
   isFormat = false,
+  trans = false,
 }: GetLyricParams): Promise<BaseServiceResponse> => {
+  const songmid = String(params.songmid ?? '');
   const data = Object.assign(params, {
     format: 'json',
     outCharset: 'utf-8',
@@ -46,13 +51,18 @@ export default ({
     method,
     options: opts,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then(async (res: import('axios').AxiosResponse<any>) => {
       const lyricString = res.data?.lyric && decodeBase64Utf8(res.data.lyric);
       const lyric = isFormat ? lyricParse.lyricParse(lyricString || '') : lyricString;
       const response = {
         ...(res.data || {}),
         lyric,
       };
+      if (trans && res.data?.code === 0 && !res.data.trans) {
+        const translated = await playLyricTranslation(songmid);
+        logServiceBranch('getLyric', upstream, 'translation', { translated: Boolean(translated) });
+        if (translated) response.trans = translated;
+      }
       logServiceSuccess('getLyric', upstream, {
         code: res.data?.code,
         hasLyric: Boolean(lyricString),

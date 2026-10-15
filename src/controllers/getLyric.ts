@@ -7,11 +7,12 @@ const { getLyric } = services;
 interface LyricQuery {
   songmid: string;
   isFormat?: string;
+  trans?: string;
 }
 
 export default async (ctx: Context) => {
   // songmid=003rJSwm3TechU
-  const { songmid, isFormat } = getTypedQuery<LyricQuery>(ctx);
+  const { songmid, isFormat, trans } = getTypedQuery<LyricQuery>(ctx);
   const props = {
     method: 'get',
     params: {
@@ -19,6 +20,7 @@ export default async (ctx: Context) => {
     },
     option: {},
     isFormat: isFormat === 'true' || isFormat === '1',
+    trans: trans === '1',
   };
   if (songmid) {
     const { status, body } = await getLyric(props);

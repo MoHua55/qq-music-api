@@ -153,7 +153,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | **搜索** | | | |
 | `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
 | **播放与曲库** | | | |
-| `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行 | ✓ |
+| `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
@@ -684,6 +684,8 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 ### 获取歌曲歌词
 
 `GET /getLyric?songmid=demo-song-mid` 返回歌词，Node 和 Serverless 都能用，不用登录。`songmid` 是歌曲 mid；可选 `isFormat=true` 请求格式化，默认 `false`。`lyric` 是解好的 LRC 文字；`trans`（翻译）原样转交上游的值，很多歌是空字符串；纯音乐会给一段很短的提示歌词。
+
+想要翻译就带 `trans=1`：旧接口给的翻译是空的时，会再去另一个歌词接口要一次翻译，要到就放进 `trans`（同样是 base64 的 LRC）。外文歌比较常要得到，中文歌多半本来就没有翻译，这时会白打一次请求、`trans` 仍是空字符串。补的那次只试一次，失败也不影响歌词本身，照常回 `200`。不带 `trans=1` 时和以前完全一样，只打一次上游。
 
 ### 获取搜索热词
 
