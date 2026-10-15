@@ -1,5 +1,7 @@
 import './helpers/sessionRoutes';
+import { clearPlayCountCache } from '../src/services/auth/playlistPlayCounts';
 import { CATALOG_RUNTIMES, callRoute } from './helpers/catalogRoutes';
+import { CONTRACT_NOW } from './helpers/contractUpstream';
 import { useSessionUpstream } from './helpers/sessionRoutes';
 
 // `/user/playlist?playCount=1`：从旧 CGI 补歌单播放数。Node 与 serverless 跑同一份案例。
@@ -40,6 +42,7 @@ describe.each(CATALOG_RUNTIMES)('/user/playlist 播放数（%s）', (runtime) =>
       .map((url) => Object.fromEntries(url.searchParams.entries()));
 
   beforeEach(() => {
+    clearPlayCountCache();
     cgiCalls.length = 0;
     upstream.state.rpcReplies = {
       GetPlaylistByUin: { data: { v_playlist: created, bFinish: true } },
@@ -198,6 +201,152 @@ describe.each(CATALOG_RUNTIMES)('/user/playlist 播放数（%s）', (runtime) =>
     const result = await call(`?playCount=${value}`);
     expect(result.body).not.toHaveProperty('playCountComplete');
     expect(cgiCalls).toHaveLength(0);
+  });
+
+  it.each([
+    {
+      label: '自建没有 totoal',
+      page: { body: { code: 0, data: { disslist: [{ tid: 70001, listen_num: 1 }] } } },
+    },
+    {
+      label: '自建 totoal 不是数字',
+      page: { body: { code: 0, data: { totoal: 'x', disslist: [{ tid: 70001, listen_num: 1 }] } } },
+    },
+  ])('$label 时补到的照给，但不说读完了，也不往下翻', async ({ page }) => {
+    createdPages['0'] = page;
+    const result = await call();
+    expect(result.body).toMatchObject({
+      playlist: [
+        { tid: 70001, play_cnt: 1 },
+        { tid: 70002 },
+        { tid: 80001, play_cnt: 55 },
+        { tid: 80002 },
+      ],
+      playCountComplete: false,
+    });
+    expect(callsTo(CREATED_PATH)).toHaveLength(1);
+  });
+
+  it.each([
+    { label: '收藏没有 has_more', data: { cdlist: [{ dissid: 80001, listennum: 5 }] } },
+    {
+      label: '收藏 has_more 是字符串',
+      data: { has_more: '0', cdlist: [{ dissid: 80001, listennum: 5 }] },
+    },
+  ])('$label 时补到的照给，但不说读完了，也不往下翻', async ({ data }) => {
+    favoritePages['0'] = { body: { code: 0, data } };
+    const result = await call();
+    expect(result.body).toMatchObject({
+      playlist: [
+        { tid: 70001, play_cnt: 1234 },
+        { tid: 70002 },
+        { tid: 80001, play_cnt: 5 },
+        { tid: 80002 },
+      ],
+      playCountComplete: false,
+    });
+    expect(callsTo(FAVORITE_PATH)).toHaveLength(1);
+  });
+
+  it('空页就是读到尾，没有总数也算读完', async () => {
+    createdPages['0'] = { body: { code: 0, data: { disslist: [] } } };
+    favoritePages['0'] = { body: { code: 0, data: { cdlist: [] } } };
+    const result = await call();
+    expect(result.body).toMatchObject({ playCountComplete: true });
+    expect(cgiCalls).toHaveLength(2);
+  });
+
+  describe('同一账号 10 分钟内不重读', () => {
+    const TTL_MS = 10 * 60 * 1000;
+    const at = (ms: number) => jest.spyOn(Date, 'now').mockReturnValue(ms);
+
+    it('第二次直接用上次的结果，播放数与完整标记都一样', async () => {
+      const first = await call();
+      expect(cgiCalls).toHaveLength(2);
+      at(CONTRACT_NOW + TTL_MS - 1);
+      const second = await call();
+      expect(second.body).toEqual(first.body);
+      expect(cgiCalls).toHaveLength(2);
+    });
+
+    it('满 10 分钟就重新读', async () => {
+      await call();
+      at(CONTRACT_NOW + TTL_MS);
+      createdPages['0'] = {
+        body: { code: 0, data: { totoal: 2, disslist: [{ tid: 70001, listen_num: 1300 }] } },
+      };
+      const result = await call();
+      expect(cgiCalls).toHaveLength(4);
+      expect(result.body).toMatchObject({ playlist: [{ tid: 70001, play_cnt: 1300 }] });
+    });
+
+    it('缓存期内多出来的歌单不重扫，等过期再补', async () => {
+      await call();
+      upstream.state.rpcReplies = {
+        ...upstream.state.rpcReplies,
+        GetPlaylistByUin: {
+          data: {
+            v_playlist: [...created, { tid: 70003, dirId: 12, dissname: 'Fixture created C' }],
+            bFinish: true,
+          },
+        },
+      };
+      const result = await call();
+      expect(cgiCalls).toHaveLength(2);
+      expect(result.body).toMatchObject({
+        playlist: [{ tid: 70001, play_cnt: 1234 }, { tid: 70002 }, { tid: 70003 }],
+      });
+      expect(
+        (result.body as { playlist: Array<Record<string, unknown>> }).playlist[2],
+      ).not.toHaveProperty('play_cnt');
+    });
+
+    it('不同账号各读各的', async () => {
+      await call();
+      upstream.state.credentialOverrides = { musicid: '10001', str_musicid: '10001' };
+      await call();
+      expect(callsTo(CREATED_PATH).map((p) => p.hostuin)).toEqual(['10000', '10001']);
+      expect(callsTo(FAVORITE_PATH).map((p) => p.userid)).toEqual(['10000', '10001']);
+    });
+
+    it('认不出账号（id 是 0）就不缓存', async () => {
+      upstream.state.credentialOverrides = { musicid: '0', str_musicid: '0' };
+      await call();
+      await call();
+      expect(cgiCalls).toHaveLength(4);
+    });
+
+    it('读失败的那份不缓存，下次重读；读成功的那份照用缓存', async () => {
+      createdPages['0'] = { httpStatus: 503 };
+      await call();
+      createdPages['0'] = {
+        body: { code: 0, data: { totoal: 2, disslist: [{ tid: 70001, listen_num: 1234 }] } },
+      };
+      const result = await call();
+      expect(callsTo(CREATED_PATH)).toHaveLength(2);
+      expect(callsTo(FAVORITE_PATH)).toHaveLength(1);
+      expect(result.body).toMatchObject({
+        playlist: [{ tid: 70001, play_cnt: 1234 }],
+        playCountComplete: true,
+      });
+    });
+
+    it('读到页数上限的结果照样缓存：再读也一样读不完', async () => {
+      for (let sin = 0; sin < 200; sin += 10)
+        createdPages[String(sin)] = {
+          body: { code: 0, data: { totoal: 200, disslist: [{ tid: 90000 + sin, listen_num: 1 }] } },
+        };
+      await call();
+      const result = await call();
+      expect(callsTo(CREATED_PATH)).toHaveLength(10);
+      expect(result.body).toMatchObject({ playCountComplete: false });
+    });
+
+    it('不带 playCount=1 的请求不碰缓存', async () => {
+      await call('');
+      await call();
+      expect(cgiCalls).toHaveLength(2);
+    });
   });
 
   it('续读收藏那几轮也能补', async () => {
