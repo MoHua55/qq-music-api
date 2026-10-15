@@ -525,7 +525,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getSearchByKey: {
     id: 'get-search-by-key',
     description:
-      'Legacy song search, Node only. Not recommended and planned for removal in 3.3.3: the upstream often fails here and it always searches songs. Use /search instead.',
+      'Legacy song search, Node only. Not recommended and planned for removal in 3.3.2: the upstream often fails here and it always searches songs. Use /search instead.',
     queryParams: [
       {
         key: 'key',
