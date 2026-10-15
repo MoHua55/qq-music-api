@@ -2596,8 +2596,9 @@ describe('QQ 音乐 App 扫码通道 qqmusic', () => {
     expect(result.code).toBe(803);
     expect(commsOf(harness, 'Login').map((comm) => comm.tmeLoginType)).toEqual([1]);
     const token = result.cookie?.split('=')[1];
+    // 账号 id 来自换到的凭证（微信账号的 musicid 是占位的 0，真正的 id 在 str_musicid）。
     await expect(harness.service.getLoginStatus(token)).resolves.toMatchObject({
-      musicid: '456',
+      str_musicid: '456',
     });
     expect(commsOf(harness, 'GetLoginUserInfo').at(-1)).toMatchObject({ tmeLoginType: 1 });
   });

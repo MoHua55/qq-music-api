@@ -42,6 +42,7 @@ import {
   type AuthSession,
   type AuthSessionRepository,
   DEFAULT_LOGIN_CHANNEL,
+  isMqttLoginChannel,
   type LegacyQrLoginChannel,
   NODE_RUNTIME_CAPABILITIES,
   normalizeLoginChannel,
@@ -71,10 +72,11 @@ import {
   unavailableListen,
 } from './sessionState';
 import { createStreamUrlProbe, StreamCdnSelector } from './streamCdnSelector';
-import { type Dictionary, dictionaryOf, stringOf } from './values';
+import { type Dictionary, dictionaryOf, identifierOf, stringOf } from './values';
 import {
   MAX_CONSECUTIVE_POLL_ERRORS,
   WECHAT_DEFAULT_POLL_BUDGET_MS,
+  WECHAT_LOGIN_TYPE,
   WechatQrError,
 } from './wechatLogin';
 
@@ -142,12 +144,16 @@ export class QrLoginServiceImpl implements QrLoginService {
     this.qrSessionStore = createQrSessionStore(
       dependencies.qrSessionRepository ?? createMemoryQrSessionRepository(),
     );
-    this.drivers = {
-      qq: createQqQrDriver({
+    const mqttDriver = () =>
+      createQqQrDriver({
         http: this.http,
         device: () => this.deviceStore.get(),
         listen: dependencies.listen ?? unavailableListen,
-      }),
+      });
+    this.drivers = {
+      qq: mqttDriver(),
+      // 同一套二维码与 MQTT；差别只在换凭证时照回调给的账号类型（见 exchangeQqLogin）。
+      qqmusic: mqttDriver(),
       wechat: createWechatQrDriver({ http: (session) => this.sessionHttp(session) }),
       ...dependencies.drivers,
     };
@@ -277,20 +283,37 @@ export class QrLoginServiceImpl implements QrLoginService {
     });
   }
 
-  /** QQ App channel: the MQTT payload carries an exchange token, never the final credential. */
+  /**
+   * MQTT channels: the payload carries an exchange token, never the final credential. `qqmusic`
+   * exchanges with the account type the app reports (an app signed in with WeChat says 1 and is
+   * only accepted with 1); `qq` keeps sending mobile QQ's 6, so a WeChat-bound app scan there
+   * still fails into the existing wrong-app hint instead of logging in on the wrong channel.
+   */
   private async exchangeQqLogin(session: QrSessionRecord, payload: unknown): Promise<QqCredential> {
     session.failureStage = 'credential-payload';
-    logQqCookies(payload);
+    logQqCookies(payload, session.channel === 'qqmusic' ? 'qqmusic' : 'qq');
     const cookies = dictionaryOf(dictionaryOf(payload).cookies);
     const musicid = stringOf(dictionaryOf(cookies.qqmusic_uin).value);
     const mqttToken = stringOf(dictionaryOf(cookies.qqmusic_key).value);
     if (!musicid || !mqttToken || !session.qrcodeId)
       throw new Error('MQTT cookies missing login credential');
+    const loginType =
+      session.channel === 'qqmusic' &&
+      identifierOf(dictionaryOf(cookies.tmeLoginType).value) === String(WECHAT_LOGIN_TYPE)
+        ? WECHAT_LOGIN_TYPE
+        : MOBILE_LOGIN_TYPE;
     session.state = 'exchanging';
     const device = this.deviceStore.get();
     session.failureStage = 'credential-exchange';
     try {
-      return await exchangeCredential(this.http, device, session.qrcodeId, musicid, mqttToken);
+      return await exchangeCredential(
+        this.http,
+        device,
+        session.qrcodeId,
+        musicid,
+        mqttToken,
+        loginType,
+      );
     } catch (error) {
       // The fallback below replaces this failure on top whatever it returns, so it is kept here.
       session.primaryFailure = primaryFailureOf(error, 'credential-exchange', session.channel);
@@ -300,7 +323,7 @@ export class QrLoginServiceImpl implements QrLoginService {
         musicid,
         str_musicid: musicid,
         musickey: mqttToken,
-        loginType: MOBILE_LOGIN_TYPE,
+        loginType,
       };
       await getLoginUser(this.http, {
         token: '',
@@ -540,7 +563,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     try {
       const qr = await runtime.driver.createQr(session);
       session.identifier = qr.identifier;
-      if (session.channel === 'qq') session.qrcodeId = qr.identifier;
+      if (isMqttLoginChannel(session.channel)) session.qrcodeId = qr.identifier;
       session.imageUrl = qr.imageUrl;
       if (qr.expiresIn && qr.expiresIn > 0) {
         session.expiresAt = Math.min(session.expiresAt, this.now() + qr.expiresIn * 1000);

@@ -15,10 +15,15 @@ import { type Dictionary } from './values';
 /**
  * Login channels. `qq` is the mobile QQ QR (MQTT over WSS, `tmeLoginType: 6`) and stays the
  * default so the public contract is unchanged for callers that do not ask for a channel; `wechat`
- * is the WeChat QR. These two are the whole product surface, and `SUPPORTED_LOGIN_CHANNELS` is the
- * authority on it.
+ * is the WeChat QR. `qqmusic` is the QQ Music app QR: the same QR and MQTT flow as `qq`, but the
+ * exchange follows the account type the app reports, so an app signed in with a WeChat account can
+ * log in too. `SUPPORTED_LOGIN_CHANNELS` is the authority on the product surface.
  */
-export type QrLoginChannel = 'qq' | 'wechat';
+export type QrLoginChannel = 'qq' | 'wechat' | 'qqmusic';
+
+/** The channels whose QR is created by `CreateQRCode` and answered over MQTT. */
+export const isMqttLoginChannel = (channel: QrLoginChannel | undefined): boolean =>
+  channel === 'qq' || channel === 'qqmusic';
 
 /**
  * `mobile` is the former name of `qq`. It is still accepted at the entry points and normalized to
@@ -51,7 +56,8 @@ export interface RuntimeCapabilities {
 }
 
 export const NODE_RUNTIME_CAPABILITIES: RuntimeCapabilities = {
-  channels: ['qq', 'wechat'],
+  // `qqmusic` goes last: a client that lists channels in order keeps showing the existing two first.
+  channels: ['qq', 'wechat', 'qqmusic'],
   sessionMode: 'stored',
 };
 

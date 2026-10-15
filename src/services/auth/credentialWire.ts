@@ -46,12 +46,18 @@ export const sanitizePublicValue = (value: unknown): unknown => {
   );
 };
 
+/**
+ * MQTT channels' exchange. `loginType` is what the comm sends as `tmeLoginType`: mobile QQ and a
+ * QQ Music app signed in with a QQ account take 6; an app signed in with WeChat reports 1 in its
+ * callback and is only accepted with 1.
+ */
 export const exchangeCredential = async (
   http: AuthHttpClient,
   device: AndroidDevice,
   qrcodeId: string,
   musicid: string,
   token: string,
+  loginType: number = MOBILE_LOGIN_TYPE,
 ): Promise<QqCredential> =>
   credentialFrom(
     await callMusicu(
@@ -62,9 +68,9 @@ export const exchangeCredential = async (
       'Login',
       { musicid: Number(musicid), qrCodeID: qrcodeId, token },
       undefined,
-      { tmeLoginType: MOBILE_LOGIN_TYPE },
+      { tmeLoginType: loginType },
     ),
-    MOBILE_LOGIN_TYPE,
+    loginType,
   );
 
 /**

@@ -125,7 +125,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | --- | --- | --- | --- |
 | **登录** | | | |
 | `GET /login/channels` | 否 | 这个部署支持哪些登录通道和功能 | ✓ |
-| `GET /login/qr/key`、`/login/qr/create` | 否 | 拿二维码（`channel=qq` 手机 QQ，`channel=wechat` 微信） | ✓（手机 QQ 要中继） |
+| `GET /login/qr/key`、`/login/qr/create` | 否 | 拿二维码（`channel=qq` 手机 QQ，`channel=wechat` 微信，`channel=qqmusic` QQ 音乐 App） | ✓（手机 QQ、QQ 音乐 App 要中继） |
 | `GET /login/qr/check` | 否 | 查扫码进度，成功时拿到会话 | ✓ |
 | `GET /login/qr/cancel` | 否 | 取消这张二维码 | ✓ |
 | `GET /login/status`、`/logout` | 是 | 查登录状态、登出 | ✓ |
@@ -187,12 +187,14 @@ Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一�
 
 ## QQ 音乐原生扫码登录
 
-Node 支持手机 QQ 和微信扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。扫码登录相关路由都是 GET。
+Node 支持手机 QQ、微信和 QQ 音乐 App 扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。扫码登录相关路由都是 GET。
+
+`qqmusic` 是用 QQ 音乐 App 扫码：打开 App 的扫一扫，用 App 里当下登录的账号直接登录，不管这个账号绑的是 QQ 还是微信。它的二维码和手机 QQ 扫码是同一种，也走同样的长连接（Serverless 一样要中继）；差别在后端会照 App 回报的账号类型去换凭证。反过来，用 QQ 音乐 App 扫 `qq` 的二维码，如果 App 登的是微信账号会登录失败，`failureHint.key` 是 `login.wrong-scan-app`，提示改用 QQ 音乐 App 登录。
 
 | 步骤 | 接口 | 读取结果 |
 | --- | --- | --- |
 | 1 | `/login/channels` | 确认通道、会话模式和配置 |
-| 2 | `/login/qr/key?channel=qq` 或 `channel=wechat` | 保存 `data.unikey`；不传通道时默认手机 QQ |
+| 2 | `/login/qr/key?channel=qq`、`channel=wechat` 或 `channel=qqmusic` | 保存 `data.unikey`；不传通道时默认手机 QQ |
 | 3 | `/login/qr/create?key=<unikey>` | 显示 `data.qrimg`，按 data URL 自带的 MIME type 读取图片 |
 | 4 | `/login/qr/check?key=<unikey>` | `801` 等待、`802` 已扫描、`803` 已确认、`800` 过期或失败 |
 | 关闭登录界面 | `/login/qr/cancel?key=<unikey>` | 取消二维码会话 |
@@ -228,8 +230,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `retryAfterMs` | 需要等待的毫秒数；HTTP 错误响应同时提供 `Retry-After` |
 | `lastFailure` | 本地退避 `429` 的前一次失败摘要；重启或换实例后不保留 |
 | `upstreamErrorKey` | 可选。只有通道、步骤和上游数字码都对得上有出处的登记时才给，例如 `auth.device-limit`（登录设备已满）、`auth.rate-limited`（操作太频繁）、`auth.account-restricted`、`auth.account-banned`、`auth.account-binding`、`auth.login-rejected`；没把握的码不给 |
-| `failureHint` | 可选，给使用者看的原因 `{ key, message }`，只在认得出的失败时给：`login.device-limit`（登录设备已满）、`login.wrong-scan-app`（手机 QQ 扫码换凭证被拒、可能是用 QQ 音乐 App 扫的，建议改用手机 QQ）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。`message` 是英文预设文案，前端可以按 `key` 换成自己的文字；取消、过期、网络错误这类不给 |
-| `primaryFailure`、`fallbackAttempted` | 可选，目前只有手机 QQ 扫码会出现。换凭证失败后服务会用扫码票据再验证一次，顶层字段写的是最后这次验证的结果，`primaryFailure` 交出被它盖掉的换凭证结果（`failureStage`、`failureReason`、`upstreamCode`，能分类时还有 `upstreamErrorKey`），`fallbackAttempted` 是 `true`。想知道真正的原因（比如设备已满 `20279`）就看 `primaryFailure` |
+| `failureHint` | 可选，给使用者看的原因 `{ key, message }`，只在认得出的失败时给：`login.device-limit`（登录设备已满）、`login.wrong-scan-app`（手机 QQ 扫码换凭证被拒、可能是用 QQ 音乐 App 扫的，建议改用 QQ 音乐 App 登录或手机 QQ）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。`message` 是英文预设文案，前端可以按 `key` 换成自己的文字；取消、过期、网络错误这类不给 |
+| `primaryFailure`、`fallbackAttempted` | 可选，目前只有手机 QQ 和 QQ 音乐 App 扫码会出现。换凭证失败后服务会用扫码票据再验证一次，顶层字段写的是最后这次验证的结果，`primaryFailure` 交出被它盖掉的换凭证结果（`failureStage`、`failureReason`、`upstreamCode`，能分类时还有 `upstreamErrorKey`），`fallbackAttempted` 是 `true`。想知道真正的原因（比如设备已满 `20279`）就看 `primaryFailure` |
 
 本地退避使用 `qr-key` / `local-backoff`，仍在确认中的会话使用 `qr-key` / `session-busy`。没有取得的字段不会出现。上游拒绝时保留安全数字码，但不把未知码解释成设备超限或账号问题。
 
@@ -498,7 +500,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 | 字段 | 怎么读 |
 | --- | --- |
-| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`；serverless 默认只有 `wechat`，注入 QQ 中继后才有 `qq`。`qq` 是手机 QQ 扫码 |
+| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认只有 `wechat`，注入 QQ 中继后才有 `qq` 和 `qqmusic`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
 | `data.sessionMode` | Node 为 `stored`，serverless 为 `sealed` |
 | `data.configured` | Node 可直接使用内存会话，始终为 `true`；serverless 保持按 `QQ_SESSION_SECRET` 是否存在判断，只有旧密钥时仍为 `false` |
 | `data.features` | 按共用接口分组的方法布尔值，说明后端是否已实现相应能力。它与当前用户是否登录、上游是否接受凭证分开；需要登录的功能还要检查 `configured` 和 `/login/status` |
@@ -526,7 +528,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 {
   "code": 200,
   "data": {
-    "channels": ["qq", "wechat"],
+    "channels": ["qq", "wechat", "qqmusic"],
     "sessionMode": "stored",
     "configured": true,
     "features": {
