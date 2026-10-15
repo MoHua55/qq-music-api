@@ -42,7 +42,10 @@ it('服务模块保留登录、读取与 Electron 的私有兼容钩子', async 
     deviceRepository: createMemoryDeviceContextRepository(deviceFixture.device),
     now: () => CONTRACT_NOW,
   });
-  expect(service.getCapabilities()).toEqual({ channels: ['qq', 'wechat'], sessionMode: 'stored' });
+  expect(service.getCapabilities()).toEqual({
+    channels: ['qq', 'wechat', 'qqmusic'],
+    sessionMode: 'stored',
+  });
   expect(await service.getUserDetail(auth.token)).toMatchObject({ info: { nick: 'Fixture user' } });
   expect(typeof (service as unknown as { failSession: unknown }).failSession).toBe('function');
   expect(typeof (service as unknown as { failBootstrap: unknown }).failBootstrap).toBe('function');

@@ -12,7 +12,11 @@ const parity = createParityRunner(
 );
 describe.each(CATALOG_RUNTIMES)('/login/qr/create 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
-  it.each(['qq', 'wechat'] as const)('真实 %s 图片与重放时的上游请求', async (channel) => {
+  it.each([
+    'qq',
+    'wechat',
+    'qqmusic',
+  ] as const)('真实 %s 图片与重放时的上游请求', async (channel) => {
     const options = await upstream.options('create', { channel });
     const legs = await parity(
       runtime,
@@ -25,7 +29,7 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/create 共用处理与真实宿主契
       code: 200,
       data: { qrimg: expect.stringContaining('data:image/png;base64,') },
     });
-    if (runtime === 'serverless' && channel === 'qq')
+    if (runtime === 'serverless' && channel !== 'wechat')
       expect(legs.operation.calls).toEqual([
         { kind: 'relay', method: 'image', id: 'fixture-qr-id' },
       ]);

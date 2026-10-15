@@ -87,7 +87,7 @@ describe('QQ login controllers', () => {
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({
       code: 400,
-      message: 'channel must be one of qq, wechat',
+      message: 'channel must be one of qq, wechat, qqmusic',
     });
     expect(mockQrLoginService.createSession).not.toHaveBeenCalled();
   });

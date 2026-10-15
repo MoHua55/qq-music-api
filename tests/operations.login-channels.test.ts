@@ -29,7 +29,7 @@ describe.each(CATALOG_RUNTIMES)('/login/channels 共用处理与真实宿主契�
     expect(legs.operation.body).toMatchObject({
       code: 200,
       data: {
-        channels: runtime === 'node' || relay ? ['qq', 'wechat'] : ['wechat'],
+        channels: runtime === 'node' || relay ? ['qq', 'wechat', 'qqmusic'] : ['wechat'],
         sessionMode: runtime === 'node' ? 'stored' : 'sealed',
         configured: runtime === 'node' ? true : configured,
         features: { recommendations: { getPersonalFm: true, getRecommendedCollections: true } },
