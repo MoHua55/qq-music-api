@@ -370,7 +370,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - `count` 是云盘里的总数，`hasMore` 表示后面还有。云盘是空的也回 `200`，`data` 是空数组、`count` 是 `0`。
 - 上游一页给 2000 首，分页在服务端切，所以一般一次请求只打一次上游；要的范围跨过 2000 首时多打一次。
 - 出错时和推荐接口同一套响应（见[出错时的响应](#出错时的响应)）：没登录或上游不认这组凭证回 `401`，上游格式不对或其他失败回 `502`；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。
-- 播放还没用真账号验过，所以 `/login/channels` 里的 `getCloudCollection`、`getCloudTracks` 暂时还是 `false`。
+- `/login/channels` 里的 `library.getCloudCollection`、`catalog.getCloudTracks` 是 `true`，都指这条接口：有歌时把云盘当成一个集合显示（首数用 `count`），点进去用 `limit`、`offset` 翻页。
 
 <a id="猜你喜欢与推荐歌单"></a>
 
@@ -544,8 +544,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | 分组 | 已实现的方法 | 尚未实现的方法 |
 | --- | --- | --- |
 | `auth` | `getLoginStatus`、`logout`、`getQrKey`、`createQr`、`checkQr`、`cancelQr` | — |
-| `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs` | `getCloudCollection` |
-| `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums` | `getPlaylistDetail`、`getCloudTracks`、`getSubscriptionStatus` |
+| `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs`、`getCloudCollection`（`/user/cloud`） | — |
+| `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums`、`getCloudTracks`（`/user/cloud`）、`getSubscriptionStatus`（`/user/subscription-status`） | `getPlaylistDetail` |
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
