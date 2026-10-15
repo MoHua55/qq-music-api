@@ -159,8 +159,22 @@ describe.each(CATALOG_RUNTIMES)('普通歌单增删（%s）', (runtime) => {
     [{ songlist: [{ id: 103 }, { id: 103 }], total_song_num: 2, hasmore: 0 }, [101], 'unknown'],
     [{ songlist: [{ id: 101, songid: 102 }], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
     [{ songlist: [{}], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
+    [{ songlist: [null], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
+    [
+      { songlist: [{ id: 101, songid: '101' }], total_song_num: 1, hasmore: 0 },
+      [101, 101],
+      'present',
+    ],
     [{ songlist: [{ id: 9007199254740992 }], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
     [{ songlist: null, total_song_num: 0, hasmore: 0 }, [101], 'unknown'],
+    [{ code: 1000, songlist: [{ id: 101 }], total_song_num: 1, hasmore: 0 }, [101], 'unknown'],
+    [{ subcode: 1, songlist: [], total_song_num: 0, hasmore: 0 }, [101], 'unknown'],
+    [{ code: '0', songlist: [], total_song_num: 0, hasmore: 0 }, [101], 'unknown'],
+    [
+      { code: 0, subcode: 0, songlist: [{ id: 101 }], total_song_num: 1, hasmore: 0 },
+      [101],
+      'present',
+    ],
     [null, [101], 'unknown'],
   ] as const)('无变更只根据实际读回判定 %s', async (data, ids, status) => {
     upstream.state.rpcReplies!.AddSonglist.data = { retCode: 0, result: { dirId: 0, tid: 0 } };
