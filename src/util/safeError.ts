@@ -33,6 +33,8 @@ export const UPSTREAM_PHASES = [
   'credential-refresh',
   'get-user-playlists',
   'get-user-favorite-playlists',
+  'get-created-playlist-play-counts',
+  'get-favorite-playlist-play-counts',
   'get-user-favorite-albums',
   'get-song-list-detail',
   'get-owned-playlist-songs',

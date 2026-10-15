@@ -247,7 +247,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | --- | --- | --- |
 | `/user/detail` | 会话 | 当前用户资料 |
 | `/user/vip` | 会话 | 当前账号会员状态 `{ code: 200, isVip, vipLevel, upstream }`，分免费、绿钻、超级会员 |
-| `/user/playlist` | 可选 `uid`、`favoriteOffset` | 自建与收藏歌单 |
+| `/user/playlist` | 可选 `uid`、`favoriteOffset`、`playCount=1` | 自建与收藏歌单；`playCount=1` 时补播放数 |
 | `/user/liked-songs` | `offset`、`limit`，最多 100 | 内建“我喜欢”的歌曲分页 |
 | `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`，最多 100 | 登录用户自己歌单的歌曲分页，包括不公开歌单 |
 | `/user/albums` | `offset`、`limit`，默认 20、最多 100 | 收藏专辑分页 |
@@ -299,7 +299,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `POST /user/playlist/subscribe`：`{ "tid": "70001", "subscribed": true }` 收藏歌单，`false` 取消收藏。只接受本人的会话，账号参数由服务器填；只有上游 `result: 0` 且失败清单为空才回 `{ code: 200, subscribed }`，写入不自动重试。失败后先读回状态再决定下一步，不盲目重送。
 
-`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单与红心还做过写入前后的状态转换；专辑写入未完成双通道验证，默认不开放。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
+`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单与红心还做过写入前后的状态转换；专辑收藏已完成两个通道的真账号验证并开放（见上方「专辑收藏写入」）。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
 
 ### 收藏歌单接着读
 
@@ -308,6 +308,14 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - 全部读完时，`more: false`，`total` 等于本轮列表长度。
 - 到 1000 条仍没读完时，`more: true`，`total` 是自建数加上上游给的收藏总数；用 `nextFavoriteOffset` 作为下一次的 `favoriteOffset`。续读只返回收藏歌单。
 - 空页或上游反复给同一页时也会停止，`more: true`，但没有 `nextFavoriteOffset`，调用方不能无限重试。
+
+### 歌单播放数
+
+`GET /user/playlist?playCount=1` 会多读旧接口，给每张歌单补上 `play_cnt`（和推荐歌单同名的数字字段）。不带这个参数时，请求和回包都和以前完全一样，也不会多打上游。
+
+- 自建与收藏各自按官方网页的分页方式读，每份最多 10 页（100 张）；只读本轮列表里有的那一类。
+- 按歌单 id 对上、而且是非负整数才给 `play_cnt`；对不上、上游给负数或读失败的条目**不带** `play_cnt`（Android 自建列表原本那个总是 0 的值也会拿掉，不当成真的播放数）。
+- 补播放数失败不会让列表失败，路由照样回 `200`；顶层多一个 `playCountComplete`，只有两份清单都完整读到尾才是 `true`。
 
 ### 选对歌单详情接口
 

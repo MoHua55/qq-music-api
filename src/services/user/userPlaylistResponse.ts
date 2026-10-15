@@ -8,6 +8,8 @@ import { type Dictionary, numberOf } from '../auth/values';
 export interface UserPlaylistOptions {
   /** 从收藏歌单的这个位置接着读；不给就是第一轮（自建＋收藏）。 */
   favoriteOffset?: number;
+  /** 明确要播放数时为 true：多读旧接口补 `play_cnt`。 */
+  playCount?: boolean;
 }
 
 /**
@@ -19,9 +21,21 @@ export const favoriteOffsetOf = (raw: unknown): number | undefined => {
   return Number.isSafeInteger(value) && value > 0 ? value : undefined;
 };
 
-export const userPlaylistOptionsOf = (raw: unknown): UserPlaylistOptions | undefined => {
+/** 只有 `playCount=1` 才算开启；重复参数只看第一项。 */
+export const playCountOf = (raw: unknown): boolean => (Array.isArray(raw) ? raw[0] : raw) === '1';
+
+/** 两个参数都没给时回 `undefined`，让不带参数的调用方（包括 Folia）与以前完全相同。 */
+export const userPlaylistOptionsOf = (
+  raw: unknown,
+  rawPlayCount?: unknown,
+): UserPlaylistOptions | undefined => {
   const favoriteOffset = favoriteOffsetOf(raw);
-  return favoriteOffset === undefined ? undefined : { favoriteOffset };
+  const playCount = playCountOf(rawPlayCount);
+  if (favoriteOffset === undefined && !playCount) return undefined;
+  return {
+    ...(favoriteOffset === undefined ? {} : { favoriteOffset }),
+    ...(playCount ? { playCount } : {}),
+  };
 };
 
 /**
@@ -38,6 +52,9 @@ export const toUserPlaylistBody = (data: Dictionary) => {
     more: data.bFinish === false,
     ...(nextFavoriteOffset !== undefined && Number.isSafeInteger(nextFavoriteOffset)
       ? { nextFavoriteOffset }
+      : {}),
+    ...(typeof data.playCountComplete === 'boolean'
+      ? { playCountComplete: data.playCountComplete }
       : {}),
   };
 };

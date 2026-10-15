@@ -426,6 +426,12 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         description:
           'Continue reading collected playlists from this position. Use the nextFavoriteOffset of the previous answer; that round returns collected playlists only.',
       },
+      {
+        key: 'playCount',
+        label: 'Play count',
+        description:
+          'Set to 1 to add play_cnt from the legacy list endpoints (matched by playlist id, non-negative only) and playCountComplete. Without it the request and answer are unchanged.',
+      },
     ],
   },
   getUserAlbums: {

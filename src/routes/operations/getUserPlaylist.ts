@@ -9,7 +9,10 @@ import type { OperationHandler } from './types';
 export const getUserPlaylist: OperationHandler = async (request) => {
   const service = await request.service();
   const uid = request.queryRaw('uid') as string | undefined;
-  const options = userPlaylistOptionsOf(request.queryRaw('favoriteOffset'));
+  const options = userPlaylistOptionsOf(
+    request.queryRaw('favoriteOffset'),
+    request.queryRaw('playCount'),
+  );
   // Node 的旧 service 包装在没有续读时只传两个参数；serverless 原来一直传三个。
   const data =
     request.runtime === 'node' && !options

@@ -1,0 +1,154 @@
+import { logger } from '../../util/logger';
+import type { UpstreamPhase } from '../../util/safeError';
+import { credentialMusicId } from './androidDevice';
+import type { AuthHttpClient } from './httpClient';
+import { credentialCookieHeader } from './musicuProtocol';
+import type { AuthSession } from './qrTypes';
+import { dictionaryOf, isDictionary, numberOf } from './values';
+
+// src/services/auth/playlistPlayCounts.ts
+//
+// `/user/playlist?playCount=1` 的播放数。Android 自建列表的 `play_cnt` 实测全是 0、收藏列表没有这个字段，
+// 旧接口才有：自建 `fcg_user_created_diss` 的 `listen_num`、收藏 `fcg_get_profile_order_asset`（reqtype 3）的
+// `listennum`。官方网页每页 10 张（自建请求 11、收藏闭区间 sin..sin+10），按歌单 id 对回原列表。
+// 只补数字，不替换列表来源；任何一步读不到都不影响列表本身。
+
+const CREATED_URL = 'https://c.y.qq.com/rsc/fcgi-bin/fcg_user_created_diss';
+const FAVORITE_URL = 'https://c.y.qq.com/fav/fcgi-bin/fcg_get_profile_order_asset.fcg';
+const PAGE_STEP = 10;
+/** 每份清单最多读这么多页（100 张）；更多的就标成没补完。 */
+export const PLAY_COUNT_PAGE_LIMIT = 10;
+
+const idOf = (value: unknown): string | undefined => {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) return String(value);
+  if (typeof value === 'string' && /^[1-9]\d{0,18}$/.test(value)) return value;
+  return undefined;
+};
+
+const countOf = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+
+interface PageResult {
+  entries: Array<{ id?: string; count?: number }>;
+  done: boolean;
+}
+
+interface Source {
+  phase: UpstreamPhase;
+  url: string;
+  params: (sin: number, auth: AuthSession) => Record<string, unknown>;
+  read: (data: Record<string, unknown>, sin: number) => PageResult | undefined;
+}
+
+const SOURCES: Record<'created' | 'favorite', Source> = {
+  created: {
+    phase: 'get-created-playlist-play-counts',
+    url: CREATED_URL,
+    params: (sin, auth) => ({
+      hostuin: credentialMusicId(auth.credential),
+      sin,
+      size: PAGE_STEP + 1,
+      format: 'json',
+    }),
+    read: (data, sin) => {
+      if (!Array.isArray(data.disslist)) return undefined;
+      const total = numberOf(data.totoal);
+      return {
+        entries: data.disslist.map((item) => {
+          const entry = dictionaryOf(item);
+          return { id: idOf(entry.tid), count: countOf(entry.listen_num) };
+        }),
+        done: data.disslist.length === 0 || total === undefined || sin + PAGE_STEP >= total,
+      };
+    },
+  },
+  favorite: {
+    phase: 'get-favorite-playlist-play-counts',
+    url: FAVORITE_URL,
+    params: (sin, auth) => ({
+      ct: 20,
+      cid: 205360956,
+      userid: credentialMusicId(auth.credential),
+      reqtype: 3,
+      sin,
+      ein: sin + PAGE_STEP,
+      format: 'json',
+    }),
+    read: (data) => {
+      if (!Array.isArray(data.cdlist)) return undefined;
+      return {
+        entries: data.cdlist.map((item) => {
+          const entry = dictionaryOf(item);
+          return { id: idOf(entry.dissid), count: countOf(entry.listennum) };
+        }),
+        done: data.cdlist.length === 0 || data.has_more !== 1,
+      };
+    },
+  },
+};
+
+/** 读完一份清单的播放数；`complete` 只有每一页都读到、而且确实读到尾时才是 true。 */
+const readCounts = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  source: Source,
+): Promise<{ counts: Map<string, number>; complete: boolean }> => {
+  const counts = new Map<string, number>();
+  for (let page = 0; page < PLAY_COUNT_PAGE_LIMIT; page += 1) {
+    const sin = page * PAGE_STEP;
+    let result: PageResult | undefined;
+    try {
+      const response = await http.request<unknown>({
+        url: source.url,
+        method: 'GET',
+        params: source.params(sin, auth),
+        headers: { Referer: 'https://y.qq.com/', Cookie: credentialCookieHeader(auth.credential) },
+      });
+      const body = dictionaryOf(response.data);
+      const code = numberOf(body.code);
+      logger.info('qq-auth.upstream-result', {
+        phase: source.phase,
+        httpStatus: response.status,
+        globalCode: code,
+        upstreamCode: numberOf(body.subcode),
+      });
+      if (code === 0 && isDictionary(body.data)) result = source.read(body.data, sin);
+    } catch {
+      result = undefined;
+    }
+    if (!result) return { counts, complete: false };
+    for (const { id, count } of result.entries)
+      if (id !== undefined && count !== undefined && !counts.has(id)) counts.set(id, count);
+    if (result.done) return { counts, complete: true };
+  }
+  return { counts, complete: false };
+};
+
+/**
+ * 给自建与收藏条目补 `play_cnt`。对得上、而且是非负整数才给；其余条目拿掉 `play_cnt`，
+ * 不把 Android 给的 0 当成真的播放数。只读需要的那份清单。
+ */
+export const withPlayCounts = async (
+  http: AuthHttpClient,
+  auth: AuthSession,
+  created: unknown[],
+  favorites: unknown[],
+  idOfPlaylist: (value: unknown) => string,
+): Promise<{ created: unknown[]; favorites: unknown[]; complete: boolean }> => {
+  const [createdCounts, favoriteCounts] = await Promise.all([
+    created.length ? readCounts(http, auth, SOURCES.created) : undefined,
+    favorites.length ? readCounts(http, auth, SOURCES.favorite) : undefined,
+  ]);
+  const apply = (list: unknown[], counts: Map<string, number> | undefined) =>
+    list.map((value) => {
+      if (!isDictionary(value)) return value;
+      const { play_cnt: _ignored, ...rest } = value;
+      const count = counts?.get(idOfPlaylist(value));
+      return count === undefined ? rest : { ...rest, play_cnt: count };
+    });
+  return {
+    created: apply(created, createdCounts?.counts),
+    favorites: apply(favorites, favoriteCounts?.counts),
+    complete: (createdCounts?.complete ?? true) && (favoriteCounts?.complete ?? true),
+  };
+};

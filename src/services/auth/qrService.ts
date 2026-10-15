@@ -655,7 +655,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     if (uin !== undefined && uin.trim() !== '' && !isOwnAccountId(auth.credential, uin))
       throw new RequestRejectedError('uid must be the logged-in account');
     return withCredentialRejectionMapped(() =>
-      getPlaylists(this.http, auth, options.favoriteOffset ?? 0),
+      getPlaylists(this.http, auth, options.favoriteOffset ?? 0, options.playCount === true),
     );
   }
 
