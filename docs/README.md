@@ -153,10 +153,11 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | **搜索** | | | |
 | `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
 | **播放与曲库** | | | |
+| `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
-歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，搜索请改用 `/search`。
+MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，搜索请改用 `/search`。
 
 ## 红心写入
 
@@ -500,7 +501,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums` | `getPlaylistDetail`、`getCloudTracks`、`getSubscriptionStatus` |
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
-| `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
+| `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
@@ -671,7 +672,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取歌曲歌词
 
-`GET /getLyric?songmid=demo-song-mid` 返回歌词。`songmid` 是歌曲 mid；可选 `isFormat=true` 请求格式化，默认 `false`。
+`GET /getLyric?songmid=demo-song-mid` 返回歌词，Node 和 Serverless 都能用，不用登录。`songmid` 是歌曲 mid；可选 `isFormat=true` 请求格式化，默认 `false`。`lyric` 是解好的 LRC 文字；`trans`（翻译）原样转交上游的值，很多歌是空字符串；纯音乐会给一段很短的提示歌词。
 
 ### 获取搜索热词
 

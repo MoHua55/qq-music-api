@@ -616,7 +616,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getLyric: {
     id: 'get-lyric',
-    description: 'Get song lyric content, optionally formatted.',
+    description:
+      'Get song lyrics as LRC text on Node and serverless, no login needed. isFormat=true also splits it into timed lines. trans is passed through as upstream returns it and is often empty.',
     queryParams: [
       {
         key: 'songmid',

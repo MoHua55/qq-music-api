@@ -1,5 +1,6 @@
 import { albumSubscribe } from '../routes/operations/albumSubscribe';
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getLyricOperation } from '../routes/operations/getLyric';
 import { getMusicPlay } from '../routes/operations/getMusicPlay';
 import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
@@ -244,6 +245,7 @@ const routes: Record<string, RouteHandler> = {
   // and only on a deployment that can open one; any failure there keeps the anonymous answer.
   '/getSongListDetail/:disstid': operationRoute(getSongListDetail),
   '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
+  '/getLyric': operationRoute(getLyricOperation),
 
   '/getAlbumInfo': operationRoute(getAlbumInfo),
 

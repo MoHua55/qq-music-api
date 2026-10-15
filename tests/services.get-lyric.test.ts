@@ -1,9 +1,5 @@
 const mockYCommon = jest.fn();
 const mockLyricParse = jest.fn();
-const mockMomentValueOf = jest.fn(() => 1710000000000);
-const mockMoment = jest.fn(() => ({
-  valueOf: mockMomentValueOf,
-}));
 
 jest.mock('../src/services/y_common', () => ({
   __esModule: true,
@@ -27,23 +23,22 @@ jest.mock('../src/util/lyricParse', () => ({
   },
 }));
 
-jest.mock('moment', () => ({
-  __esModule: true,
-  default: mockMoment,
-}));
-
 import getLyric from '../src/services/music/getLyric';
 import { logger } from '../src/util/logger';
 
 const mockedLogger = logger as jest.Mocked<typeof logger>;
 
 describe('services/getLyric', () => {
+  // 时间戳只用来避开缓存，固定下来好比对请求参数。
+  let now: jest.SpyInstance;
   beforeEach(() => {
     mockYCommon.mockReset();
     mockLyricParse.mockReset();
-    mockMoment.mockClear();
-    mockMomentValueOf.mockClear();
     jest.clearAllMocks();
+    now = jest.spyOn(Date, 'now').mockReturnValue(1710000000000);
+  });
+  afterEach(() => {
+    now.mockRestore();
   });
 
   it('应在未格式化时返回解码后的歌词字符串', async () => {
