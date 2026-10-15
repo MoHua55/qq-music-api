@@ -29,7 +29,7 @@ import {
 import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
-import { logWechatQr } from './qrDiagnostics';
+import { logQqCookies, logWechatQr } from './qrDiagnostics';
 import { createQqQrDriver, createWechatQrDriver } from './qrDrivers';
 import {
   confirmingState,
@@ -280,6 +280,7 @@ export class QrLoginServiceImpl implements QrLoginService {
   /** QQ App channel: the MQTT payload carries an exchange token, never the final credential. */
   private async exchangeQqLogin(session: QrSessionRecord, payload: unknown): Promise<QqCredential> {
     session.failureStage = 'credential-payload';
+    logQqCookies(payload);
     const cookies = dictionaryOf(dictionaryOf(payload).cookies);
     const musicid = stringOf(dictionaryOf(cookies.qqmusic_uin).value);
     const mqttToken = stringOf(dictionaryOf(cookies.qqmusic_key).value);
