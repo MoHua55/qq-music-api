@@ -2555,7 +2555,12 @@ describe('QR login failure classification', () => {
 describe('QQ 音乐 App 扫码通道 qqmusic', () => {
   type Harness = ReturnType<typeof createProtocolHarness>;
 
-  const scan = async (harness: Harness, channel: 'qq' | 'qqmusic', loginType?: string) => {
+  const scan = async (
+    harness: Harness,
+    channel: 'qq' | 'qqmusic',
+    loginType?: string,
+    uin = '456',
+  ) => {
     // 先按字符串传：通道型别加上 qqmusic 之前，这份用例也要能编译、在执行时失败。
     const key = await harness.service.createSession(
       channel as Parameters<Harness['service']['createSession']>[0],
@@ -2566,7 +2571,7 @@ describe('QQ 音乐 App 扫码通道 qqmusic', () => {
       type: 'cookies',
       payload: {
         cookies: {
-          qqmusic_uin: { value: '456' },
+          qqmusic_uin: { value: uin },
           qqmusic_key: { value: 'mqtt-key' },
           ...(loginType === undefined ? {} : { tmeLoginType: { value: loginType } }),
         },
@@ -2626,6 +2631,46 @@ describe('QQ 音乐 App 扫码通道 qqmusic', () => {
     });
     expect(JSON.stringify(result)).toContain('QQ Music app login');
     expect(commsOf(harness, 'Login').map((comm) => comm.tmeLoginType)).toEqual([6]);
+  });
+
+  /** 换凭证（带 qrCodeID 的 Login）实际送出去的 param。 */
+  const exchangeParams = (harness: Harness) =>
+    jest
+      .mocked(harness.httpPost)
+      .mock.calls.map(([, payload]) =>
+        dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param),
+      )
+      .filter((param) => param.qrCodeID !== undefined);
+
+  it('微信账号的 id 是 19 位、超过安全整数：换凭证送精确的十进位字符串', async () => {
+    const harness = createProtocolHarness({ wechatBoundApp: true });
+    const result = await scan(harness, 'qqmusic', '1', '1234567890123456789');
+
+    expect(result.code).toBe(803);
+    expect(exchangeParams(harness).map((param) => param.musicid)).toEqual(['1234567890123456789']);
+  });
+
+  it('安全整数范围内的 id 照旧送数字', async () => {
+    const harness = createProtocolHarness();
+    await scan(harness, 'qqmusic', '2', '456');
+    expect(exchangeParams(harness).map((param) => param.musicid)).toEqual([456]);
+  });
+
+  it('qq-cookies 日志只多记账号 id 的位数，不记值', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      await scan(
+        createProtocolHarness({ wechatBoundApp: true }),
+        'qqmusic',
+        '1',
+        '1234567890123456789',
+      );
+      const events = info.mock.calls.filter(([event]) => event === 'qq-auth.qq-cookies');
+      expect(events[0][1]).toMatchObject({ uinDigits: 19 });
+      expect(JSON.stringify(events)).not.toContain('1234567890123456789');
+    } finally {
+      info.mockRestore();
+    }
   });
 
   it('qq-cookies 日志记的是实际的通道', async () => {
