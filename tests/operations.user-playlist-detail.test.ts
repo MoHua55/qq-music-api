@@ -175,3 +175,102 @@ describe.each(CATALOG_RUNTIMES)('/user/playlist-detail 共用处理与真实宿�
     expect(legs.host).toEqual(legs.operation);
   });
 });
+
+// 带 playCount=1 时，从同一次 CgiGetDiss 回包的 dirinfo.listennum 取播放数，不多打上游。
+describe.each(CATALOG_RUNTIMES)('/user/playlist-detail 的播放数（%s）', (runtime) => {
+  const upstream = useSessionUpstream(runtime);
+  const read = async (query: string, dirinfo?: unknown) => {
+    upstream.state.data = {
+      songlist: CONTRACT_SONGS,
+      total_song_num: 3,
+      ...(dirinfo === undefined ? {} : { dirinfo }),
+    };
+    return parity(
+      runtime,
+      `/user/playlist-detail${query}`,
+      upstream.calls,
+      await upstream.options(),
+    );
+  };
+
+  it.each([
+    { label: '公开歌单', listennum: 4017 },
+    { label: '不公开歌单是 0', listennum: 0 },
+  ])('$label：给 play_cnt', async ({ listennum }) => {
+    const legs = await read('?tid=70001&playCount=1', { listennum, dir_show: 1 });
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({
+      code: 200,
+      songs: CONTRACT_SONGS,
+      total: 3,
+      more: false,
+      play_cnt: listennum,
+    });
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.operation.calls[0].rpc[0].method).toBe('CgiGetDiss');
+    expect(legs.host).toEqual(legs.operation);
+  });
+
+  it.each([
+    '',
+    '&playCount=0',
+    '&playCount=true',
+    '&playCount=',
+  ])('没明确要（%s）时回包和以前一样', async (suffix) => {
+    const legs = await read(`?tid=70001${suffix}`, { listennum: 4017 });
+    expect(legs.operation.body).toEqual({
+      code: 200,
+      songs: CONTRACT_SONGS,
+      total: 3,
+      more: false,
+    });
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
+  });
+
+  it.each([
+    { label: '没有 dirinfo', dirinfo: undefined },
+    { label: '没有 listennum', dirinfo: { songnum: 3 } },
+    { label: '字符串', dirinfo: { listennum: '4017' } },
+    { label: '负数', dirinfo: { listennum: -3 } },
+    { label: '小数', dirinfo: { listennum: 1.5 } },
+    { label: '超出安全整数', dirinfo: { listennum: 2 ** 53 } },
+    { label: 'dirinfo 不是对象', dirinfo: [4017] },
+  ])('$label：不给 play_cnt，列表照常', async ({ dirinfo }) => {
+    const legs = await read('?tid=70001&playCount=1', dirinfo);
+    expect(legs.operation.status).toBe(200);
+    expect(legs.operation.body).toEqual({
+      code: 200,
+      songs: CONTRACT_SONGS,
+      total: 3,
+      more: false,
+    });
+    expect(legs.host).toEqual(legs.operation);
+  });
+
+  it.each([
+    { label: '用 dirid=201 读', query: '?dirid=201&playCount=1', dirinfo: { listennum: 5 } },
+    {
+      label: '回包标明 dirid 201',
+      query: '?tid=70001&playCount=1',
+      dirinfo: { listennum: 5, dirid: 201 },
+    },
+  ])('「我喜欢」官方不显示播放数，也不给：$label', async ({ query, dirinfo }) => {
+    const legs = await read(query, dirinfo);
+    expect(legs.operation.body).not.toHaveProperty('play_cnt');
+    expect(legs.operation.calls).toHaveLength(1);
+    expect(legs.host).toEqual(legs.operation);
+  });
+
+  it('缺登录照旧回 401，不读上游', async () => {
+    const legs = await parity(
+      runtime,
+      '/user/playlist-detail?tid=70001&playCount=1',
+      upstream.calls,
+      await upstream.options('missing'),
+    );
+    expect(legs.operation.status).toBe(401);
+    expect(legs.operation.calls).toHaveLength(0);
+    expect(legs.host).toEqual(legs.operation);
+  });
+});
