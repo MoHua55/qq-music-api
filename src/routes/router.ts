@@ -41,7 +41,7 @@ router.get('/recommend/categories', context.getPlaylistCategories);
 router.get('/recommend/category-playlists', context.getCategoryPlaylists);
 router.get('/recommend/new-songs', context.getNewSongs);
 
-// keyword search; songs need a login session, other types are read anonymously without one
+// keyword search; a login session is used when present
 router.get('/search', context.getSearch);
 
 // radio; a login session is required

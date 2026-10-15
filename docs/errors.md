@@ -84,6 +84,7 @@
 | `playlist.already-applied` | 502 | QQ 说歌曲已经在（或不在）歌单里；不当成成功 |
 | `playlist.write-rejected` | 502 | 歌单写入被 QQ 拒绝，原因不明 |
 | `recommendation.rejected` | 502 | 推荐请求被 QQ 拒绝，原因不明 |
+| `search.rejected` | 502 | 搜索被 QQ 拒绝（不登录搜歌曲时常见），不是搜不到；登录后再搜 |
 
 ### 写入类接口出错时
 
@@ -134,6 +135,7 @@ QQ 出错时会回一个数字码。这个服务会把它原样交给你，让�
 | `1000` | 手机 QQ 换凭证失败后的再验证 | 再验证也被拒；**不代表登录失效**，真正原因看 `primaryFailure` | 实测过 | （不分类） |
 | `1000`、`104400`、`104401` | 登录后的读取（资料、歌单、推荐、电台、每日 30 首等） | QQ 不认这组登录凭证，回 `401` | 沿用处理 | `auth.credential-invalid` |
 | `22006` | 猜你喜欢 | 推荐请求被拒，原因没有分离 | 实测过 | `recommendation.rejected` |
+| `2001` | 关键字搜索 | 搜索被拒，常见于不登录搜歌曲，原因没有分离 | 实测过 | `search.rejected` |
 | `10` | 不登录读歌单详情 | 这张是按账号生成的官方歌单，要带登录才读得到（服务会自己带登录重读） | 实测过 | `playlist.anonymous-unreadable` |
 | `10004` | 登录后读歌单详情 | 歌单不存在 | 实测过 | `playlist.not-found` |
 | `80120` | 读歌单详情 | 疑似和登录有关，但没确认，所以**不回 401** | 实测过 | `playlist.authentication-unverified` |

@@ -151,7 +151,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
 | **搜索** | | | |
-| `GET /search` | 搜歌要登录，其他可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页 | ✓ |
+| `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
 | **播放与曲库** | | | |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
@@ -445,16 +445,17 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 `GET /search?keyword=<关键字>&type=song&page=1&limit=10` 按关键字搜索，Node 和 Serverless 都能用。
 
 - `type` 可以是 `song`（不给就是歌曲）、`album`、`playlist`、`singer`；其他值回 `400`。
-- `keyword` 必填，去掉前后空白后最多 100 个字；`page` 从 1 开始；`limit` 默认 10、最多 20。
-- **搜歌曲要登录**，没有会话回 `401`。因为不登录时上游对歌曲会回一个空清单，和真的搜不到长得一样，没法分辨。专辑、歌单、歌手不登录也能搜，登录了就带上会话。Serverless 没设 `QQ_SESSION_SECRET` 时，搜歌曲回 `501`，其他类型照常。
+- `keyword` 必填，去掉前后空白后最多 60 个字；`page` 从 1 开始；`limit` 默认 10、最多 20。
+- 不登录也能搜，登录了就带上会话。Serverless 没设 `QQ_SESSION_SECRET` 也能用（只是一律匿名）。
+- **不登录搜歌曲常被上游拒绝**：会回 `502`，`errorKey` 是 `search.rejected`（上游码 2001）。这不是「搜不到」，登录后再搜通常就有结果。专辑、歌单、歌手不登录时一般正常。
 
 ```json
 { "code": 200, "type": "song", "page": 1, "limit": 10, "total": 36, "more": true, "items": [{ "mid": "demo-song-mid", "name": "示例歌曲" }] }
 ```
 
-`items` 保持上游原来的格式：歌曲带 `mid`、`file.media_mid`、歌手和专辑的 `mid`；专辑带 `albumMID`，歌单带 `dissid`，歌手带 `singerMID`。`total` 是上游给的总数，`more` 表示上游说还有下一页。
+`items` 保持上游原来的格式：歌曲带 `mid`、`file.media_mid`、歌手和专辑的 `mid`；专辑带 `albummid`，歌单带 `dissid`，歌手带 `singerMID`。登录与否用的是同一种上游格式。`total` 是上游给的总数，`more` 表示上游说还有下一页。
 
-真的搜不到回 `200` 加空的 `items`。上游拒绝（例如单项码 2001）回 `502` 并保留数字，**不会**当成搜不到；不会自动重试。专辑、歌单、歌手的第二页没有实测过。
+真的搜不到回 `200` 加空的 `items`。上游拒绝回 `502` 并保留数字，**不会**当成搜不到；不会自动重试。第二页以后没有完整实测过。
 
 ### 出错时的响应
 
@@ -473,7 +474,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `401` | 没登录，或凭证被 QQ 拒绝 | `auth.required`、`auth.credential-invalid` |
 | `422` | 上游成功但没有数据 | `resource.not-found` |
 | `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
-| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`network.*` |
+| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`search.rejected`、`network.*` |
 
 完整的状态码、`errorKey`、QQ 数字码和播放提示对照见[错误对照表](./errors.md)。上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
 

@@ -567,9 +567,9 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getSearch: {
     description:
-      'Search songs, albums, playlists or singers by keyword. Song search needs a login session (401 without one, because anonymous song search comes back empty); the other types also work anonymously and use the session when there is one. Items keep the upstream format with all MIDs. No results is 200 with an empty list; an upstream rejection (for example code 2001) is 502 and is never reported as empty. Not retried automatically.',
+      'Search songs, albums, playlists or singers by keyword. Works without logging in and uses the session when there is one. Anonymous song searches are often rejected upstream (502 search.rejected, code 2001); logging in avoids that. Items keep the upstream format with all MIDs. No results is 200 with an empty list; a rejection is never reported as empty. Not retried automatically.',
     queryParams: [
-      { key: 'keyword', label: 'Keyword', description: 'Search words, up to 100 characters.' },
+      { key: 'keyword', label: 'Keyword', description: 'Search words, up to 60 characters.' },
       {
         key: 'type',
         label: 'Type',

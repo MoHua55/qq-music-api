@@ -237,6 +237,12 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
     ['recommend.radio-list', 'recommend.radio-tracks'],
     '电台路由要登录，沿用其他带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
   ),
+  ...entries(['search'], 'business', [2001], {
+    ...observedUnknown(
+      '本项目实测见过：精简版搜索匿名搜歌曲时常回 2001（带会话的同一关键字有结果），原因没有分离。不能当成搜不到，也不自动重试',
+    ),
+    errorKey: 'search.rejected',
+  }),
   ...entries(['recommend.guess-you-like'], 'business', [22006], {
     ...observedUnknown('本项目实测见过（带 song_ids 且 num 改成 10 时被拒），原因没有分离'),
     errorKey: 'recommendation.rejected',

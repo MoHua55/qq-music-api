@@ -46,7 +46,7 @@ import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
-import { searchNeedsSession, searchResult, searchTypeOf } from '../services/search/search';
+import { searchResult } from '../services/search/search';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -203,7 +203,7 @@ const routes: Record<string, RouteHandler> = {
   '/recommend/new-songs': async ({ url }) =>
     fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
 
-  // 歌曲要会话：没设密钥时和登录路由一样回 501。其他类型有会话就带，没有就匿名搜。
+  // 有会话就带凭证，没有就匿名搜。没设密钥时解不开任何会话，也不建服务，直接匿名搜。
   '/search': async ({ url, env, service: getService, token }) => {
     const query = {
       keyword: url.searchParams.get('keyword') ?? undefined,
@@ -211,13 +211,6 @@ const routes: Record<string, RouteHandler> = {
       page: url.searchParams.get('page') ?? undefined,
       limit: url.searchParams.get('limit') ?? undefined,
     };
-    let needsSession = false;
-    try {
-      needsSession = searchNeedsSession(searchTypeOf(query.type));
-    } catch {
-      // 类型不对交给业务实现回 400。
-    }
-    if (needsSession && !env.QQ_SESSION_SECRET) return json({ code: 501, message: NO_SECRET }, 501);
     const session =
       env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
     return fromResult(await searchResult(query, session));
