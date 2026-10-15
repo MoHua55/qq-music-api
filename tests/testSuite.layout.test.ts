@@ -95,6 +95,8 @@ describe('default test suite layout', () => {
       'tests/services.qr-login.test.ts',
       'tests/operations.qr-check.test.ts',
       'tests/errors.runtime-baseline.test.ts',
+      'tests/song.like.routes.test.ts',
+      'tests/album.subscribe.routes.test.ts',
     ]) {
       expect(contracts.split(' ')).toContain(file);
       expect(defaultSuiteFiles()).toContain(path.join(ROOT, file));
