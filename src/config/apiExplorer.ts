@@ -149,6 +149,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'Search',
   },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
+  { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
   {
     name: 'getSongListCategories',
     method: 'GET',
@@ -517,7 +518,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getSearchByKey: {
     id: 'get-search-by-key',
-    description: 'Search songs, singers, or albums by keyword.',
+    description:
+      'Legacy song search, Node only. Not recommended: the upstream often fails here and it always searches songs. Use /search instead.',
     queryParams: [
       {
         key: 'key',
@@ -562,6 +564,20 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
+  },
+  getSearch: {
+    description:
+      'Search songs, albums, playlists or singers by keyword. Song search needs a login session (401 without one, because anonymous song search comes back empty); the other types also work anonymously and use the session when there is one. Items keep the upstream format with all MIDs. No results is 200 with an empty list; an upstream rejection (for example code 2001) is 502 and is never reported as empty. Not retried automatically.',
+    queryParams: [
+      { key: 'keyword', label: 'Keyword', description: 'Search words, up to 100 characters.' },
+      {
+        key: 'type',
+        label: 'Type',
+        description: 'song (default), album, playlist or singer.',
+      },
+      { key: 'page', label: 'Page', description: 'Page number starting at 1.' },
+      { key: 'limit', label: 'Limit', description: 'Items per page, 10 by default, up to 20.' },
+    ],
   },
   getSongLists: {
     description: 'Get song list results by page, limit, category, and sort.',

@@ -45,6 +45,7 @@ import getRanks from './getRanks';
 import getRecommend from './getRecommend';
 import { getCategoryPlaylists, getNewSongs, getPlaylistCategories } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
+import getSearch from './getSearch';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerDesc from './getSingerDesc';
@@ -145,4 +146,5 @@ export default {
   getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
   getCategoryPlaylists: withControllerLogging('getCategoryPlaylists', getCategoryPlaylists),
   getNewSongs: withControllerLogging('getNewSongs', getNewSongs),
+  getSearch: withControllerLogging('getSearch', getSearch),
 };

@@ -39,7 +39,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
     getReplacement: false,
     preview: true,
   },
-  search: { searchSongs: runtime === 'node' },
+  search: { searchSongs: true, searchAlbums: true, searchPlaylists: true, searchArtists: true },
   lyrics: { getLyrics: runtime === 'node', getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,

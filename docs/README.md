@@ -150,11 +150,13 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
+| **搜索** | | | |
+| `GET /search` | 搜歌要登录，其他可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页 | ✓ |
 | **播放与曲库** | | | |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
-搜索、歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。
+歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，搜索请改用 `/search`。
 
 ## 红心写入
 
@@ -438,6 +440,22 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 三条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
 
+### 关键字搜索
+
+`GET /search?keyword=<关键字>&type=song&page=1&limit=10` 按关键字搜索，Node 和 Serverless 都能用。
+
+- `type` 可以是 `song`（不给就是歌曲）、`album`、`playlist`、`singer`；其他值回 `400`。
+- `keyword` 必填，去掉前后空白后最多 100 个字；`page` 从 1 开始；`limit` 默认 10、最多 20。
+- **搜歌曲要登录**，没有会话回 `401`。因为不登录时上游对歌曲会回一个空清单，和真的搜不到长得一样，没法分辨。专辑、歌单、歌手不登录也能搜，登录了就带上会话。Serverless 没设 `QQ_SESSION_SECRET` 时，搜歌曲回 `501`，其他类型照常。
+
+```json
+{ "code": 200, "type": "song", "page": 1, "limit": 10, "total": 36, "more": true, "items": [{ "mid": "demo-song-mid", "name": "示例歌曲" }] }
+```
+
+`items` 保持上游原来的格式：歌曲带 `mid`、`file.media_mid`、歌手和专辑的 `mid`；专辑带 `albumMID`，歌单带 `dissid`，歌手带 `singerMID`。`total` 是上游给的总数，`more` 表示上游说还有下一页。
+
+真的搜不到回 `200` 加空的 `items`。上游拒绝（例如单项码 2001）回 `502` 并保留数字，**不会**当成搜不到；不会自动重试。专辑、歌单、歌手的第二页没有实测过。
+
 ### 出错时的响应
 
 ```json
@@ -480,7 +498,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs` | `getCloudCollection` |
 | `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums` | `getPlaylistDetail`、`getCloudTracks`、`getSubscriptionStatus` |
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
-| `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
+| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
@@ -663,6 +681,8 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 `GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。
 
 ### 获取搜索结果
+
+旧接口，不建议再用：上游常常出错，而且实际只会搜歌曲。请改用上面的 [`/search`](#关键字搜索)。
 
 `GET /getSearchByKey?key=示例关键词&limit=10&page=1` 查询搜索结果。`key` 必填，`limit` 默认 10、`page` 默认 1。可选 `remoteplace` 默认 `song`，其他值包括 `album`、`mv`、`playlist`、`user`、`lyric`；注意参数拼写是 `remoteplace`。
 

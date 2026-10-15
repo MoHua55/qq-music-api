@@ -45,6 +45,7 @@ export const UPSTREAM_PHASES = [
   'get-playlist-categories',
   'get-category-playlists',
   'get-new-songs',
+  'search',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

@@ -46,6 +46,7 @@ import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
+import { searchNeedsSession, searchResult, searchTypeOf } from '../services/search/search';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -202,6 +203,26 @@ const routes: Record<string, RouteHandler> = {
   '/recommend/new-songs': async ({ url }) =>
     fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
 
+  // 歌曲要会话：没设密钥时和登录路由一样回 501。其他类型有会话就带，没有就匿名搜。
+  '/search': async ({ url, env, service: getService, token }) => {
+    const query = {
+      keyword: url.searchParams.get('keyword') ?? undefined,
+      type: url.searchParams.get('type') ?? undefined,
+      page: url.searchParams.get('page') ?? undefined,
+      limit: url.searchParams.get('limit') ?? undefined,
+    };
+    let needsSession = false;
+    try {
+      needsSession = searchNeedsSession(searchTypeOf(query.type));
+    } catch {
+      // 类型不对交给业务实现回 400。
+    }
+    if (needsSession && !env.QQ_SESSION_SECRET) return json({ code: 501, message: NO_SECRET }, 501);
+    const session =
+      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
+    return fromResult(await searchResult(query, session));
+  },
+
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),
 
@@ -237,6 +258,9 @@ const routes: Record<string, RouteHandler> = {
 
   '/getSingerHotsong': operationRoute(getSingerHotsong),
 };
+
+const NO_SECRET =
+  'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.';
 
 /** The routes that need a session secret to mean anything. Catalog routes work without one. */
 const LOGIN_ROUTES = new Set([
@@ -324,14 +348,7 @@ export const handleRequest = async (
   // 🔴 Explicit, never a silent downgrade. Without a secret there is no key to seal a session
   // with, and generating one per isolate would make every login vanish on the next cold start.
   if (!configured && LOGIN_ROUTES.has(matched.route)) {
-    return json(
-      {
-        code: 501,
-        message:
-          'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.',
-      },
-      501,
-    );
+    return json({ code: 501, message: NO_SECRET }, 501);
   }
 
   // The legacy catalog transport is a module-level registration, so it is set before any catalog

@@ -56,6 +56,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.category-playlists',
   /** 新歌速递（`get_new_song_info`），匿名。 */
   'recommend.new-songs',
+  /** 关键字搜索（桌面版 `DoSearchForQQMusicDesktop`），歌曲要登录、其他类型匿名可读；非零码都还是未知。 */
+  'search',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
   'recommend.radio-list',
   /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */

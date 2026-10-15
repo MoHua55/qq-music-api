@@ -18,6 +18,7 @@ import { getRadioList, getRadioTracks } from './recommend/getRadio';
 import getRecommendPlaylists from './recommend/getRecommendPlaylists';
 // search
 import getHotKey from './search/getHotKey';
+import getSearch from './search/getSearch';
 import getSearchByKey from './search/getSearchByKey';
 import getSmartbox from './search/getSmartbox';
 // singer
@@ -78,4 +79,6 @@ export default {
   getRecommendPlaylists,
   getRadioList,
   getRadioTracks,
+  // search
+  getSearch,
 };
