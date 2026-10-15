@@ -29,7 +29,6 @@ const PROMOTED_ROUTE_TESTS = [
   'getNewDisks.test.ts',
   'getRadioLists.test.ts',
   'getRanks.test.ts',
-  'getSearchByKey.test.ts',
   'getSimilarSinger.test.ts',
   'getSingerList.test.ts',
   'getSingerMv.test.ts',

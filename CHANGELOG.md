@@ -1,3 +1,17 @@
+## 3.3.2（未发布）
+
+### 改进
+
+- **歌单播放数少打上游**：`/user/playlist?playCount=1` 同一账号 10 分钟内直接用上次读到的播放数，不再每次重扫，所以数字最多晚 10 分钟更新。上游没给明确的翻页信号时，补到的照给，但 `playCountComplete` 是 `false`。
+
+### 给下游的通知
+
+- **移除旧搜索接口 `GET /getSearchByKey`**（只有 Node 有，3.3.1 已经预告过）。它实际只会搜歌曲，上游也常出错。现在访问它会回 `404`，请改用 `GET /search`：
+  - 参数 `key` 改成 `keyword`，`page`、`limit` 照旧（`limit` 最多 20）；要搜专辑、歌单、歌手就带 `type`。
+  - 回包从上游原样的 `{ response }` 变成 `{ code, type, page, limit, total, more, items }`，`items` 里的条目保持上游格式。
+  - 不登录搜歌曲常被上游拒绝，这时回 `502`（`errorKey` 为 `search.rejected`），登录后再搜即可。
+  - Folia 没用这条接口，不受影响。
+
 ## [3.3.1](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.0...v3.3.1) (2026-10-15)
 
 这一版补上专辑收藏、红心、关键字搜索、Serverless 歌词和歌单播放数，并修好 Docker 镜像。Folia 已经在用的接口，路径、参数、字段和状态码都没变；新东西都是新路由、可选参数或可选字段，不用就和 3.3.0 完全一样。

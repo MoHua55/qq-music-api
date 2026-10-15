@@ -46,7 +46,6 @@ import getRecommend from './getRecommend';
 import { getCategoryPlaylists, getNewSongs, getPlaylistCategories } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearch from './getSearch';
-import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerDesc from './getSingerDesc';
 import getSingerList from './getSingerList';
@@ -85,7 +84,6 @@ export default {
     operationController(subscriptionStatus),
   ),
   getHotKey: withControllerLogging('getHotKey', getHotKey),
-  getSearchByKey: withControllerLogging('getSearchByKey', getSearchByKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),
   getSongListCategories: withControllerLogging('getSongListCategories', getSongListCategories),
   getSongLists: withControllerLogging('getSongLists', getSongLists),

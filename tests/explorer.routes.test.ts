@@ -35,8 +35,8 @@ describe('Explorer routes', () => {
         title: 'QQ Music API Explorer',
         endpoints: expect.arrayContaining([
           expect.objectContaining({
-            id: 'get-search-by-key',
-            path: '/getSearchByKey',
+            id: 'get-search',
+            path: '/search',
           }),
           expect.objectContaining({
             id: 'qr-check',

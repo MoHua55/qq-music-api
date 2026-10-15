@@ -67,7 +67,6 @@ const CATALOG_ROUTES = new Set([
   'getMusicPlay',
   'getAlbumInfo',
   'getComments',
-  'getSearchByKey',
   'getSmartbox',
   'getHotkey',
   'getMvPlay',

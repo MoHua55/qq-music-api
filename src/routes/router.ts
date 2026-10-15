@@ -53,8 +53,6 @@ router.get('/downloadQQMusic', context.getDownloadQQMusic);
 
 router.get('/getHotkey', context.getHotKey);
 
-router.get('/getSearchByKey/:key?/:limit?/:page?/:catZhida?', context.getSearchByKey);
-
 // search smartbox
 router.get('/getSmartbox/:key?', context.getSmartbox);
 

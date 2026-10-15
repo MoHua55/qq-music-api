@@ -142,12 +142,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
-  {
-    name: 'getSearchByKey',
-    method: 'GET',
-    routePath: '/getSearchByKey/:key?/:limit?/:page?/:catZhida?',
-    category: 'Search',
-  },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
   { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
   {
@@ -521,52 +515,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getHotkey: {
     id: 'get-hotkey',
     description: 'Get current hot search keywords.',
-  },
-  getSearchByKey: {
-    id: 'get-search-by-key',
-    description:
-      'Legacy song search, Node only. Not recommended and planned for removal in 3.3.2: the upstream often fails here and it always searches songs. Use /search instead.',
-    queryParams: [
-      {
-        key: 'key',
-        label: 'Keyword',
-        required: true,
-        placeholder: '周杰伦',
-        description: 'Search keyword.',
-        defaultValue: '周杰伦',
-      },
-      {
-        key: 'limit',
-        label: 'Limit',
-        inputType: 'number',
-        placeholder: '10',
-        description: 'Items per page.',
-        defaultValue: 10,
-      },
-      {
-        key: 'page',
-        label: 'Page',
-        inputType: 'number',
-        placeholder: '1',
-        description: 'Current page number.',
-        defaultValue: 1,
-      },
-      {
-        key: 'catZhida',
-        label: 'Category',
-        inputType: 'number',
-        placeholder: '1',
-        description: '1 song, 2 singer, 3 album.',
-        defaultValue: 1,
-      },
-      {
-        key: 'remoteplace',
-        label: 'Remote Place',
-        placeholder: 'song',
-        description: 'Search routing hint.',
-        defaultValue: 'song',
-      },
-    ],
   },
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',

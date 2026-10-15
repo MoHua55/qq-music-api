@@ -157,7 +157,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
-MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，计划在 3.3.2 移除，搜索请改用 `/search`。
+MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 已经在 3.3.2 移除，搜索请用 `/search`。
 
 ## 红心写入
 
@@ -690,12 +690,6 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 ### 获取关键字搜索提示
 
 `GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。
-
-### 获取搜索结果
-
-旧接口，不建议再用，计划在 3.3.2 移除：上游常常出错，而且实际只会搜歌曲。请改用上面的 [`/search`](#关键字搜索)。
-
-`GET /getSearchByKey?key=示例关键词&limit=10&page=1` 查询搜索结果。`key` 必填，`limit` 默认 10、`page` 默认 1。可选 `remoteplace` 默认 `song`，其他值包括 `album`、`mv`、`playlist`、`user`、`lyric`；注意参数拼写是 `remoteplace`。
 
 ### 获取MV标签
 
