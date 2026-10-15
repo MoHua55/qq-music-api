@@ -89,7 +89,7 @@ const pageRequest = (pageNo: number, uin = '10000') => ({
   param: { uin, file_id: '', page_no: pageNo, page_size: 2000 },
 });
 
-it('文档、Explorer、CHANGELOG 都说明云盘；能力声明等真账号验过才打开', async () => {
+it('文档、Explorer、CHANGELOG 都说明云盘；真账号验过列表和播放后，能力声明打开', async () => {
   const readme = readFileSync(resolve(__dirname, '../docs/README.md'), 'utf8');
   const changelog = readFileSync(resolve(__dirname, '../CHANGELOG.md'), 'utf8');
   expect(readme).toContain('/user/cloud');
@@ -103,8 +103,8 @@ it('文档、Explorer、CHANGELOG 都说明云盘；能力声明等真账号验�
   expect(channels.body).toMatchObject({
     data: {
       features: {
-        library: { getCloudCollection: false },
-        catalog: { getCloudTracks: false },
+        library: { getCloudCollection: true },
+        catalog: { getCloudTracks: true },
       },
     },
   });

@@ -20,7 +20,7 @@ const expectedFeatures = (node: boolean) => ({
     getUserAlbums: true,
     getLikedSongIds: true,
     getLikedSongs: true,
-    getCloudCollection: false,
+    getCloudCollection: true,
   },
   catalog: {
     getPlaylistTracks: true,
@@ -30,7 +30,7 @@ const expectedFeatures = (node: boolean) => ({
     getArtistDetail: true,
     getArtistSongs: true,
     getArtistAlbums: true,
-    getCloudTracks: false,
+    getCloudTracks: true,
     getSubscriptionStatus: true,
   },
   playback: { getSongDetail: true, getAudioSource: true, getReplacement: false, preview: true },
