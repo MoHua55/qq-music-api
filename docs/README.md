@@ -78,7 +78,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | 环境变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `PORT` | `3200` | HTTP 服务端口 |
-| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 只在受控测试部署设为 `1`，开启尚未完成真账号验证的专辑写入；专辑能力仍 false，红心不依赖此开关 |
+| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 预留给以后还没做完真账号验证的写入接口；目前没有接口用到它，红心和专辑收藏都不依赖此开关 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
@@ -141,8 +141,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `POST /user/playlist/create`、`/rename`、`/delete` | 是 | 建立、改名、删除自己的歌单 | ✓ |
 | `POST /user/playlist/subscribe` | 是 | 收藏、取消收藏歌单 | ✓ |
 | `POST /user/song/like` | 是 | 红心、取消红心，读回确认后才返回成功 | ✓ |
-
-| `POST /user/album/subscribe` | 是 | 受控测试的专辑收藏、取消收藏，默认关闭 | ✓ |
+| `POST /user/album/subscribe` | 是 | 收藏、取消收藏专辑，读回确认后才返回成功 | ✓ |
 | `GET /user/subscription-status` | 是 | 查歌单、专辑、歌曲有没有收藏 | ✓ |
 | **推荐与电台** | | | |
 | `GET /user/guess-you-like` | 是 | 猜你喜欢，每次几首 | ✓ |
@@ -166,21 +165,22 @@ id 必须是正的安全整数，mid 是 1–64 位字母或数字，type 必填
 关联无法确认、写入回应不明或读回未知／不符时回安全 `502`，`retryable: false`，不要盲目重送。
 默认启用，不需要实验写入开关；没有登录会话回 `401`。
 Serverless 未配置会话密钥时仍按既有规则回 `501`。
-`features.mutations.likeSong` 为 true，专辑写入能力仍为 false。
+`features.mutations.likeSong` 为 true。
 Node 已用手机 QQ 与微信各完成一次红心、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
 
-## 专辑收藏写入（默认关闭）
+## 专辑收藏写入
 
 `POST /user/album/subscribe` 收 JSON `{ id: albumMid, subscribed }`。
 id 是 1–64 位字母或数字组成的专辑 MID 字符串，不收数字专辑 id；subscribed 必须是布尔值，不收额外字段。
 先读收藏状态，已是目标也要确认；需要变更时只写一次，再读回，确认后才回 `{ code: 200, subscribed }`。
 写入或读回不明／不符时回安全 `502`，`retryable: false`，整个确认流程不自动重试。
-默认回 `501`＋`feature.unavailable`，受控测试部署明确设置 `QQ_UNVERIFIED_WRITES_ENABLED=1` 才可使用。
+默认启用，不需要实验写入开关；没有登录会话回 `401`。
 Serverless 未配置会话密钥时仍按既有规则回 `501`。
-`features.mutations.subscribeAlbum` 仍 false，离线测试不能证明 Android 实写已可用。
+`features.mutations.subscribeAlbum` 为 true。
 专辑状态读取与写入优先使用凭证中的精确字符串 owner，不从不安全 number 回建账号。
 安全范围的状态参数保持数字；超范围的 19 位 owner 以十进制字符串发送，写入始终用字符串。
-超范围字符串的上游接受度尚待真账号确认；初始状态未知或被拒时不会写入。
+初始状态未知或被拒时不会写入。
+Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
 
 ## QQ 音乐原生扫码登录
 
@@ -484,7 +484,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
-| `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist` | `subscribeAlbum` |
+| `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |
 
 已有的 `/getSongListDetail` 继续返回原来的歌单数据；`catalog.getPlaylistDetail: false` 指的是尚未提供单独的歌单 metadata 能力。纯前端的可用性判断与本地诊断不属于这里的后端方法声明。
@@ -501,7 +501,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
     "features": {
       "library": { "getLikedSongs": true },
       "recommendations": { "getDailySongs": true, "dislikeSong": false },
-      "mutations": { "likeSong": true, "subscribeAlbum": false }
+      "mutations": { "likeSong": true, "subscribeAlbum": true }
     }
   }
 }

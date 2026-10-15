@@ -303,17 +303,17 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   playlistSubscribe: {
     description:
-      'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list. Album subscription writes are not enabled.',
+      'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list.',
     bodyExample: { tid: '70001', subscribed: true },
   },
   songLike: {
     description:
-      'Like or unlike a catalog song for the signed-in account. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state. Album subscription writes remain disabled by default.',
+      'Like or unlike a catalog song for the signed-in account. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state.',
     bodyExample: { song: { id: 101, mid: 'FixtureSongA1', type: 0 }, liked: true },
   },
   albumSubscribe: {
     description:
-      'Experimental album subscribe/unsubscribe by album MID. Disabled by default; controlled deployments must explicitly set QQ_UNVERIFIED_WRITES_ENABLED=1. Reads the target state, writes at most once and confirms it again; unknown outcomes return 502 and must not be retried blindly. The public capability remains false.',
+      'Subscribe or unsubscribe an album by album MID for the signed-in account. Reads the target state, writes at most once and confirms it again; unknown outcomes return 502 and must not be retried blindly.',
     bodyExample: { id: 'FixtureAlbumA1', subscribed: true },
   },
   subscriptionStatus: {

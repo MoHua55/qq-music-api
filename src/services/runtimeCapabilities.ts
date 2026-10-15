@@ -59,7 +59,7 @@ const featuresFor = (runtime: BackendRuntime) => ({
     updatePlaylistTracks: true,
     likeSong: true,
     subscribePlaylist: true,
-    subscribeAlbum: false,
+    subscribeAlbum: true,
   },
   playbackReports: { reportPlayback: false },
 });
