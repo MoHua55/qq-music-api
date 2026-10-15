@@ -10,7 +10,7 @@ describe.each(CATALOG_RUNTIMES)('专辑收藏写入（%s）', (runtime) => {
   let previous: string | undefined;
   const call = async (
     body: unknown = { id, subscribed: true },
-    enabled = true,
+    enabled = false,
     mode: 'valid' | 'missing' = 'valid',
   ) => {
     const options = await upstream.options(mode);
@@ -42,17 +42,17 @@ describe.each(CATALOG_RUNTIMES)('专辑收藏写入（%s）', (runtime) => {
     if (previous === undefined) delete process.env.QQ_UNVERIFIED_WRITES_ENABLED;
     else process.env.QQ_UNVERIFIED_WRITES_ENABLED = previous;
   });
-  it('默认关闭，不请求上游', async () => {
-    expect(await call(undefined, false)).toMatchObject({
-      status: 501,
-      body: { errorKey: 'feature.unavailable', retryable: false },
+  it.each([false, true])('专辑收藏默认启用，不依赖实验写入开关 %s', async (enabled) => {
+    expect(await call(undefined, enabled)).toMatchObject({
+      status: 200,
+      body: { code: 200, subscribed: true },
     });
-    expect(upstream.calls).toHaveLength(0);
+    expect(rpc().map((c) => c.method)).toEqual(['IsAlbumFan', 'FavAlbum', 'IsAlbumFan']);
   });
-  it('能力声明仍为 false', async () => {
+  it('能力声明为 true', async () => {
     expect((await callRoute(runtime, '/login/channels')).body).toHaveProperty(
       'data.features.mutations.subscribeAlbum',
-      false,
+      true,
     );
     expect((await callRoute(runtime, '/login/channels')).body).toHaveProperty(
       'data.features.mutations.likeSong',

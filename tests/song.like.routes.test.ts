@@ -56,10 +56,10 @@ describe.each(CATALOG_RUNTIMES)('红心写入（%s）', (runtime) => {
       'IsSongFanByMid',
     ]);
   });
-  it('只声明已验证的红心能力，专辑仍关闭', async () => {
+  it('红心与专辑收藏都声明为已验证能力', async () => {
     const result = await callRoute(runtime, '/login/channels');
     expect(result.body).toHaveProperty('data.features.mutations.likeSong', true);
-    expect(result.body).toHaveProperty('data.features.mutations.subscribeAlbum', false);
+    expect(result.body).toHaveProperty('data.features.mutations.subscribeAlbum', true);
   });
   it.each([true, false])('先核对歌曲，再写一次并确认目标 %s', async (liked) => {
     upstream.state.rpcReplyQueues!.IsSongFanByMid = [
