@@ -34,7 +34,7 @@ const expectedFeatures = (node: boolean) => ({
     getSubscriptionStatus: true,
   },
   playback: { getSongDetail: true, getAudioSource: true, getReplacement: false, preview: true },
-  search: { searchSongs: node },
+  search: { searchSongs: true, searchAlbums: true, searchPlaylists: true, searchArtists: true },
   lyrics: { getLyrics: node, getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,
