@@ -2,6 +2,7 @@
 
 ### 新功能
 
+- **音乐云盘**：`GET /user/cloud?limit=&offset=`，要登录，回 `{ code, data, count, hasMore }`。每首带歌曲（上游格式）、文件名、加入时间和 `playable`：对得上曲库的歌拿 `song.mid` 照常用 `/getMusicPlay` 播放，自己上传、没对上的文件只给资料。`limit` 默认 200、最多 1000，一般一次请求只打一次上游。播放验证完之前，`features` 里云盘的两项还是 `false`。
 - **歌单详情带播放数**：`/user/playlist-detail?playCount=1` 在回包顶层多给一个 `play_cnt`，取自同一次读详情的结果，不多打上游。不公开的歌单是 `0`，“我喜欢”不给（官方也不显示）。不带这个参数时回包和以前一样。
 - **歌词补翻译**：`/getLyric?trans=1` 在旧接口的翻译是空的时，再去另一个歌词接口要一次翻译，要到就放进 `trans`（base64 的 LRC）。Node 和 Serverless 都能用，不用登录；补的那次只试一次，失败照常回原来的歌词。不带这个参数时只打一次上游，和以前一样。
 - **QQ 音乐 App 扫码登录**：新的登录通道 `qqmusic`（`/login/qr/key?channel=qqmusic`）。用 QQ 音乐 App 扫一扫，就用 App 里当下登录的账号登录，绑 QQ 或微信都行。二维码和手机 QQ 扫码同一种，Serverless 一样要中继。`/login/channels` 的 `channels` 多了 `qqmusic`，排在最后；只认得 `qq`、`wechat` 的前端（例如目前的 Folia）不受影响。

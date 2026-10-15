@@ -22,6 +22,7 @@ import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userCloud } from '../routes/operations/userCloud';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
@@ -73,6 +74,7 @@ export default {
   songLike: withControllerLogging('songLike', operationController(songLike)),
   albumSubscribe: withControllerLogging('albumSubscribe', operationController(albumSubscribe)),
   userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),
+  userCloud: withControllerLogging('userCloud', operationController(userCloud)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),
   playlistRename: withControllerLogging('playlistRename', operationController(playlistRename)),

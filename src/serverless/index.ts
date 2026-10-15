@@ -26,6 +26,7 @@ import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userCloud } from '../routes/operations/userCloud';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
@@ -167,6 +168,7 @@ const routes: Record<string, RouteHandler> = {
   '/user/detail': operationRoute(userDetail),
   '/user/vip': operationRoute(userVip),
   '/user/daily-songs': operationRoute(userDailySongs),
+  '/user/cloud': operationRoute(userCloud),
   '/user/playlist/tracks': operationRoute(playlistTracks),
   '/user/playlist/create': operationRoute(playlistCreate),
   '/user/playlist/rename': operationRoute(playlistRename),
@@ -284,6 +286,7 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist-detail',
   '/user/guess-you-like',
   '/user/daily-songs',
+  '/user/cloud',
   '/radio/list',
   '/radio/tracks',
   '/getMusicPlay/:songmid?',

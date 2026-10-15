@@ -120,6 +120,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   },
   { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
   { name: 'userDailySongs', method: 'GET', routePath: '/user/daily-songs', category: 'User' },
+  { name: 'userCloud', method: 'GET', routePath: '/user/cloud', category: 'User' },
   {
     name: 'getRecommendPlaylists',
     method: 'GET',
@@ -476,6 +477,14 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   userDailySongs: {
     description:
       "Get today's Daily 30 songs for the authenticated user. It reads the account's own daily playlist, so it works whether or not the playlist is in your favorites. Songs keep the upstream format. Without a session it answers 401; when the upstream returns no songs it answers 422. There is no refresh parameter.",
+  },
+  userCloud: {
+    description:
+      "List the songs in the authenticated user's QQ Music cloud drive. Each item has song (upstream track format, or null), fileName, addTime (milliseconds, or null) and playable. Playable items match a catalog song and play through /getMusicPlay with song.mid; uploaded files that match nothing are listed but not playable. An empty drive answers 200 with an empty list; without a session it answers 401.",
+    queryParams: [
+      { key: 'limit', label: 'Limit', description: 'Page size, 200 by default, up to 1000.' },
+      { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
+    ],
   },
   getGuessYouLike: {
     description:

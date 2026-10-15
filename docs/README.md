@@ -149,6 +149,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | **推荐与电台** | | | |
 | `GET /user/guess-you-like` | 是 | 猜你喜欢，每次几首 | ✓ |
 | `GET /user/daily-songs` | 是 | 今天的每日 30 首 | ✓ |
+| `GET /user/cloud` | 是 | 音乐云盘里的歌，分页 | ✓ |
 | `GET /recommend/playlists` | 可选 | 推荐歌单；登录了会更贴近个人口味 | ✓ |
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
@@ -257,6 +258,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `/user/liked-songs` | `offset`、`limit`，最多 100 | 内建“我喜欢”的歌曲分页 |
 | `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`（最多 100）、`playCount=1` | 登录用户自己歌单的歌曲分页，包括不公开歌单；`playCount=1` 时带上这张歌单的播放数 |
 | `/user/albums` | `offset`、`limit`，默认 20、最多 100 | 收藏专辑分页 |
+| `/user/cloud` | `offset`、`limit`，默认 200、最多 1000 | 音乐云盘里的歌，见下面的“音乐云盘” |
 
 `/user/playlist` 只支持当前账号。`uid` 不传就是本人，传其他账号会回 `400`，说明为 `uid must be the logged-in account`。
 
@@ -341,6 +343,34 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 普通收藏歌单优先沿用 `logo`，为空时看 `albumPicUrl`，补成 `picUrl` / `bigpicUrl`；已有字段不覆盖。官方收藏歌单（`dirType: 2` 或 `3`）使用第一首歌的专辑封面。条目已有可用专辑图时直接生成；缺少时每轮最多为 20 张读取第一首歌，读取失败不影响列表返回。`logo` 与 `albumPicUrl` 的上游原值保留。
 
 `/user/albums` 返回 `albums`、`total` 和 `more`。不要把其他专辑接口的非零码或全零结构当作本路由没有收藏。
+
+### 音乐云盘
+
+`GET /user/cloud?limit=&offset=`，需要登录。列出自己 QQ 音乐云盘里的歌，可以翻页。
+
+```json
+{
+  "code": 200,
+  "data": [
+    {
+      "song": { "mid": "demo-song-mid", "id": 90001, "name": "示例歌曲", "singer": [], "album": {}, "file": {} },
+      "fileName": "示例歌曲.flac",
+      "addTime": 1700000000000,
+      "playable": true
+    }
+  ],
+  "count": 1,
+  "hasMore": false
+}
+```
+
+- `limit` 默认 200、最多 1000；`offset` 从 0 开始。看不懂的值按默认处理。
+- `song` 保持上游的歌曲格式。对得上曲库的歌 `playable` 是 `true`，拿 `song.mid` 照常调 `/getMusicPlay` 播放；自己上传、没对上曲库的文件只给资料，`playable` 是 `false`，`song` 也可能是 `null`。
+- `fileName` 是上传时的文件名；`addTime` 是加入时间（毫秒），上游没给时是 `null`。
+- `count` 是云盘里的总数，`hasMore` 表示后面还有。云盘是空的也回 `200`，`data` 是空数组、`count` 是 `0`。
+- 上游一页给 2000 首，分页在服务端切，所以一般一次请求只打一次上游；要的范围跨过 2000 首时多打一次。
+- 出错时和推荐接口同一套响应（见[出错时的响应](#出错时的响应)）：没登录或上游不认这组凭证回 `401`，上游格式不对或其他失败回 `502`；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。
+- 播放还没用真账号验过，所以 `/login/channels` 里的 `getCloudCollection`、`getCloudTracks` 暂时还是 `false`。
 
 <a id="猜你喜欢与推荐歌单"></a>
 

@@ -33,6 +33,7 @@ router.get('/user/liked-songs', context.getUserLikedSongs);
 router.get('/user/playlist-detail', context.getOwnedPlaylistSongs);
 router.get('/user/guess-you-like', context.getGuessYouLike);
 router.get('/user/daily-songs', context.userDailySongs);
+router.get('/user/cloud', context.userCloud);
 
 // recommendations; a login session is used when present
 router.get('/recommend/playlists', context.getRecommendPlaylists);
