@@ -3,3 +3,16 @@ node_modules
 npm-debug.log
 
 docs/
+.git
+.claude
+.codex
+.auth-state
+.env
+.env.*
+.docker.env
+.worktrees
+coverage
+dist
+dist-esm
+tests
+*.tgz

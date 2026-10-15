@@ -13,6 +13,8 @@ export interface SessionMusicuOptions {
   anonymousUin?: 0;
   /** 测试或宿主注入；不给就用运行时自己的 fetch。 */
   fetcher?: FetchExecutor;
+  /** 写入与确认流程可关闭整个请求的重试，不改变旧路由默认值。 */
+  maxRetries?: number;
 }
 
 /** 匿名请求用网页端的 comm，和曲库路由一样；2026-10 实测推荐歌单匿名可读。 */
@@ -36,5 +38,6 @@ export const createSessionMusicuClient = (
       'User-Agent': `QQMusic 14090008(android ${session.device.osRelease})`,
       Cookie: credentialCookieHeader(session.credential),
     },
+    maxRetries: options.maxRetries,
   });
 };

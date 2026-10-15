@@ -1726,6 +1726,60 @@ describe('QQ login channel routing', () => {
     }
   });
 
+  it('should log only the cookie names and login type number from the QQ MQTT payload', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      const harness = createProtocolHarness();
+      const key = await harness.service.createSession('qq');
+      await harness.service.createQr(key);
+      harness.emit({ type: 'scanned', payload: {} });
+      harness.emit({
+        type: 'cookies',
+        payload: {
+          cookies: {
+            qqmusic_uin: { value: '123' },
+            qqmusic_key: { value: 'private-mqtt-key' },
+            qrcode_id: { value: 'private-qr-id' },
+            qqmusic_key_at: { value: '1700000000' },
+            tmeLoginType: { value: '2' },
+            'bad name; private-value': { value: 'x' },
+          },
+          commConf: { domain: '.qq.com', path: '/', expires: 1 },
+        },
+      });
+      await waitFor(async () => (await harness.service.checkQr(key)).code === 803);
+      const events = info.mock.calls.filter(([event]) => event === 'qq-auth.qq-cookies');
+      expect(events).toHaveLength(1);
+      expect(events[0][1]).toEqual({
+        loginChannel: 'qq',
+        cookieNames: ['qqmusic_key', 'qqmusic_key_at', 'qqmusic_uin', 'qrcode_id', 'tmeLoginType'],
+        tmeLoginType: 2,
+        hasCommConf: true,
+      });
+      const text = JSON.stringify(info.mock.calls);
+      for (const secret of ['private-mqtt-key', 'private-qr-id', '1700000000', 'private-value'])
+        expect(text).not.toContain(secret);
+    } finally {
+      info.mockRestore();
+    }
+  });
+
+  it('should still log an empty name list when the QQ cookies payload is not an object', async () => {
+    const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
+    try {
+      const harness = createProtocolHarness();
+      const key = await harness.service.createSession('qq');
+      await harness.service.createQr(key);
+      harness.emit({ type: 'cookies', payload: { cookies: 'not-an-object' } });
+      await waitFor(async () => (await harness.service.checkQr(key)).code === 800);
+      const events = info.mock.calls.filter(([event]) => event === 'qq-auth.qq-cookies');
+      expect(events).toHaveLength(1);
+      expect(events[0][1]).toEqual({ loginChannel: 'qq', cookieNames: [], hasCommConf: false });
+    } finally {
+      info.mockRestore();
+    }
+  });
+
   it('should reject a channel that is neither canonical nor a legacy alias', async () => {
     const harness = createProtocolHarness();
 

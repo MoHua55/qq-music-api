@@ -19,6 +19,8 @@ export const UPSTREAM_PHASES = [
   'get-user-vip',
   'playlist-track-write',
   'playlist-subscribe',
+  'song-like',
+  'album-subscribe',
   'playlist-create',
   'playlist-delete',
   'playlist-rename',
@@ -31,6 +33,8 @@ export const UPSTREAM_PHASES = [
   'credential-refresh',
   'get-user-playlists',
   'get-user-favorite-playlists',
+  'get-created-playlist-play-counts',
+  'get-favorite-playlist-play-counts',
   'get-user-favorite-albums',
   'get-song-list-detail',
   'get-owned-playlist-songs',
@@ -43,6 +47,7 @@ export const UPSTREAM_PHASES = [
   'get-playlist-categories',
   'get-category-playlists',
   'get-new-songs',
+  'search',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

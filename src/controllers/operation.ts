@@ -13,6 +13,7 @@ const firstOf = (value: string | string[] | undefined): string | undefined =>
 
 export const operationRequestOf = (ctx: Context): OperationRequest => ({
   runtime: 'node',
+  unverifiedWritesEnabled: process.env.QQ_UNVERIFIED_WRITES_ENABLED === '1',
   method: ctx.method,
   body: async () => (ctx.request as { body?: unknown }).body,
   query: (name) => firstOf(ctx.query[name]),

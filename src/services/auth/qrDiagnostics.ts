@@ -37,6 +37,47 @@ interface WechatQrDiagnostic {
   pollErrors?: number;
 }
 
+const COOKIE_NAME = /^[A-Za-z0-9_]{1,40}$/;
+const COOKIE_NAME_LIMIT = 20;
+
+/**
+ * 手机 QQ 扫码通道收到 MQTT `cookies` 时，只记录 cookie 名称和 `tmeLoginType` 的数字。
+ * 用来分辨用 QQ 音乐 App 扫码时回调内容跟手机 QQ 有什么不同；任何 cookie 的值都不记录。
+ */
+export const logQqCookies = (payload: unknown): void => {
+  try {
+    const body =
+      payload !== null && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+    const cookies =
+      body.cookies !== null && typeof body.cookies === 'object' && !Array.isArray(body.cookies)
+        ? (body.cookies as Record<string, unknown>)
+        : {};
+    const cookieNames = Object.keys(cookies)
+      .filter((name) => COOKIE_NAME.test(name))
+      .sort()
+      .slice(0, COOKIE_NAME_LIMIT);
+    const entry = cookies.tmeLoginType;
+    const raw =
+      entry !== null && typeof entry === 'object'
+        ? (entry as Record<string, unknown>).value
+        : undefined;
+    const tmeLoginType =
+      typeof raw === 'number' && Number.isSafeInteger(raw)
+        ? raw
+        : typeof raw === 'string' && /^\d{1,3}$/.test(raw)
+          ? Number(raw)
+          : undefined;
+    logger.info('qq-auth.qq-cookies', {
+      loginChannel: 'qq',
+      cookieNames,
+      ...(tmeLoginType === undefined ? {} : { tmeLoginType }),
+      hasCommConf: body.commConf !== null && typeof body.commConf === 'object',
+    });
+  } catch {
+    // Optional host log sinks must never turn a valid login into a failure.
+  }
+};
+
 /** A process-local counter correlates one attempt without deriving anything from a QR or account. */
 export const logWechatQr = (
   session: QrSessionRecord,

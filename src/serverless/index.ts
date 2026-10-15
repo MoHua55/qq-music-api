@@ -1,4 +1,6 @@
+import { albumSubscribe } from '../routes/operations/albumSubscribe';
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
+import { getLyricOperation } from '../routes/operations/getLyric';
 import { getMusicPlay } from '../routes/operations/getMusicPlay';
 import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
@@ -21,6 +23,7 @@ import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
@@ -44,6 +47,7 @@ import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
+import { searchResult } from '../services/search/search';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -84,6 +88,7 @@ export interface ServerlessEnv {
   QQ_PLAYBACK_HINTS_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
+  QQ_UNVERIFIED_WRITES_ENABLED?: string;
 }
 
 /**
@@ -165,6 +170,8 @@ const routes: Record<string, RouteHandler> = {
   '/user/playlist/rename': operationRoute(playlistRename),
   '/user/playlist/delete': operationRoute(playlistDelete),
   '/user/playlist/subscribe': operationRoute(playlistSubscribe),
+  '/user/song/like': operationRoute(songLike),
+  '/user/album/subscribe': operationRoute(albumSubscribe),
   '/user/subscription-status': operationRoute(subscriptionStatus),
 
   '/user/guess-you-like': async ({ service: getService, token }) =>
@@ -197,6 +204,19 @@ const routes: Record<string, RouteHandler> = {
   '/recommend/new-songs': async ({ url }) =>
     fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
 
+  // 有会话就带凭证，没有就匿名搜。没设密钥时解不开任何会话，也不建服务，直接匿名搜。
+  '/search': async ({ url, env, service: getService, token }) => {
+    const query = {
+      keyword: url.searchParams.get('keyword') ?? undefined,
+      type: url.searchParams.get('type') ?? undefined,
+      page: url.searchParams.get('page') ?? undefined,
+      limit: url.searchParams.get('limit') ?? undefined,
+    };
+    const session =
+      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
+    return fromResult(await searchResult(query, session));
+  },
+
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),
 
@@ -225,6 +245,7 @@ const routes: Record<string, RouteHandler> = {
   // and only on a deployment that can open one; any failure there keeps the anonymous answer.
   '/getSongListDetail/:disstid': operationRoute(getSongListDetail),
   '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
+  '/getLyric': operationRoute(getLyricOperation),
 
   '/getAlbumInfo': operationRoute(getAlbumInfo),
 
@@ -232,6 +253,9 @@ const routes: Record<string, RouteHandler> = {
 
   '/getSingerHotsong': operationRoute(getSingerHotsong),
 };
+
+const NO_SECRET =
+  'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.';
 
 /** The routes that need a session secret to mean anything. Catalog routes work without one. */
 const LOGIN_ROUTES = new Set([
@@ -248,6 +272,8 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist/rename',
   '/user/playlist/delete',
   '/user/playlist/subscribe',
+  '/user/song/like',
+  '/user/album/subscribe',
   '/user/subscription-status',
   '/user/playlist',
   '/user/albums',
@@ -317,14 +343,7 @@ export const handleRequest = async (
   // 🔴 Explicit, never a silent downgrade. Without a secret there is no key to seal a session
   // with, and generating one per isolate would make every login vanish on the next cold start.
   if (!configured && LOGIN_ROUTES.has(matched.route)) {
-    return json(
-      {
-        code: 501,
-        message:
-          'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.',
-      },
-      501,
-    );
+    return json({ code: 501, message: NO_SECRET }, 501);
   }
 
   // The legacy catalog transport is a module-level registration, so it is set before any catalog

@@ -70,6 +70,51 @@ it.each([
 
 describe.each(CATALOG_RUNTIMES)('/login/qr/check 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
+  it('微信设备限制的诊断字段经过 HTTP 保留', async () => {
+    upstream.state.wechatCode = 405;
+    upstream.state.phaseCodes = { exchange: 20279 };
+    const options = await upstream.options('check', { channel: 'wechat' });
+    const legs = await parity(
+      runtime,
+      '/login/qr/check?key=' + encodeURIComponent(options.key),
+      upstream.calls,
+      options,
+    );
+    expect(legs.host.status).toBe(200);
+    expect(legs.host.body).toMatchObject({
+      code: 800,
+      upstreamCode: 20279,
+      upstreamErrorKey: 'auth.device-limit',
+      failureStage: 'credential-exchange',
+      failureReason: 'upstream-rejected',
+      failureHint: { key: 'login.device-limit', message: expect.any(String) },
+    });
+    expect(legs.host).toEqual(legs.operation);
+  });
+  it.each([20279, 50006])('手机 QQ 主要失败 %s 不被回退的 1000 覆盖', async (code) => {
+    upstream.state.events = [authorized];
+    upstream.state.phaseCodes = { exchange: code, profile: 1000 };
+    const options = await upstream.options('check');
+    const legs = await parity(
+      runtime,
+      '/login/qr/check?key=' + encodeURIComponent(options.key),
+      upstream.calls,
+      options,
+    );
+    expect(legs.host.status).toBe(200);
+    expect(legs.host.body).toMatchObject({
+      code: 800,
+      upstreamCode: 1000,
+      failureStage: 'credential-validation',
+      primaryFailure: { upstreamCode: code, failureStage: 'credential-exchange' },
+      fallbackAttempted: true,
+      failureHint: {
+        key: code === 20279 ? 'login.device-limit' : 'login.wrong-scan-app',
+        message: expect.any(String),
+      },
+    });
+    expect(legs.host).toEqual(legs.operation);
+  });
   it.each(['valid', 'invalid', 'expired'] as const)('key %s 保留自然过期与等待', async (mode) => {
     const options = await upstream.options('check', { mode });
     const legs = await parity(

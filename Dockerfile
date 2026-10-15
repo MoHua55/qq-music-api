@@ -1,17 +1,25 @@
-FROM node:18-alpine
-
-LABEL maintainer="Rain120 <1085131904@qq.com>"
-
+FROM node:24-alpine AS build
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY . .
+RUN npm run build:js
 
-COPY package.json package-lock.json* ./
-RUN npm ci --registry=https://registry.npmmirror.com
+FROM node:24-alpine AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
 
-COPY scripts ./scripts
-COPY src ./src
-COPY public ./public
-COPY tsconfig.json ./
-
+FROM node:24-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production PORT=3200 \
+    QQ_AUTH_STATE_PATH=/app/.auth-state/qq-device.json \
+    QQ_AUTH_SESSION_PATH=/app/.auth-state/qq-sessions.json
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json ./
+RUN mkdir -p /app/.auth-state && chown node:node /app/.auth-state
+USER node
+VOLUME ["/app/.auth-state"]
 EXPOSE 3200
-
-CMD ["node", "-r", "ts-node/register/transpile-only", "src/app.ts"]
+CMD ["node", "dist/src/app.js"]

@@ -18,6 +18,8 @@ router.get('/login/channels', context.loginChannels);
 router.get('/logout', context.logout);
 router.get('/user/detail', context.userDetail);
 router.get('/user/vip', context.userVip);
+router.post('/user/song/like', context.songLike);
+router.post('/user/album/subscribe', context.albumSubscribe);
 router.post('/user/playlist/tracks', context.playlistTracks);
 router.post('/user/playlist/create', context.playlistCreate);
 router.post('/user/playlist/rename', context.playlistRename);
@@ -38,6 +40,9 @@ router.get('/recommend/playlists', context.getRecommendPlaylists);
 router.get('/recommend/categories', context.getPlaylistCategories);
 router.get('/recommend/category-playlists', context.getCategoryPlaylists);
 router.get('/recommend/new-songs', context.getNewSongs);
+
+// keyword search; a login session is used when present
+router.get('/search', context.getSearch);
 
 // radio; a login session is required
 router.get('/radio/list', context.getRadioList);

@@ -29,7 +29,7 @@ import {
 import type { AuthHttpClient } from './httpClient';
 import { QqDeviceBootstrapError, QqProtocolError, QrLoginServiceError } from './musicuProtocol';
 import { getAuthenticatedPlayUrls } from './playback';
-import { logWechatQr } from './qrDiagnostics';
+import { logQqCookies, logWechatQr } from './qrDiagnostics';
 import { createQqQrDriver, createWechatQrDriver } from './qrDrivers';
 import {
   confirmingState,
@@ -280,6 +280,7 @@ export class QrLoginServiceImpl implements QrLoginService {
   /** QQ App channel: the MQTT payload carries an exchange token, never the final credential. */
   private async exchangeQqLogin(session: QrSessionRecord, payload: unknown): Promise<QqCredential> {
     session.failureStage = 'credential-payload';
+    logQqCookies(payload);
     const cookies = dictionaryOf(dictionaryOf(payload).cookies);
     const musicid = stringOf(dictionaryOf(cookies.qqmusic_uin).value);
     const mqttToken = stringOf(dictionaryOf(cookies.qqmusic_key).value);
@@ -654,7 +655,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     if (uin !== undefined && uin.trim() !== '' && !isOwnAccountId(auth.credential, uin))
       throw new RequestRejectedError('uid must be the logged-in account');
     return withCredentialRejectionMapped(() =>
-      getPlaylists(this.http, auth, options.favoriteOffset ?? 0),
+      getPlaylists(this.http, auth, options.favoriteOffset ?? 0, options.playCount === true),
     );
   }
 

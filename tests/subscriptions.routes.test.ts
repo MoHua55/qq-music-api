@@ -127,6 +127,19 @@ describe.each(CATALOG_RUNTIMES)('收藏与收藏状态（%s）', (runtime) => {
       ],
     });
   });
+  it('专辑状态保留超安全范围的字符串 owner', async () => {
+    const owner = '1234567890123456789';
+    upstream.state.credentialOverrides = { str_musicid: owner, musicid: 1234567890123456800 };
+    const result = await call('/user/subscription-status?type=album&ids=FixtureAlbumA1');
+    expect(result).toMatchObject({ status: 200, body: { items: [{ status: 'subscribed' }] } });
+    expect(upstream.calls.flatMap((c) => c.rpc)).toEqual([
+      {
+        module: 'music.musicasset.AlbumFavRead',
+        method: 'IsAlbumFan',
+        param: { uin: owner, v_albumMid: ['FixtureAlbumA1'] },
+      },
+    ]);
+  });
   it('状态查询业务失败与无效结构回错误，不给 false', async () => {
     upstream.state.rpcReplies!.IsPlaylistFan = { code: 1000 };
     const failed = await call('/user/subscription-status?type=playlist&ids=70001');

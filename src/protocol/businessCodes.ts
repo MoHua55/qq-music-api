@@ -26,9 +26,16 @@ export const UPSTREAM_OPERATIONS = [
   'user.vip',
   /** 写入前的自建清单核对；不借用其他操作的非零码语义。 */
   'playlist.owned-list',
+  /** 无变更后的单次内容核对；失败只让可选说明为 unknown，不改变原写入结果。 */
+  'playlist.track-verification',
   /** 已验证调用形状，非零码的含义尚未确认，保持未知。 */
   'playlist.subscribe',
   'playlist.unsubscribe',
+  'song.like',
+  'song.unlike',
+  'song.identity-check',
+  'album.subscribe',
+  'album.unsubscribe',
   /** 建立／删除按各自操作保留未知非零码，不扩大凭证失效语义。 */
   'playlist.create',
   'playlist.delete',
@@ -49,6 +56,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.category-playlists',
   /** 新歌速递（`get_new_song_info`），匿名。 */
   'recommend.new-songs',
+  /** 关键字搜索（桌面版 `DoSearchForQQMusicDesktop`），歌曲要登录、其他类型匿名可读；非零码都还是未知。 */
+  'search',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
   'recommend.radio-list',
   /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */
@@ -228,6 +237,12 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
     ['recommend.radio-list', 'recommend.radio-tracks'],
     '电台路由要登录，沿用其他带凭证读取的处理：会话解得开但上游不认凭证时回 401。这两个接口没有单独实测过这几个码',
   ),
+  ...entries(['search'], 'business', [2001], {
+    ...observedUnknown(
+      '本项目实测见过：精简版搜索匿名搜歌曲时常回 2001（带会话的同一关键字有结果），原因没有分离。不能当成搜不到，也不自动重试',
+    ),
+    errorKey: 'search.rejected',
+  }),
   ...entries(['recommend.guess-you-like'], 'business', [22006], {
     ...observedUnknown('本项目实测见过（带 song_ids 且 num 改成 10 时被拒），原因没有分离'),
     errorKey: 'recommendation.rejected',

@@ -1,3 +1,30 @@
+## [3.3.1](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.0...v3.3.1) (2026-10-15)
+
+这一版补上专辑收藏、红心、关键字搜索、Serverless 歌词和歌单播放数，并修好 Docker 镜像。Folia 已经在用的接口，路径、参数、字段和状态码都没变；新东西都是新路由、可选参数或可选字段，不用就和 3.3.0 完全一样。
+
+### 新功能
+
+- **红心**：`POST /user/song/like`，JSON `{ song: { id, mid, type: 0 }, liked }`，要登录。先核对歌曲，写一次后读回确认才回成功；结果不明回 `502`，不自动重送。`features.mutations.likeSong` 为 `true`。
+- **收藏专辑**：`POST /user/album/subscribe`，JSON `{ id: 专辑MID, subscribed }`，要登录，同样写一次、读回确认。`features.mutations.subscribeAlbum` 为 `true`。微信账号的长账号 id 也能正确读写。
+- **关键字搜索**：`GET /search?keyword=&type=song|album|playlist|singer&page=&limit=`，Node 和 Serverless 都能用，不登录也能搜。条目保持上游格式、保留各种 MID；搜不到回 `200` 加空清单。不登录搜歌曲常被上游拒绝，这时回 `502`、`errorKey` 为 `search.rejected`，**不会**当成搜不到，登录后再搜即可。`features.search` 多了 `searchAlbums`、`searchPlaylists`、`searchArtists`，`searchSongs` 现在指向这条新路由。
+- **歌词支持 Serverless**：`/getLyric` 在 Serverless 也能用了，回包形状和 Node 一样；`features.lyrics.getLyrics` 两个运行时都是 `true`。
+- **歌单播放数**：`GET /user/playlist?playCount=1` 会按需给每张歌单补上 `play_cnt`，并多一个 `playCountComplete`。不带这个参数时请求和回包都和以前一样，也不会多打上游。
+- **加歌“没有变更”时的说明**：`POST /user/playlist/tracks` 回 `changed: false` 时，多一个可选的 `verification.status`：`present`（歌都已在歌单里）、`absent`（都不在）、`unknown`（判断不出来）。原来的 HTTP 状态和 `changed` 不变。
+
+### 修复
+
+- **QQ 扫码引导更耐时钟误差**：本机时间和服务器差超过一分钟、引导请求被拒时，改用服务器时间重签一次，并补上回归测试与安全日志断言。感谢 [chthollyphile](https://github.com/chthollyphile) 的[贡献](https://github.com/yakult-green-tea/qq-music-api/pull/20)。
+- **Docker 镜像**：改用 Node 24 运行编译好的产物，只安装生产依赖，登录状态放在 `/app/.auth-state` 卷里；构建、打标签、推送分开成三个命令，推送地址由使用者明确指定，不再自动推送。
+
+### 改进
+
+- 手机 QQ 扫码收到回调时，多一条 info 日志 `qq-auth.qq-cookies`，只记 cookie 名称和 `tmeLoginType` 数字，不记任何值，方便排查不同 App 扫码的差异。
+- 契约测试集扩大到现有的写入、播放和扫码诊断，离线全套都会跑。
+
+### 给下游的提醒
+
+- 旧的 `GET /getSearchByKey`（只有 Node）不建议再用，**计划在 3.3.2 移除**。它实际只会搜歌曲，上游也常常出错；请改用 `/search`，参数从 `key` 改成 `keyword`，回包是 `{ code, type, page, limit, total, more, items }`。
+
 ## [3.3.0](https://github.com/yakult-green-tea/qq-music-api/compare/v3.2.0...v3.3.0) (2026-10-14)
 
 这一版补上推荐、电台、歌单编辑和更清楚的播放结果。Folia 已经在用的接口，路径、参数、字段和状态码都没变；下面「对现有调用的影响」列了几处看得出来、但不需要改调用方的行为变化。

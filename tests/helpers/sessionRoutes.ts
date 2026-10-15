@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
-import type { QrLoginService } from '../../src/services/auth/qrLogin';
+import type { QqCredential, QrLoginService } from '../../src/services/auth/qrLogin';
 import type { createContractUpstream } from './contractUpstream';
 
 let mockUpstream: ReturnType<typeof createContractUpstream>;
@@ -93,9 +93,12 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     detailBusinessCode?: number;
     detailNetworkError?: boolean;
     credentialLoginType?: number;
+    credentialOverrides?: Partial<QqCredential>;
     playbackHintsEnabled?: boolean;
     rpcReplies?: Record<string, SessionReply>;
     rpcReplyQueues?: Record<string, SessionReply[]>;
+    /** 旧 CGI 的假回应：回传 undefined 就照原来的契约桩处理；有 httpStatus 时回那个状态。 */
+    cgiReply?: (url: URL) => { body?: unknown; httpStatus?: number } | undefined;
   } = {};
 
   const sessionOf = (expiresAt = CONTRACT_NOW + 3600000) => ({
@@ -103,6 +106,7 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
     credential: {
       ...CONTRACT_CREDENTIAL,
       ...(state.credentialLoginType === undefined ? {} : { loginType: state.credentialLoginType }),
+      ...state.credentialOverrides,
     },
     device: deviceFixture.device,
     expiresAt,
@@ -152,6 +156,11 @@ export const useSessionUpstream = (runtime: CatalogRuntimeName) => {
       });
       if (url.pathname.includes('fcg_ucc_getcdinfo_byids') && state.anonymousPlaylist !== undefined)
         return Response.json(state.anonymousPlaylist);
+      const cgi = musicu ? undefined : state.cgiReply?.(url);
+      if (cgi)
+        return cgi.httpStatus
+          ? new Response('fixture-private-body', { status: cgi.httpStatus })
+          : Response.json(cgi.body);
       if (state.networkError) throw state.networkError;
       if (state.httpStatus)
         return new Response('fixture-private-body', { status: state.httpStatus });

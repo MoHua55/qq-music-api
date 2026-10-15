@@ -1,4 +1,3 @@
-import moment from 'moment';
 import { BaseServiceParams, BaseServiceResponse } from '../../types/core/request';
 import lyricParse from '../../util/lyricParse';
 import {
@@ -16,6 +15,10 @@ export interface GetLyricParams extends BaseServiceParams {
 
 const upstream = '/lyric/fcgi-bin/fcg_query_lyric_new.fcg';
 
+/** 上游给的是 UTF-8 文字的 base64；两个运行时都有 atob 与 TextDecoder，不依赖 Node 的 Buffer。 */
+const decodeBase64Utf8 = (value: string): string =>
+  new TextDecoder().decode(Uint8Array.from(atob(value), (character) => character.charCodeAt(0)));
+
 export default ({
   method = 'get',
   params = {},
@@ -25,7 +28,7 @@ export default ({
   const data = Object.assign(params, {
     format: 'json',
     outCharset: 'utf-8',
-    pcachetime: moment().valueOf(),
+    pcachetime: Date.now(),
   });
   const opts = Object.assign(options, {
     params: data,
@@ -44,7 +47,7 @@ export default ({
     options: opts,
   })
     .then((res: import('axios').AxiosResponse<any>) => {
-      const lyricString = res.data?.lyric && Buffer.from(res.data.lyric, 'base64').toString();
+      const lyricString = res.data?.lyric && decodeBase64Utf8(res.data.lyric);
       const lyric = isFormat ? lyricParse.lyricParse(lyricString || '') : lyricString;
       const response = {
         ...(res.data || {}),

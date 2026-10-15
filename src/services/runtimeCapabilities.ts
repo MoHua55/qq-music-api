@@ -4,7 +4,7 @@ export type BackendRuntime = 'node' | 'serverless';
 
 // These flags describe implemented backend methods, independent of login or upstream availability.
 // Keep client-only predicates and diagnostics out of this declaration.
-const featuresFor = (runtime: BackendRuntime) => ({
+const featuresFor = () => ({
   user: { getVip: true },
   playlistManagement: { createPlaylist: true, renamePlaylist: true, deletePlaylist: true },
   auth: {
@@ -39,8 +39,8 @@ const featuresFor = (runtime: BackendRuntime) => ({
     getReplacement: false,
     preview: true,
   },
-  search: { searchSongs: runtime === 'node' },
-  lyrics: { getLyrics: runtime === 'node', getChorusRanges: false },
+  search: { searchSongs: true, searchAlbums: true, searchPlaylists: true, searchArtists: true },
+  lyrics: { getLyrics: true, getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,
     getDailySongs: true,
@@ -57,9 +57,9 @@ const featuresFor = (runtime: BackendRuntime) => ({
   radio: { getRadioList: true, getRadioTracks: true },
   mutations: {
     updatePlaylistTracks: true,
-    likeSong: false,
+    likeSong: true,
     subscribePlaylist: true,
-    subscribeAlbum: false,
+    subscribeAlbum: true,
   },
   playbackReports: { reportPlayback: false },
 });
@@ -73,12 +73,13 @@ export interface BackendCapabilityDeclaration extends RuntimeCapabilities {
 
 /** Shared wire shape; existing channel order, session mode and configuration meaning stay intact. */
 export const describeRuntimeCapabilities = (
-  runtime: BackendRuntime,
+  // 两个运行时现在声明同一组方法；参数保留，以后哪个方法只在一边实现时再按它区分。
+  _runtime: BackendRuntime,
   capabilities: RuntimeCapabilities,
   configured: boolean,
 ): BackendCapabilityDeclaration => ({
   channels: [...capabilities.channels],
   sessionMode: capabilities.sessionMode,
   configured,
-  features: featuresFor(runtime),
+  features: featuresFor(),
 });

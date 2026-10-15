@@ -31,6 +31,7 @@ export const operationRequestOf = ({
   request,
 }: OperationRouteContext): OperationRequest => ({
   runtime: 'serverless',
+  unverifiedWritesEnabled: env?.QQ_UNVERIFIED_WRITES_ENABLED === '1',
   method: request?.method ?? 'GET',
   body: async () => request?.json(),
   query: (name) => url.searchParams.get(name) ?? undefined,

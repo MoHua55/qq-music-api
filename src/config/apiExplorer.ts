@@ -90,6 +90,8 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
+  { name: 'songLike', method: 'POST', routePath: '/user/song/like', category: 'User' },
+  { name: 'albumSubscribe', method: 'POST', routePath: '/user/album/subscribe', category: 'User' },
   { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
   { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
   { name: 'playlistRename', method: 'POST', routePath: '/user/playlist/rename', category: 'User' },
@@ -147,6 +149,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'Search',
   },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
+  { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
   {
     name: 'getSongListCategories',
     method: 'GET',
@@ -301,8 +304,18 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   playlistSubscribe: {
     description:
-      'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list. Album subscription writes are not enabled.',
+      'Subscribe or unsubscribe a playlist for the signed-in account. Writes are never automatically retried. Success requires result 0 and an empty failure list.',
     bodyExample: { tid: '70001', subscribed: true },
+  },
+  songLike: {
+    description:
+      'Like or unlike a catalog song for the signed-in account. Requires numeric id, MID and type 0, checks their relation, never retries writes and only reports success after reading the target state.',
+    bodyExample: { song: { id: 101, mid: 'FixtureSongA1', type: 0 }, liked: true },
+  },
+  albumSubscribe: {
+    description:
+      'Subscribe or unsubscribe an album by album MID for the signed-in account. Reads the target state, writes at most once and confirms it again; unknown outcomes return 502 and must not be retried blindly.',
+    bodyExample: { id: 'FixtureAlbumA1', subscribed: true },
   },
   subscriptionStatus: {
     description:
@@ -326,7 +339,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   playlistTracks: {
     description:
-      'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 is an explicit catalog-song declaration, not the Android response type. The response is { code: 200, changed }; changed false means no change was reported, without saying why. There is no per-song result: accurate per-song presence checks are deferred. Likes are not enabled.',
+      'Add or remove confirmed catalog songs in your own ordinary playlist. POST only; the server resolves tid to a directory, rejects system playlists and unknown song types, and never retries writes. type: 0 declares a catalog song, independent of the Android response type. Only changed false adds verification.status after at most one read of the first 100 tracks, without paging or retries: present means all requested songs were found; absent requires a complete read with none found; mixed, incomplete or failed reads are unknown. Verification never changes the original HTTP or changed result. Use /user/song/like for likes.',
     bodyExample: { tid: '70001', op: 'add', songs: [{ id: 101, type: 0 }] },
   },
   userVip: {
@@ -412,6 +425,12 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         label: 'Favourite offset',
         description:
           'Continue reading collected playlists from this position. Use the nextFavoriteOffset of the previous answer; that round returns collected playlists only.',
+      },
+      {
+        key: 'playCount',
+        label: 'Play count',
+        description:
+          'Set to 1 to add play_cnt from the legacy list endpoints (matched by playlist id, non-negative only) and playCountComplete. Without it the request and answer are unchanged.',
       },
     ],
   },
@@ -505,7 +524,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getSearchByKey: {
     id: 'get-search-by-key',
-    description: 'Search songs, singers, or albums by keyword.',
+    description:
+      'Legacy song search, Node only. Not recommended and planned for removal in 3.3.2: the upstream often fails here and it always searches songs. Use /search instead.',
     queryParams: [
       {
         key: 'key',
@@ -551,6 +571,20 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
   },
+  getSearch: {
+    description:
+      'Search songs, albums, playlists or singers by keyword. Works without logging in and uses the session when there is one. Anonymous song searches are often rejected upstream (502 search.rejected, code 2001); logging in avoids that. Items keep the upstream format with all MIDs. No results is 200 with an empty list; a rejection is never reported as empty. Not retried automatically.',
+    queryParams: [
+      { key: 'keyword', label: 'Keyword', description: 'Search words, up to 60 characters.' },
+      {
+        key: 'type',
+        label: 'Type',
+        description: 'song (default), album, playlist or singer.',
+      },
+      { key: 'page', label: 'Page', description: 'Page number starting at 1.' },
+      { key: 'limit', label: 'Limit', description: 'Items per page, 10 by default, up to 20.' },
+    ],
+  },
   getSongLists: {
     description: 'Get song list results by page, limit, category, and sort.',
   },
@@ -588,7 +622,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getLyric: {
     id: 'get-lyric',
-    description: 'Get song lyric content, optionally formatted.',
+    description:
+      'Get song lyrics as LRC text on Node and serverless, no login needed. isFormat=true also splits it into timed lines. trans is passed through as upstream returns it and is often empty.',
     queryParams: [
       {
         key: 'songmid',

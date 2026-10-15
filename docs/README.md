@@ -32,14 +32,30 @@ $env:PORT = '3200'
 node node_modules/@yakult-green-tea/qq-music-api/dist/src/app.js
 ```
 
-本地 Docker 镜像的构建和运行：
+本地 Docker 使用 Node.js 24 LTS，构建时编译，运行时只安装生产依赖并启动 `dist`。
+先在当前环境设置自己的 `QQ_SESSION_SECRET`，再构建和运行：
 
 ```powershell
 npm run build:local-images
 npm run run:images
 ```
 
-默认映射本机 3200 端口。嵌入方通过 npm 安装本包时，需要更新依赖版本、锁文件并重新构建，才能用到新版本。
+默认映射本机 3200 端口，镜像标签跟随 package.json 的版本。
+`run:images` 挂载命名卷 `qq-music-api-state`，保存设备文件和加密会话；重建容器时复用同一个卷及密钥。
+容器默认使用 `QQ_AUTH_STATE_PATH=/app/.auth-state/qq-device.json` 和
+`QQ_AUTH_SESSION_PATH=/app/.auth-state/qq-sessions.json`。
+没设置 `QQ_SESSION_SECRET` 时会话只放内存，重启后需要重新登录；不要把凭证保存成明文。
+自行使用 bind mount 时，要让容器的 node 用户有写入权限。
+
+构建不会推送镜像。远端地址必须是自己的 registry/repository，tag 与 push 分开执行：
+
+```powershell
+npm run tag:images -- your-registry/your-repository:your-tag
+npm run push:images -- your-registry/your-repository:your-tag
+```
+
+第二条会发布到指定地址，只在你明确决定推送时运行。
+嵌入方通过 npm 安装本包时，需要更新依赖版本、锁文件并重新构建，才能用到新版本。
 
 ## API Explorer
 
@@ -62,11 +78,13 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | 环境变量 | 默认值 | 用途 |
 | --- | --- | --- |
 | `PORT` | `3200` | HTTP 服务端口 |
+| `QQ_UNVERIFIED_WRITES_ENABLED` | 关闭 | 预留给以后还没做完真账号验证的写入接口；目前没有接口用到它，红心和专辑收藏都不依赖此开关 |
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
+| `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
-| `QQ_SESSION_SECRET` | 无 | Serverless 会话加密密钥 |
+| `QQ_SESSION_SECRET` | 无 | Serverless 会话或 Node 持久会话的加密密钥；持久部署重启时保持不变 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
 
 设备身份文件不包含用户凭证。多实例部署应各自指定身份文件，避免多个实例共用同一个设备身份。
@@ -122,6 +140,8 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `POST /user/playlist/tracks` | 是 | 往自己的歌单加歌、删歌 | ✓ |
 | `POST /user/playlist/create`、`/rename`、`/delete` | 是 | 建立、改名、删除自己的歌单 | ✓ |
 | `POST /user/playlist/subscribe` | 是 | 收藏、取消收藏歌单 | ✓ |
+| `POST /user/song/like` | 是 | 红心、取消红心，读回确认后才返回成功 | ✓ |
+| `POST /user/album/subscribe` | 是 | 收藏、取消收藏专辑，读回确认后才返回成功 | ✓ |
 | `GET /user/subscription-status` | 是 | 查歌单、专辑、歌曲有没有收藏 | ✓ |
 | **推荐与电台** | | | |
 | `GET /user/guess-you-like` | 是 | 猜你喜欢，每次几首 | ✓ |
@@ -130,11 +150,40 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
+| **搜索** | | | |
+| `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
 | **播放与曲库** | | | |
+| `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
-搜索、歌词、MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。
+MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 也还在，但不建议再用，计划在 3.3.2 移除，搜索请改用 `/search`。
+
+## 红心写入
+
+`POST /user/song/like` 收 JSON `{ song: { id, mid, type: 0 }, liked }`。
+id 必须是正的安全整数，mid 是 1–64 位字母或数字，type 必填且只能是数字 0，liked 必须是布尔值；不收额外字段。
+先读歌曲详情核对 id／mid，再读红心状态；已是目标状态也要确认后才回 `{ code: 200, liked }`。
+需要变更时仅向系统目录 201 写一次，再读回目标状态；写入和确认流程不自动重试。
+关联无法确认、写入回应不明或读回未知／不符时回安全 `502`，`retryable: false`，不要盲目重送。
+默认启用，不需要实验写入开关；没有登录会话回 `401`。
+Serverless 未配置会话密钥时仍按既有规则回 `501`。
+`features.mutations.likeSong` 为 true。
+Node 已用手机 QQ 与微信各完成一次红心、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
+
+## 专辑收藏写入
+
+`POST /user/album/subscribe` 收 JSON `{ id: albumMid, subscribed }`。
+id 是 1–64 位字母或数字组成的专辑 MID 字符串，不收数字专辑 id；subscribed 必须是布尔值，不收额外字段。
+先读收藏状态，已是目标也要确认；需要变更时只写一次，再读回，确认后才回 `{ code: 200, subscribed }`。
+写入或读回不明／不符时回安全 `502`，`retryable: false`，整个确认流程不自动重试。
+默认启用，不需要实验写入开关；没有登录会话回 `401`。
+Serverless 未配置会话密钥时仍按既有规则回 `501`。
+`features.mutations.subscribeAlbum` 为 true。
+专辑状态读取与写入优先使用凭证中的精确字符串 owner，不从不安全 number 回建账号。
+安全范围的状态参数保持数字；超范围的 19 位 owner 以十进制字符串发送，写入始终用字符串。
+初始状态未知或被拒时不会写入。
+Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
 
 ## QQ 音乐原生扫码登录
 
@@ -198,7 +247,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | --- | --- | --- |
 | `/user/detail` | 会话 | 当前用户资料 |
 | `/user/vip` | 会话 | 当前账号会员状态 `{ code: 200, isVip, vipLevel, upstream }`，分免费、绿钻、超级会员 |
-| `/user/playlist` | 可选 `uid`、`favoriteOffset` | 自建与收藏歌单 |
+| `/user/playlist` | 可选 `uid`、`favoriteOffset`、`playCount=1` | 自建与收藏歌单；`playCount=1` 时补播放数 |
 | `/user/liked-songs` | `offset`、`limit`，最多 100 | 内建“我喜欢”的歌曲分页 |
 | `/user/playlist-detail` | 建议传 `tid`；可选 `dirid`、`offset`、`limit`，最多 100 | 登录用户自己歌单的歌曲分页，包括不公开歌单 |
 | `/user/albums` | `offset`、`limit`，默认 20、最多 100 | 收藏专辑分页 |
@@ -230,13 +279,27 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `POST /user/playlist/tracks`，JSON 正文：`{ "tid": "70001", "op": "add", "songs": [{ "id": 101, "type": 0 }] }`。`op` 只收 `add` 或 `del`，每次 1–100 首。`type: 0` 表示调用方明确确认是普通曲库歌曲；上游固定送 `songType: 0`，Android 读到的 `type: 1` 或 `songtype: 13` 不能直接传来，未知类型会拒绝。
 
-服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。新增和删除都只回这两个字段，没有逐首结果：上游给的逐首旗标实测不能说明歌曲原本在不在，准确的逐首判断留待后续。写入不自动重试，出错后先重新读歌单确认。新增和删除分别通过协议案例验证；红心、其他歌曲类型等待各自实测再开放。能力 `features.mutations.updatePlaylistTracks` 为 true，`likeSong` 仍为 false。
+服务器每次从当前账号自建清单找 `tid` 并换成目录号，不能传 `dirId`；只接受目录号 1–199 且没有系统类型标记的普通自建歌单，其他、别人的歌单和“我喜欢”都拒绝。写入成功回 `{ code: 200, changed: true }`；上游明确报无变更时 `changed: false`，不能据此猜测原因。
+
+只有 `changed: false` 时多回可选的 `verification: { status }`，描述本次请求中全部歌曲的读回状态，不回逐首结果：
+
+| status | 意思 |
+| --- | --- |
+| `present` | 本次请求的歌曲全部在读回内容中找到，即使歌单还有后续页也能确认 |
+| `absent` | 已完整读回歌单，本次请求的歌曲全部不在里面 |
+| `unknown` | 部分在、部分不在，或读回不完整、失败、格式不可靠 |
+
+核对最多额外读一次现有的自建歌单内容接口，请求前 100 首，不翻页、不重试。没有读到某首不等于它不存在。
+核对失败仍保留原来的 HTTP `200` 和 `changed: false`，只把说明标成 `unknown`；这不是确认写入有变更，也不是无变更的原因。
+这个可选字段已做离线验证，尚待候选真账号验收；前端不读它也沿用原来的 `changed` 语义。
+写入不自动重试，出错后先读回确认。红心使用独立的 `/user/song/like`，其他歌曲类型仍未开放。
+能力 `features.mutations.updatePlaylistTracks` 和 `likeSong` 为 true；这个可选说明不新增能力旗标。
 
 ### 收藏与查询收藏状态
 
 `POST /user/playlist/subscribe`：`{ "tid": "70001", "subscribed": true }` 收藏歌单，`false` 取消收藏。只接受本人的会话，账号参数由服务器填；只有上游 `result: 0` 且失败清单为空才回 `{ code: 200, subscribed }`，写入不自动重试。失败后先读回状态再决定下一步，不盲目重送。
 
-`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单还做过收藏前后的状态转换；专辑收藏写入与红心写入等待各自真账号验证，当前不开放。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
+`GET /user/subscription-status?type=playlist&ids=70001,70002` 查状态。`type` 支持 `playlist`（数字歌单 id）、`album`（专辑 MID）和 `song`（歌曲 MID）；一次最多 100 个、重复 id 合并。成功回 `{ code: 200, type, items: [{ id, status }] }`，`status` 明确分为 `subscribed`、`not-subscribed`、`unknown`。缺字段或非布尔条目是 `unknown`；整次查询失败回错误，不给未收藏的假结果。三类查询都用过 Android 会话做静态对照，歌单与红心还做过写入前后的状态转换；专辑收藏已完成两个通道的真账号验证并开放（见上方「专辑收藏写入」）。能力为 `features.mutations.subscribePlaylist` 和 `features.catalog.getSubscriptionStatus`。
 
 ### 收藏歌单接着读
 
@@ -245,6 +308,14 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - 全部读完时，`more: false`，`total` 等于本轮列表长度。
 - 到 1000 条仍没读完时，`more: true`，`total` 是自建数加上上游给的收藏总数；用 `nextFavoriteOffset` 作为下一次的 `favoriteOffset`。续读只返回收藏歌单。
 - 空页或上游反复给同一页时也会停止，`more: true`，但没有 `nextFavoriteOffset`，调用方不能无限重试。
+
+### 歌单播放数
+
+`GET /user/playlist?playCount=1` 会多读旧接口，给每张歌单补上 `play_cnt`（和推荐歌单同名的数字字段）。不带这个参数时，请求和回包都和以前完全一样，也不会多打上游。
+
+- 自建与收藏各自按官方网页的分页方式读，每份最多 10 页（100 张）；只读本轮列表里有的那一类。
+- 按歌单 id 对上、而且是非负整数才给 `play_cnt`；对不上、上游给负数或读失败的条目**不带** `play_cnt`（Android 自建列表原本那个总是 0 的值也会拿掉，不当成真的播放数）。
+- 补播放数失败不会让列表失败，路由照样回 `200`；顶层多一个 `playCountComplete`，只有两份清单都完整读到尾才是 `true`。
 
 ### 选对歌单详情接口
 
@@ -378,6 +449,23 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 三条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
 
+### 关键字搜索
+
+`GET /search?keyword=<关键字>&type=song&page=1&limit=10` 按关键字搜索，Node 和 Serverless 都能用。
+
+- `type` 可以是 `song`（不给就是歌曲）、`album`、`playlist`、`singer`；其他值回 `400`。
+- `keyword` 必填，去掉前后空白后最多 60 个字；`page` 从 1 开始；`limit` 默认 10、最多 20。
+- 不登录也能搜，登录了就带上会话。Serverless 没设 `QQ_SESSION_SECRET` 也能用（只是一律匿名）。
+- **不登录搜歌曲常被上游拒绝**：会回 `502`，`errorKey` 是 `search.rejected`（上游码 2001）。这不是「搜不到」，登录后再搜通常就有结果。专辑、歌单、歌手不登录时一般正常。
+
+```json
+{ "code": 200, "type": "song", "page": 1, "limit": 10, "total": 36, "more": true, "items": [{ "mid": "demo-song-mid", "name": "示例歌曲" }] }
+```
+
+`items` 保持上游原来的格式：歌曲带 `mid`、`file.media_mid`、歌手和专辑的 `mid`；专辑带 `albummid`，歌单带 `dissid`，歌手带 `singerMID`。登录与否用的是同一种上游格式。`total` 是上游给的总数，`more` 表示上游说还有下一页。
+
+真的搜不到回 `200` 加空的 `items`。上游拒绝回 `502` 并保留数字，**不会**当成搜不到；不会自动重试。第二页以后没有完整实测过。
+
 ### 出错时的响应
 
 ```json
@@ -395,7 +483,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `401` | 没登录，或凭证被 QQ 拒绝 | `auth.required`、`auth.credential-invalid` |
 | `422` | 上游成功但没有数据 | `resource.not-found` |
 | `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
-| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`network.*` |
+| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`search.rejected`、`network.*` |
 
 完整的状态码、`errorKey`、QQ 数字码和播放提示对照见[错误对照表](./errors.md)。上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
 
@@ -420,11 +508,11 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs` | `getCloudCollection` |
 | `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums` | `getPlaylistDetail`、`getCloudTracks`、`getSubscriptionStatus` |
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
-| `search` | `searchSongs` 仅 Node 为 `true`，对应现有搜索路由；serverless 为 `false` | — |
-| `lyrics` | `getLyrics` 仅 Node 为 `true`，对应现有歌词路由；serverless 为 `false` | `getChorusRanges` |
+| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
+| `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
-| `mutations` | — | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` |
+| `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |
 
 已有的 `/getSongListDetail` 继续返回原来的歌单数据；`catalog.getPlaylistDetail: false` 指的是尚未提供单独的歌单 metadata 能力。纯前端的可用性判断与本地诊断不属于这里的后端方法声明。
@@ -441,7 +529,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
     "features": {
       "library": { "getLikedSongs": true },
       "recommendations": { "getDailySongs": true, "dislikeSong": false },
-      "mutations": { "likeSong": false }
+      "mutations": { "likeSong": true, "subscribeAlbum": true }
     }
   }
 }
@@ -592,7 +680,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取歌曲歌词
 
-`GET /getLyric?songmid=demo-song-mid` 返回歌词。`songmid` 是歌曲 mid；可选 `isFormat=true` 请求格式化，默认 `false`。
+`GET /getLyric?songmid=demo-song-mid` 返回歌词，Node 和 Serverless 都能用，不用登录。`songmid` 是歌曲 mid；可选 `isFormat=true` 请求格式化，默认 `false`。`lyric` 是解好的 LRC 文字；`trans`（翻译）原样转交上游的值，很多歌是空字符串；纯音乐会给一段很短的提示歌词。
 
 ### 获取搜索热词
 
@@ -603,6 +691,8 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 `GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。
 
 ### 获取搜索结果
+
+旧接口，不建议再用，计划在 3.3.2 移除：上游常常出错，而且实际只会搜歌曲。请改用上面的 [`/search`](#关键字搜索)。
 
 `GET /getSearchByKey?key=示例关键词&limit=10&page=1` 查询搜索结果。`key` 必填，`limit` 默认 10、`page` 默认 1。可选 `remoteplace` 默认 `song`，其他值包括 `album`、`mv`、`playlist`、`user`、`lyric`；注意参数拼写是 `remoteplace`。
 

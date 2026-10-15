@@ -19,6 +19,8 @@ Releases are maintainer-authorized operations. Merging a pull request, creating 
    ```
 
 5. Inspect the generated package contents and verify `LICENSE`, `ATTRIBUTION.md`, `README.md`, and `dist/src/app.js` are present.
+6. Keep contributor credit in `README.md`, `ATTRIBUTION.md`, the changelog, and the GitHub
+   release notes consistent.
 
 ## Publishing
 

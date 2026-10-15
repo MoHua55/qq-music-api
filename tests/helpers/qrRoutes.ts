@@ -92,6 +92,7 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
     network?: boolean;
     httpStatus?: number;
     businessCode?: number;
+    phaseCodes?: Partial<Record<'exchange' | 'profile', number>>;
     globalCode?: number;
     wechatCode?: number;
     events?: QrEvent[];
@@ -165,6 +166,8 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
       if (fail && state.globalCode !== undefined) body.code = state.globalCode;
       if (fail && state.businessCode !== undefined)
         for (const [key] of rpc) body[key].code = state.businessCode;
+      if ((phase === 'exchange' || phase === 'profile') && state.phaseCodes?.[phase] !== undefined)
+        for (const [key] of rpc) body[key].code = state.phaseCodes[phase];
       return Response.json(body);
     };
     jest.spyOn(global, 'fetch').mockImplementation((input, init) => mockExecute(input, init));

@@ -1,3 +1,4 @@
+import { albumSubscribe } from '../routes/operations/albumSubscribe';
 import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
 import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
 import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
@@ -18,6 +19,7 @@ import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
@@ -43,6 +45,7 @@ import getRanks from './getRanks';
 import getRecommend from './getRecommend';
 import { getCategoryPlaylists, getNewSongs, getPlaylistCategories } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
+import getSearch from './getSearch';
 import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerDesc from './getSingerDesc';
@@ -66,6 +69,8 @@ export default {
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
+  songLike: withControllerLogging('songLike', operationController(songLike)),
+  albumSubscribe: withControllerLogging('albumSubscribe', operationController(albumSubscribe)),
   userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),
@@ -141,4 +146,5 @@ export default {
   getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
   getCategoryPlaylists: withControllerLogging('getCategoryPlaylists', getCategoryPlaylists),
   getNewSongs: withControllerLogging('getNewSongs', getNewSongs),
+  getSearch: withControllerLogging('getSearch', getSearch),
 };

@@ -11,6 +11,7 @@ import { type AndroidDevice, credentialMusicId } from './androidDevice';
 import { credentialFrom, sanitizePublicValue } from './credentialWire';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu, credentialCookieHeader, QqProtocolError } from './musicuProtocol';
+import { withPlayCounts } from './playlistPlayCounts';
 import { type AuthSession, type QqCredential } from './qrTypes';
 import {
   type Dictionary,
@@ -257,6 +258,7 @@ export const getPlaylists = async (
   http: AuthHttpClient,
   auth: AuthSession,
   favoriteOffset = 0,
+  playCount = false,
 ): Promise<Dictionary> => {
   const created = await callMusicu(
     http,
@@ -267,8 +269,8 @@ export const getPlaylists = async (
     { uin: credentialMusicId(auth.credential) },
     auth.credential,
   );
-  const createdPlaylists = Array.isArray(created.v_playlist) ? created.v_playlist : [];
-  const favoritePlaylists: unknown[] = [];
+  let createdPlaylists: unknown[] = Array.isArray(created.v_playlist) ? created.v_playlist : [];
+  let favoritePlaylists: unknown[] = [];
   const encryptedUin = stringOf(auth.credential.encryptUin);
 
   // 只有上游最后一页说“没有更多了”才算读完。读到上限、遇到空页、或整页都是读过的条目（上游不理
@@ -323,8 +325,23 @@ export const getPlaylists = async (
     favoritesKnown = Math.max(reported, favoriteOffset + unique);
   }
 
-  const seen = new Set<string>();
   const firstRound = favoriteOffset === 0;
+  // 只有调用方明确要播放数才多读旧接口；不带参数时请求与回包都和以前一样。
+  let playCountComplete: boolean | undefined;
+  if (playCount) {
+    const counted = await withPlayCounts(
+      http,
+      auth,
+      firstRound ? createdPlaylists : [],
+      favoritePlaylists,
+      playlistIdOf,
+    );
+    if (firstRound) createdPlaylists = counted.created;
+    favoritePlaylists = counted.favorites;
+    playCountComplete = counted.complete;
+  }
+
+  const seen = new Set<string>();
   const listed = firstRound ? [...createdPlaylists, ...favoritePlaylists] : favoritePlaylists;
   const playlists = listed.filter((value) => {
     const id = playlistIdOf(value);
@@ -344,6 +361,7 @@ export const getPlaylists = async (
           : createdPlaylists.length + favoritesKnown,
       bFinish: favoritesComplete,
       ...(nextFavoriteOffset === undefined ? {} : { nextFavoriteOffset }),
+      ...(playCountComplete === undefined ? {} : { playCountComplete }),
     }),
   );
 };

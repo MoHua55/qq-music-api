@@ -1,36 +1,23 @@
-const {exec} = require('child_process');
-const { version, author } = require('../package.json');
+const { spawnSync } = require('node:child_process');
+const { version } = require('../package.json');
 
-const isLocal = process.argv[2] === 'local';
+const [action, destination, ...extra] = process.argv.slice(2);
+const image = 'qq-music-api:' + version;
+const validDestination = typeof destination === 'string'
+  && /^[a-z0-9][a-z0-9./:_-]+$/.test(destination)
+  && destination.includes('/')
+  && !destination.includes('..');
+let args;
 
-console.log(`------------ ${isLocal ? 'Local' : 'Remote'} Docker Build Images Start ------------\n`);
+if (action === 'local' && destination === undefined) args = ['build', '-t', image, '.'];
+else if (action === 'tag' && validDestination) args = ['image', 'tag', image, destination];
+else if (action === 'push' && validDestination) args = ['image', 'push', destination];
 
-// const run = 'docker run -d --name qq-music-api -p 3200:3200 qq-music-api'
-const image = `${isLocal ? '' : `${author.toLowerCase()}/`}qq-music-api:${version}`
-const cmd = isLocal
-	? `docker build -t ${image} .`
-	: `docker image tag qq-music-api:${version} ${image}`;
-
-console.log('cmd:', cmd, '\n');
-
-exec(cmd, {}, (err, stdout, stderr) => {
-	if (err) {
-		console.log(err);
-		return;
-	}
-	console.log(stdout, stderr);
-	console.log(`------------ ${isLocal ? 'Local' : 'Remote'} Docker Build Images End ------------\n`);
-	if (!isLocal) {
-		const pushCmd = `docker image push ${image}`;
-		console.log('pushCmd:', pushCmd, '\n');
-		console.log(`------------ ${isLocal ? 'Local' : 'Remote'} Docker Push Images Start ------------\n`);
-		exec(pushCmd, {}, (err, stdout, stderr) => {
-			if (err) {
-				console.log(err);
-				return;
-			}
-			console.log(stdout, stderr);
-			console.log(`------------ ${isLocal ? 'Local' : 'Remote'} Docker Push Images End ------------\n`);
-		});
-	}
-});
+if (!args || extra.length) {
+  console.error('Use local, tag <your-registry/repository:tag>, or push <your-registry/repository:tag>.');
+  process.exitCode = 1;
+} else {
+  // build、tag、push 各做一件事，不从作者名称猜远端地址，也不自动串接发布。
+  const result = spawnSync('docker', args, { stdio: 'inherit', shell: false });
+  process.exitCode = result.status ?? 1;
+}
