@@ -98,10 +98,13 @@ interface HarnessOptions {
   wechatQrPage?: string;
   wechatImage?: Buffer;
   /**
-   * 用 QQ 音乐 App 扫码、App 登的是微信账号（实测回调的 tmeLoginType 是 1）：换凭证只认 tmeLoginType 1，
-   * 送别的回 50006；拿扫码票据按手机 QQ 读登录用户回 1000。
+   * 用 QQ 音乐 App 扫码、App 登的是微信账号（实测回调的 tmeLoginType 是 1）。照官方客户端的实测：换凭证时
+   * comm 照样送 6、musicid 是不失真的整数字面量才成功；comm 送 1 回 1000，id 送成字符串回 10006，
+   * id 失真回 50006。拿扫码票据按手机 QQ 读登录用户回 1000。
    */
   wechatBoundApp?: boolean;
+  /** 上面这个账号的 id（十进位），默认 456。 */
+  appUin?: string;
   /** 换凭证（两个通道的 Login，不含刷新）回这个单项码。 */
   exchangeCode?: number;
   /** 换凭证回这个网关码（顶层 code）。 */
@@ -172,9 +175,12 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
   const post = jest.fn(
     async <T>(
       _url: string,
-      payload?: unknown,
+      sent?: unknown,
       _config?: AxiosRequestConfig,
     ): Promise<AxiosResponse<T>> => {
+      // 要送不失真长整数的请求会先序列化成字符串；其他请求照旧是对象。
+      const rawBody = typeof sent === 'string' ? sent : undefined;
+      const payload: unknown = rawBody === undefined ? sent : JSON.parse(rawBody);
       if (!dictionaryOf(payload).req_0) {
         calls.push('GetQimei');
         if (options.qimei) return options.qimei() as AxiosResponse<T>;
@@ -203,24 +209,42 @@ const createProtocolHarness = (options: HarnessOptions = {}) => {
       if (options.wechatBoundApp) {
         const comm = dictionaryOf(dictionaryOf(payload).comm);
         const param = dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param);
-        if (method === 'Login' && param.qrCodeID !== undefined)
-          return response(
+        if (method === 'Login' && param.qrCodeID !== undefined) {
+          const uin = options.appUin ?? '456';
+          // 请求体里 musicid 的原文：不带引号的数字才算整数字面量。
+          const literal =
+            rawBody === undefined
+              ? typeof param.musicid === 'number'
+                ? String(param.musicid)
+                : undefined
+              : /"musicid":(\d+)[,}]/.exec(rawBody)?.[1];
+          const code =
             comm.tmeLoginType === 1
+              ? 1000
+              : typeof param.musicid === 'string'
+                ? 10006
+                : comm.tmeLoginType === 6 && literal === uin
+                  ? 0
+                  : 50006;
+          return response(
+            code === 0
               ? ({
                   code: 0,
                   req_0: {
                     code: 0,
                     data: {
                       musicid: 0,
-                      str_musicid: '456',
+                      str_musicid: uin,
                       musickey: 'app-wechat-key',
                       encryptUin: 'wechat-encrypt-uin',
                       refresh_key: 'app-wechat-refresh-key',
+                      loginType: 1,
                     },
                   },
                 } as T)
-              : ({ code: 0, req_0: { code: 50006, data: {} } } as T),
+              : ({ code: 0, req_0: { code, data: {} } } as T),
           );
+        }
         if (method === 'GetLoginUserInfo' && comm.tmeLoginType !== 1)
           return response({ code: 0, req_0: { code: 1000, data: {} } } as T);
       }
@@ -2595,12 +2619,12 @@ describe('QQ 音乐 App 扫码通道 qqmusic', () => {
     expect(harness.service.getCapabilities().channels).toEqual(['qq', 'wechat', 'qqmusic']);
   });
 
-  it('App 登的是微信账号：照回调的 tmeLoginType 1 换凭证，登录成功', async () => {
+  it('App 登的是微信账号：和官方客户端一样 comm 送 6 换凭证，登录后按微信账号读写', async () => {
     const harness = createProtocolHarness({ wechatBoundApp: true });
     const result = await scan(harness, 'qqmusic', '1');
 
     expect(result.code).toBe(803);
-    expect(commsOf(harness, 'Login').map((comm) => comm.tmeLoginType)).toEqual([1]);
+    expect(commsOf(harness, 'Login').map((comm) => comm.tmeLoginType)).toEqual([6]);
     const token = result.cookie?.split('=')[1];
     // 账号 id 来自换到的凭证（微信账号的 musicid 是占位的 0，真正的 id 在 str_musicid）。
     await expect(harness.service.getLoginStatus(token)).resolves.toMatchObject({
@@ -2621,8 +2645,9 @@ describe('QQ 音乐 App 扫码通道 qqmusic', () => {
   });
 
   it('手机 QQ 通道被微信账号的 App 扫到：照旧失败，提示改用 QQ 音乐 App 登录', async () => {
-    const harness = createProtocolHarness({ wechatBoundApp: true });
-    const result = await scan(harness, 'qq', '1');
+    // 微信账号的 id 是 19 位；手机 QQ 通道照 3.3.1 送数字，结果和以前一样。
+    const harness = createProtocolHarness({ wechatBoundApp: true, appUin: '1234567890123456789' });
+    const result = await scan(harness, 'qq', '1', '1234567890123456789');
 
     expect(result).toMatchObject({
       code: 800,
@@ -2634,34 +2659,61 @@ describe('QQ 音乐 App 扫码通道 qqmusic', () => {
     expect(commsOf(harness, 'Login').map((comm) => comm.tmeLoginType)).toEqual([6]);
   });
 
-  /** 换凭证（带 qrCodeID 的 Login）实际送出去的 param。 */
+  /** 每次 POST 实际送出去的请求体：字符串照原文，对象照原样。 */
+  const sentBodies = (harness: Harness) =>
+    jest.mocked(harness.httpPost).mock.calls.map(([, payload]) => payload);
+  /** 换凭证（带 qrCodeID 的 Login）实际送出去的 param；字符串请求体解析后才比对其他字段。 */
   const exchangeParams = (harness: Harness) =>
-    jest
-      .mocked(harness.httpPost)
-      .mock.calls.map(([, payload]) =>
-        dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param),
-      )
+    sentBodies(harness)
+      .map((payload) => (typeof payload === 'string' ? JSON.parse(payload) : payload))
+      .map((payload) => dictionaryOf(dictionaryOf(dictionaryOf(payload).req_0).param))
       .filter((param) => param.qrCodeID !== undefined);
+  const exchangeBodies = (harness: Harness) =>
+    sentBodies(harness).filter((payload) =>
+      (typeof payload === 'string' ? payload : JSON.stringify(payload)).includes('qrCodeID'),
+    );
 
-  it('微信账号的 id 是 19 位、超过安全整数：换凭证送精确的十进位字符串', async () => {
-    const harness = createProtocolHarness({ wechatBoundApp: true });
+  it('QQ 音乐 App 通道：19 位的微信账号 id 照官方客户端送不失真的整数字面量', async () => {
+    const harness = createProtocolHarness({ wechatBoundApp: true, appUin: '1234567890123456789' });
     const result = await scan(harness, 'qqmusic', '1', '1234567890123456789');
 
     expect(result.code).toBe(803);
-    expect(exchangeParams(harness).map((param) => param.musicid)).toEqual(['1234567890123456789']);
+    const [body] = exchangeBodies(harness);
+    expect(typeof body).toBe('string');
+    expect(body).toContain('"musicid":1234567890123456789,');
+    expect(commsOf(harness, 'Login').map((comm) => comm.tmeLoginType)).toEqual([6]);
+    expect(commsOf(harness, 'GetLoginUserInfo').at(-1)).toMatchObject({ tmeLoginType: 1 });
+  });
+
+  it('只有要送长整数的换凭证先序列化，其他请求照旧送对象', async () => {
+    const harness = createProtocolHarness({ wechatBoundApp: true, appUin: '1234567890123456789' });
+    await scan(harness, 'qqmusic', '1', '1234567890123456789');
+    const bodies = sentBodies(harness);
+    expect(bodies.filter((payload) => typeof payload === 'string')).toEqual(
+      exchangeBodies(harness),
+    );
+    expect(bodies.filter((payload) => typeof payload !== 'string').length).toBeGreaterThan(0);
+  });
+
+  it('手机 QQ 通道：长 id 照 3.3.1 送数字（不改既有行为）', async () => {
+    const harness = createProtocolHarness({ wechatBoundApp: true, appUin: '1234567890123456789' });
+    await scan(harness, 'qq', '1', '1234567890123456789');
+    expect(exchangeBodies(harness).every((payload) => typeof payload !== 'string')).toBe(true);
+    expect(exchangeParams(harness).map((param) => typeof param.musicid)).toEqual(['number']);
   });
 
   it('安全整数范围内的 id 照旧送数字', async () => {
     const harness = createProtocolHarness();
     await scan(harness, 'qqmusic', '2', '456');
     expect(exchangeParams(harness).map((param) => param.musicid)).toEqual([456]);
+    expect(exchangeBodies(harness).every((payload) => typeof payload !== 'string')).toBe(true);
   });
 
   it('qq-cookies 日志只多记账号 id 的位数，不记值', async () => {
     const info = jest.spyOn(logger, 'info').mockImplementation(() => undefined);
     try {
       await scan(
-        createProtocolHarness({ wechatBoundApp: true }),
+        createProtocolHarness({ wechatBoundApp: true, appUin: '1234567890123456789' }),
         'qqmusic',
         '1',
         '1234567890123456789',
