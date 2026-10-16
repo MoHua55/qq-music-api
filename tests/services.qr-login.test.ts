@@ -1554,6 +1554,57 @@ describe('QQ native QR login service', () => {
     ]);
   });
 
+  it('QQ 音乐 App 登的微信账号：静默续期按微信账号送，19 位 id 原样送字符串', async () => {
+    // App 换到的凭证没有 openid、refresh_token，只有 refresh_key；musicid 是占位的 0。
+    const current = 1_000_000_000_000;
+    const token = 'stored-app-wechat-token';
+    const authSessionRepository = createMemoryAuthSessionRepository([
+      {
+        token,
+        credential: {
+          musicid: 0,
+          str_musicid: '1234567890123456789',
+          musickey: 'app-wechat-key',
+          loginType: 1,
+          refresh_key: 'app-wechat-refresh-key',
+          musickeyCreateTime: Math.floor(current / 1000) - (259200 - 5 * 60 * 60),
+          keyExpiresIn: 259200,
+        },
+        device: createAndroidDevice(),
+        expiresAt: current + 5 * 60 * 60 * 1000,
+      },
+    ]);
+    const harness = createProtocolHarness({ authSessionRepository, now: () => current });
+
+    await expect(harness.service.getLoginStatus(token)).resolves.not.toBeNull();
+
+    const refreshCalls = jest.mocked(harness.httpPost).mock.calls.filter(([, payload]) => {
+      const request = dictionaryOf(dictionaryOf(payload).req_0);
+      return request.method === 'Login' && dictionaryOf(request.param).loginMode === 2;
+    });
+    expect(refreshCalls).toHaveLength(1);
+    expect(dictionaryOf(dictionaryOf(refreshCalls[0]?.[1]).comm)).toMatchObject({
+      authst: 'app-wechat-key',
+      tmeLoginType: 1,
+    });
+    expect(
+      dictionaryOf(dictionaryOf(dictionaryOf(refreshCalls[0]?.[1]).req_0).param),
+    ).toMatchObject({
+      openid: '',
+      refresh_token: '',
+      str_musicid: '1234567890123456789',
+      musickey: 'app-wechat-key',
+      refresh_key: 'app-wechat-refresh-key',
+      loginMode: 2,
+    });
+    expect(authSessionRepository.load()).toEqual([
+      expect.objectContaining({
+        token,
+        credential: expect.objectContaining({ musickey: 'wechat-refreshed-key', loginType: 1 }),
+      }),
+    ]);
+  });
+
   it('should fall back to the previous fixed lifetime when the upstream omits the key timings', async () => {
     let current = 1_000_000_000_000;
     const now = () => current;
