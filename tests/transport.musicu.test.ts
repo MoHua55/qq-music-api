@@ -408,7 +408,8 @@ describe('shared native fetch adapter for Node and Web hosts', () => {
     await client(http).execute(descriptor());
     expect(fetcher.mock.calls[0][1]).toMatchObject({
       method: 'POST',
-      redirect: 'error',
+      // 不跟着转址：送 manual，转址在传输层算网络失败（见 transport.hosts.test.ts）。
+      redirect: 'manual',
       headers: { 'Content-Type': 'application/json' },
     });
     expect(fetcher.mock.calls[1][1].headers.Cookie).toBe('fixture=next');

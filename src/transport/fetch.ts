@@ -11,7 +11,7 @@ export interface FetchResponse {
 
 export interface FetchInit {
   method: 'POST';
-  redirect: 'error';
+  redirect: 'manual';
   headers: Record<string, string>;
   body: string;
   signal: AbortSignal;
@@ -90,9 +90,11 @@ export const createFetchTransport = (fetcher: FetchExecutor = globalThis.fetch):
     if (cookies) headers.Cookie = cookies;
     let response: FetchResponse;
     try {
+      // Vercel Edge 和 Cloudflare Workers 的 fetch 不收 `redirect: 'error'`（直接抛错），所以送 manual，
+      // 下面再把转址当成和以前一样的网络失败，不跟着跳。
       response = await fetcher(request.url, {
         method: 'POST',
-        redirect: 'error',
+        redirect: 'manual',
         headers,
         body: request.body,
         signal: request.signal,
@@ -101,6 +103,11 @@ export const createFetchTransport = (fetcher: FetchExecutor = globalThis.fetch):
       throw observedFailure(error, false, request.signal);
     }
     checkAbort(request.signal);
+    // 3xx，或浏览器式 fetch 的 opaqueredirect（status 0）：以前 `redirect: 'error'` 会在这里抛错，结果照旧。
+    if (response.status === 0 || (response.status >= 300 && response.status < 400)) {
+      void response.body?.cancel().catch(() => {});
+      throw new HttpTransportError({ phase: 'unknown' });
+    }
     if (!Number.isSafeInteger(response.status) || response.status < 100 || response.status > 599)
       throw new QqApiError('invalid-response');
     const retryAfterMs = retryDelay(response.headers?.get('Retry-After'));
