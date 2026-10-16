@@ -100,6 +100,40 @@ describe.each(['node', 'web'] as const)('transport executed through the %s host'
     expect(error).toMatchObject({ kind: 'invalid-response' });
     expect(JSON.stringify(error)).not.toContain('SECRET_COOKIE');
   });
+  it('treats an upstream redirect as a network failure and does not follow it', async () => {
+    replyStatus = 302;
+    replyText = '';
+    await expect(makeClient(execute, { maxRetries: 0 }).execute(request)).rejects.toMatchObject({
+      kind: 'network',
+    });
+    expect(seen).toHaveLength(1);
+  });
+});
+
+describe('fetch hosts that only accept follow or manual redirects', () => {
+  // Vercel Edge 和 Cloudflare Workers 的 fetch 不收 `redirect: 'error'`，一律直接抛 TypeError。
+  const strictHost = (reply: () => Response | { status: number; type: string }) =>
+    jest.fn(async (_url: string, init: FetchInit) => {
+      if ((init.redirect as string) === 'error')
+        throw new TypeError('Invalid redirect value, must be one of "follow" or "manual"');
+      return reply() as Response;
+    });
+
+  it('sends a redirect mode such hosts accept and reads the reply', async () => {
+    const fetcher = strictHost(() => new Response(JSON.stringify(envelope)));
+    expect(await makeClient(fetcher).execute(request)).toEqual({ songs: ['synthetic-song'] });
+    expect(fetcher.mock.calls[0][1].redirect).toBe('manual');
+  });
+
+  it('keeps an opaque redirect a network failure, as a refused redirect was before', async () => {
+    // 浏览器式的 fetch 遇到转址、又是 manual 时，回 status 0 的 opaqueredirect。
+    const fetcher = jest.fn(
+      async () => ({ status: 0, type: 'opaqueredirect' }) as unknown as Response,
+    );
+    await expect(makeClient(fetcher, { maxRetries: 0 }).execute(request)).rejects.toMatchObject({
+      kind: 'network',
+    });
+  });
 });
 
 describe('additional transport isolation and boundary cases', () => {
