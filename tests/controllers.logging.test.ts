@@ -1,6 +1,6 @@
 const mockServices = {
   getAlbumInfo: jest.fn(),
-  getSearchByKey: jest.fn(),
+  getSmartbox: jest.fn(),
   downloadQQMusic: jest.fn(),
   UCommon: jest.fn(),
 };
@@ -66,8 +66,8 @@ describe('controllers logging', () => {
     );
   });
 
-  it('应为 getSearchByKey 成功场景记录 succeeded 日志', async () => {
-    mockServices.getSearchByKey.mockResolvedValue({
+  it('应为 getSmartbox 成功场景记录 succeeded 日志', async () => {
+    mockServices.getSmartbox.mockResolvedValue({
       status: 200,
       body: {
         response: {
@@ -79,20 +79,19 @@ describe('controllers logging', () => {
     });
 
     const ctx = createCtx({
-      path: '/getSearchByKey',
+      path: '/getSmartbox',
       query: {
         key: '周杰伦',
-        limit: '20',
       },
     });
 
-    await controllers.getSearchByKey(ctx);
+    await controllers.getSmartbox(ctx);
 
     expect(ctx.status).toBe(200);
     expect(mockedLogger.info).toHaveBeenCalledWith(
       'request.succeeded',
       expect.objectContaining({
-        controller: 'getSearchByKey',
+        controller: 'getSmartbox',
         status: 200,
       }),
     );

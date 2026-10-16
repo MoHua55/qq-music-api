@@ -11,6 +11,7 @@ import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
+import { loginRefresh } from '../routes/operations/loginRefresh';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
 import {
@@ -25,6 +26,7 @@ import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userCloud } from '../routes/operations/userCloud';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
@@ -161,10 +163,12 @@ const routes: Record<string, RouteHandler> = {
   '/login/status': operationRoute(loginStatus),
 
   '/logout': operationRoute(logout),
+  '/login/refresh': operationRoute(loginRefresh),
 
   '/user/detail': operationRoute(userDetail),
   '/user/vip': operationRoute(userVip),
   '/user/daily-songs': operationRoute(userDailySongs),
+  '/user/cloud': operationRoute(userCloud),
   '/user/playlist/tracks': operationRoute(playlistTracks),
   '/user/playlist/create': operationRoute(playlistCreate),
   '/user/playlist/rename': operationRoute(playlistRename),
@@ -264,6 +268,7 @@ const LOGIN_ROUTES = new Set([
   '/login/qr/check',
   '/login/qr/cancel',
   '/login/status',
+  '/login/refresh',
   '/logout',
   '/user/detail',
   '/user/vip',
@@ -281,6 +286,7 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist-detail',
   '/user/guess-you-like',
   '/user/daily-songs',
+  '/user/cloud',
   '/radio/list',
   '/radio/tracks',
   '/getMusicPlay/:songmid?',

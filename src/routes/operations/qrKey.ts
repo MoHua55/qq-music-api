@@ -1,6 +1,7 @@
 import {
   DEFAULT_LOGIN_CHANNEL,
   normalizeLoginChannel,
+  type QrLoginChannel,
   SUPPORTED_LOGIN_CHANNELS,
 } from '../../services/auth/qrLogin';
 import { qrServiceErrorResult } from './qrServiceError';
@@ -18,8 +19,8 @@ export const qrKey: OperationHandler = async (request) => {
     };
   try {
     const unikey = request.qr?.createSession
-      ? await request.qr.createSession(channel as 'qq' | 'wechat')
-      : await (await request.service()).createSession(channel as 'qq' | 'wechat');
+      ? await request.qr.createSession(channel as QrLoginChannel)
+      : await (await request.service()).createSession(channel as QrLoginChannel);
     return { status: 200, headers: {}, body: { code: 200, data: { unikey } } };
   } catch (error) {
     return qrServiceErrorResult(error);

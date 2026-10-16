@@ -15,10 +15,15 @@ import { type Dictionary } from './values';
 /**
  * Login channels. `qq` is the mobile QQ QR (MQTT over WSS, `tmeLoginType: 6`) and stays the
  * default so the public contract is unchanged for callers that do not ask for a channel; `wechat`
- * is the WeChat QR. These two are the whole product surface, and `SUPPORTED_LOGIN_CHANNELS` is the
- * authority on it.
+ * is the WeChat QR. `qqmusic` is the QQ Music app QR: the same QR and MQTT flow as `qq`, but the
+ * exchange follows the account type the app reports, so an app signed in with a WeChat account can
+ * log in too. `SUPPORTED_LOGIN_CHANNELS` is the authority on the product surface.
  */
-export type QrLoginChannel = 'qq' | 'wechat';
+export type QrLoginChannel = 'qq' | 'wechat' | 'qqmusic';
+
+/** The channels whose QR is created by `CreateQRCode` and answered over MQTT. */
+export const isMqttLoginChannel = (channel: QrLoginChannel | undefined): boolean =>
+  channel === 'qq' || channel === 'qqmusic';
 
 /**
  * `mobile` is the former name of `qq`. It is still accepted at the entry points and normalized to
@@ -51,7 +56,8 @@ export interface RuntimeCapabilities {
 }
 
 export const NODE_RUNTIME_CAPABILITIES: RuntimeCapabilities = {
-  channels: ['qq', 'wechat'],
+  // `qqmusic` goes last: a client that lists channels in order keeps showing the existing two first.
+  channels: ['qq', 'wechat', 'qqmusic'],
   sessionMode: 'stored',
 };
 
@@ -278,6 +284,21 @@ export interface SessionResolver {
   revoke(token: string): Promise<void>;
   cleanup?(): void;
   useRepository?(repository: AuthSessionRepository): void;
+  /**
+   * Sealed only: renew a nearly expired credential and hand out a new token. `null` means the token
+   * does not resolve at all. Stored has no use for it — its silent refresh keeps the same token.
+   */
+  rotate?(
+    token: string,
+    refresh: (session: AuthSession) => Promise<QqCredential>,
+  ): Promise<SessionRotation | null>;
+}
+
+/** What `POST /login/refresh` answers: the token to keep using, and whether it changed. */
+export interface SessionRotation {
+  token: string;
+  expiresAt: number;
+  rotated: boolean;
 }
 
 export interface QrLoginDependencies {
@@ -302,8 +323,9 @@ export interface QrLoginDependencies {
   capabilities?: RuntimeCapabilities;
   /**
    * How long one `/login/qr/check` may observe a pull channel before answering. The Node default
-   * stays inside the client's existing 2 s poll cadence; a serverless runtime raises it so a
-   * single invocation can absorb a long poll.
+   * (15 s, `QQ_WECHAT_POLL_BUDGET_MS`) lets a slow link finish its handshake and still read the
+   * scan; a state change answers at once, so only idle checks get longer. A serverless runtime sets
+   * its own budget so a single invocation can absorb a long poll.
    */
   checkBudgetMs?: number;
   now?: () => number;
@@ -360,6 +382,8 @@ export interface QrLoginService {
   ): Promise<Dictionary | null>;
   /** 新路由用：解析会话并交给共用实现建自己的上游客户端。解不开、过期都返回 `null`。 */
   resolveSession(token?: string): Promise<AuthSession | null>;
+  /** The explicit renewal behind `POST /login/refresh`; `null` when the token is not logged in. */
+  refreshSession(token?: string): Promise<SessionRotation | null>;
   configureAuthSessionRepository(repository: AuthSessionRepository): void;
   logout(token?: string): Promise<void>;
 }

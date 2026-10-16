@@ -19,7 +19,6 @@ import getRecommendPlaylists from './recommend/getRecommendPlaylists';
 // search
 import getHotKey from './search/getHotKey';
 import getSearch from './search/getSearch';
-import getSearchByKey from './search/getSearchByKey';
 import getSmartbox from './search/getSmartbox';
 // singer
 import getSimilarSinger from './singers/getSimilarSinger';
@@ -42,7 +41,6 @@ export default {
   downloadQQMusic,
   // search
   getHotKey,
-  getSearchByKey,
   getSmartbox,
   // song lists
   songLists,

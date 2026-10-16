@@ -48,6 +48,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.guess-you-like',
   /** 每日 30 首（带凭证按系统目录 202 读 `uniform_get_Dissinfo`），要登录。 */
   'recommend.daily-songs',
+  /** 音乐云盘（`GetMatchAudio`），要登录；非零码除了凭证失效都还是未知。 */
+  'cloud.list',
   /** 歌单广场的推荐（`GetRecommendFeed`），有会话就带凭证。 */
   'recommend.playlists',
   /** 歌单分类（`get_hot_category`），匿名。 */
@@ -58,6 +60,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.new-songs',
   /** 关键字搜索（桌面版 `DoSearchForQQMusicDesktop`），歌曲要登录、其他类型匿名可读；非零码都还是未知。 */
   'search',
+  /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
+  'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
   'recommend.radio-list',
   /** 99 以外的电台取歌（`pf.radiosvr/GetRadiosonglist`），要登录。 */
@@ -232,6 +236,10 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
   ...credentialRejected(
     ['recommend.daily-songs'],
     '每日 30 首要登录，照电台路由处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
+  ),
+  ...credentialRejected(
+    ['cloud.list'],
+    '云盘要登录，沿用其他带凭证读取的处理：会话解得开但上游不认凭证时回 401。这个接口没有单独实测过这几个码',
   ),
   ...credentialRejected(
     ['recommend.radio-list', 'recommend.radio-tracks'],

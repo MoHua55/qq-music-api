@@ -88,6 +88,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'loginStatus', method: 'GET', routePath: '/login/status', category: 'Login' },
   { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
   { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
+  { name: 'loginRefresh', method: 'POST', routePath: '/login/refresh', category: 'Login' },
   { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
   { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
   { name: 'songLike', method: 'POST', routePath: '/user/song/like', category: 'User' },
@@ -119,6 +120,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   },
   { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
   { name: 'userDailySongs', method: 'GET', routePath: '/user/daily-songs', category: 'User' },
+  { name: 'userCloud', method: 'GET', routePath: '/user/cloud', category: 'User' },
   {
     name: 'getRecommendPlaylists',
     method: 'GET',
@@ -142,12 +144,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
-  {
-    name: 'getSearchByKey',
-    method: 'GET',
-    routePath: '/getSearchByKey/:key?/:limit?/:page?/:catZhida?',
-    category: 'Search',
-  },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
   { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
   {
@@ -358,7 +354,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       {
         key: 'channel',
         label: 'Login Channel',
-        description: 'qq (scan with mobile QQ, default) or wechat (scan with WeChat).',
+        description:
+          'qq (scan with mobile QQ, default), wechat (scan with WeChat) or qqmusic (scan with the QQ Music app, whether its account is linked to QQ or WeChat).',
       },
     ],
   },
@@ -379,7 +376,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   qrCheck: {
     description:
-      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. Stored WeChat sessions retain 802 after a later waiting response; only a completed credential exchange returns 803. Sealed serverless checks still reconstruct progress per request. Safe WeChat poll/state/check evidence is available in server logs at info level without adding response fields. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure. A recognised failure adds failureHint with a key and a default English message.',
+      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. Stored WeChat sessions retain 802 after a later waiting response; only a completed credential exchange returns 803. On Node a WeChat check waits up to 15 s (QQ_WECHAT_POLL_BUDGET_MS) when nothing changes, so do not give this request a shorter client timeout. Sealed serverless checks still reconstruct progress per request. Safe WeChat poll/state/check evidence is available in server logs at info level without adding response fields. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure. A recognised failure adds failureHint with a key and a default English message.',
     queryParams: [
       {
         key: 'key',
@@ -402,6 +399,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   loginStatus: {
     description: 'Get the authenticated QQ Music profile for the current session.',
+  },
+  loginRefresh: {
+    description:
+      'Renew the current session on request. Answers { token, rotated, expiresAt }. Only within 6 hours of expiry does it call upstream; serverless then hands out a new token (keep it when rotated is true; the old one stays valid until its own expiry), capped at 30 days from the first login. Stored deployments refresh silently and keep the same token. A failed refresh keeps the current token and waits 5 minutes on that instance. 401 without a valid session.',
   },
   logout: {
     description: 'Clear the current in-memory QQ Music login session.',
@@ -430,7 +431,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         key: 'playCount',
         label: 'Play count',
         description:
-          'Set to 1 to add play_cnt from the legacy list endpoints (matched by playlist id, non-negative only) and playCountComplete. Without it the request and answer are unchanged.',
+          'Set to 1 to add play_cnt from the legacy list endpoints (matched by playlist id, non-negative only) and playCountComplete. The counts are cached per account for 10 minutes. Without it the request and answer are unchanged.',
       },
     ],
   },
@@ -465,11 +466,25 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
       { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
       { key: 'limit', label: 'Limit', description: 'Page size, up to 100.' },
+      {
+        key: 'playCount',
+        label: 'Play count',
+        description:
+          'Set to 1 to add play_cnt from the same detail reply, with no extra upstream request. Private playlists show 0; liked songs and unusable values are left out. Without it the answer is unchanged.',
+      },
     ],
   },
   userDailySongs: {
     description:
       "Get today's Daily 30 songs for the authenticated user. It reads the account's own daily playlist, so it works whether or not the playlist is in your favorites. Songs keep the upstream format. Without a session it answers 401; when the upstream returns no songs it answers 422. There is no refresh parameter.",
+  },
+  userCloud: {
+    description:
+      "List the songs in the authenticated user's QQ Music cloud drive. Each item has song (upstream track format, or null), fileName, addTime (milliseconds, or null) and playable. Playable items match a catalog song and play through /getMusicPlay with song.mid; uploaded files that match nothing are listed but not playable. An empty drive answers 200 with an empty list; without a session it answers 401.",
+    queryParams: [
+      { key: 'limit', label: 'Limit', description: 'Page size, 200 by default, up to 1000.' },
+      { key: 'offset', label: 'Offset', description: 'Zero-based song offset.' },
+    ],
   },
   getGuessYouLike: {
     description:
@@ -521,52 +536,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getHotkey: {
     id: 'get-hotkey',
     description: 'Get current hot search keywords.',
-  },
-  getSearchByKey: {
-    id: 'get-search-by-key',
-    description:
-      'Legacy song search, Node only. Not recommended and planned for removal in 3.3.2: the upstream often fails here and it always searches songs. Use /search instead.',
-    queryParams: [
-      {
-        key: 'key',
-        label: 'Keyword',
-        required: true,
-        placeholder: '周杰伦',
-        description: 'Search keyword.',
-        defaultValue: '周杰伦',
-      },
-      {
-        key: 'limit',
-        label: 'Limit',
-        inputType: 'number',
-        placeholder: '10',
-        description: 'Items per page.',
-        defaultValue: 10,
-      },
-      {
-        key: 'page',
-        label: 'Page',
-        inputType: 'number',
-        placeholder: '1',
-        description: 'Current page number.',
-        defaultValue: 1,
-      },
-      {
-        key: 'catZhida',
-        label: 'Category',
-        inputType: 'number',
-        placeholder: '1',
-        description: '1 song, 2 singer, 3 album.',
-        defaultValue: 1,
-      },
-      {
-        key: 'remoteplace',
-        label: 'Remote Place',
-        placeholder: 'song',
-        description: 'Search routing hint.',
-        defaultValue: 'song',
-      },
-    ],
   },
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
@@ -623,7 +592,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getLyric: {
     id: 'get-lyric',
     description:
-      'Get song lyrics as LRC text on Node and serverless, no login needed. isFormat=true also splits it into timed lines. trans is passed through as upstream returns it and is often empty.',
+      'Get song lyrics as LRC text on Node and serverless, no login needed. isFormat=true also splits it into timed lines. trans is passed through as upstream returns it and is often empty; trans=1 asks a second lyric endpoint once when it is empty.',
     queryParams: [
       {
         key: 'songmid',
@@ -640,6 +609,12 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         placeholder: 'false',
         description: 'true/1 to format LRC text.',
         defaultValue: false,
+      },
+      {
+        key: 'trans',
+        label: 'Translation',
+        description:
+          'Set to 1 to fill an empty trans from a second lyric endpoint (one extra request, tried once, base64 LRC like the original). Without it the request and answer are unchanged.',
       },
     ],
   },

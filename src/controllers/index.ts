@@ -9,6 +9,7 @@ import { getUserAlbums } from '../routes/operations/getUserAlbums';
 import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
 import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
 import { loginChannels } from '../routes/operations/loginChannels';
+import { loginRefresh } from '../routes/operations/loginRefresh';
 import { loginStatus } from '../routes/operations/loginStatus';
 import {
   playlistCreate,
@@ -21,6 +22,7 @@ import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
 import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
+import { userCloud } from '../routes/operations/userCloud';
 import { userDailySongs } from '../routes/operations/userDailySongs';
 import { userDetail } from '../routes/operations/userDetail';
 import { userVip } from '../routes/operations/userVip';
@@ -46,7 +48,6 @@ import getRecommend from './getRecommend';
 import { getCategoryPlaylists, getNewSongs, getPlaylistCategories } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
 import getSearch from './getSearch';
-import getSearchByKey from './getSearchByKey';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerDesc from './getSingerDesc';
 import getSingerList from './getSingerList';
@@ -69,9 +70,11 @@ export default {
   setCookie: withControllerLogging('setCookie', setCookie),
   getDownloadQQMusic: withControllerLogging('getDownloadQQMusic', getDownloadQQMusic),
   userVip: withControllerLogging('userVip', operationController(userVip)),
+  loginRefresh: withControllerLogging('loginRefresh', operationController(loginRefresh)),
   songLike: withControllerLogging('songLike', operationController(songLike)),
   albumSubscribe: withControllerLogging('albumSubscribe', operationController(albumSubscribe)),
   userDailySongs: withControllerLogging('userDailySongs', operationController(userDailySongs)),
+  userCloud: withControllerLogging('userCloud', operationController(userCloud)),
   playlistTracks: withControllerLogging('playlistTracks', operationController(playlistTracks)),
   playlistCreate: withControllerLogging('playlistCreate', operationController(playlistCreate)),
   playlistRename: withControllerLogging('playlistRename', operationController(playlistRename)),
@@ -85,7 +88,6 @@ export default {
     operationController(subscriptionStatus),
   ),
   getHotKey: withControllerLogging('getHotKey', getHotKey),
-  getSearchByKey: withControllerLogging('getSearchByKey', getSearchByKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),
   getSongListCategories: withControllerLogging('getSongListCategories', getSongListCategories),
   getSongLists: withControllerLogging('getSongLists', getSongLists),

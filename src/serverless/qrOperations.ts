@@ -2,6 +2,7 @@ import type { QrRouteService } from '../routes/operations/types';
 import type { AuthHttpClient } from '../services/auth/httpClient';
 import type { QrLoginService } from '../services/auth/qrLogin';
 import { createQrLoginService, QrLoginServiceError } from '../services/auth/qrLogin';
+import { isMqttLoginChannel, type QrLoginChannel } from '../services/auth/qrTypes';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import type { ServerlessEnv, ServerlessOptions } from './index';
@@ -46,7 +47,7 @@ export const createServerlessQrOperations = ({
       checkBudgetMs: CHECK_BUDGET_MS,
     });
 
-    const key = await service.createSession(channel as 'qq' | 'wechat');
+    const key = await service.createSession(channel as QrLoginChannel);
     await service.createQr(key);
     const record = qrSessions.latest().find((session) => session.key === key);
     // `createQr` either finished with an `identifier` on this exact record or threw —
@@ -136,7 +137,8 @@ export const createServerlessQrOperations = ({
     if (relay) {
       const payload = await openQrState(key, secretsOf(env), Date.now()).catch(() => null);
       // Best effort by contract: an unknown, tampered or already-released key is still a success.
-      if (payload?.channel === 'qq') await relay.close(payload.identifier).catch(() => undefined);
+      if (payload && isMqttLoginChannel(payload.channel))
+        await relay.close(payload.identifier).catch(() => undefined);
     }
     // §5.3 #5: always 200. Callers cancel fire-and-forget on dialog close.
     (await getService()).cancelSession(key);

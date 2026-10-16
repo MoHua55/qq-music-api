@@ -23,7 +23,7 @@ export const LOGIN_HINT_MESSAGES: Readonly<Record<LoginHintKey, string>> = {
   'login.device-limit':
     'This account has reached its login device limit. Remove an old device in the QQ Music app, then try again.',
   'login.wrong-scan-app':
-    'If you scanned with the QQ Music app, try again and scan with the mobile QQ app instead.',
+    'If you scanned with the QQ Music app, choose QQ Music app login instead, or scan this code with the mobile QQ app.',
   'login.rate-limited': 'Too many login attempts. Wait a moment and try again.',
   'login.account-restricted': 'This account is restricted and cannot log in right now.',
   'login.account-banned': 'This account has been banned.',

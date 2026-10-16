@@ -10,6 +10,7 @@ import {
   type QrSessionRepository,
   type RuntimeCapabilities,
 } from '../services/auth/qrLogin';
+import { isMqttLoginChannel } from '../services/auth/qrTypes';
 import { deriveAndroidDevice } from './derivedDevice';
 import type { ServerlessEnv, ServerlessOptions } from './index';
 import { AUTH_COOKIE_NAME } from './response';
@@ -37,29 +38,33 @@ export const secretsOf = (env: ServerlessEnv) => ({
  * means no `qq`" impossible to get half-right.
  */
 export const capabilitiesFor = (options: ServerlessOptions): RuntimeCapabilities => ({
-  channels: options.qqRelay ? (['qq', 'wechat'] as const) : (['wechat'] as const),
+  channels: options.qqRelay ? (['qq', 'wechat', 'qqmusic'] as const) : (['wechat'] as const),
   sessionMode: 'sealed',
 });
 
-/** The `qq` driver exists only when a relay does; `wechat` keeps the service's own default. */
+/**
+ * The MQTT drivers (`qq`, and `qqmusic` on the same flow) exist only when a relay does; `wechat`
+ * keeps the service's own default.
+ */
 export const driversFor = (
   options: ServerlessOptions,
   http: AuthHttpClient,
   deviceRepository: DeviceContextRepository,
   base: AndroidDevice,
-): Partial<Record<QrLoginChannel, QrChannelDriver>> | undefined =>
-  options.qqRelay
-    ? {
-        qq: createRelayQqQrDriver({
-          http,
-          // Read through the repository rather than captured: `createSession` bootstraps QIMEI and
-          // the Android session and persists them, so the device the QR is created with has to be
-          // the post-bootstrap one, not the deterministic base this repository was seeded with.
-          device: () => deviceRepository.load() ?? base,
-          relay: options.qqRelay,
-        }),
-      }
-    : undefined;
+): Partial<Record<QrLoginChannel, QrChannelDriver>> | undefined => {
+  const relay = options.qqRelay;
+  if (!relay) return undefined;
+  const relayDriver = () =>
+    createRelayQqQrDriver({
+      http,
+      // Read through the repository rather than captured: `createSession` bootstraps QIMEI and
+      // the Android session and persists them, so the device the QR is created with has to be
+      // the post-bootstrap one, not the deterministic base this repository was seeded with.
+      device: () => deviceRepository.load() ?? base,
+      relay,
+    });
+  return { qq: relayDriver(), qqmusic: relayDriver() };
+};
 
 /**
  * A `QrSessionRepository` that answers `load()` with exactly the record a sealed `unikey` was
@@ -91,7 +96,7 @@ export const replayedRecord = (
   createdAt: payload.createdAt,
   expiresAt: payload.expiresAt,
   identifier: payload.identifier,
-  ...(payload.channel === 'qq' ? { qrcodeId: payload.identifier } : {}),
+  ...(isMqttLoginChannel(payload.channel) ? { qrcodeId: payload.identifier } : {}),
 });
 
 /**

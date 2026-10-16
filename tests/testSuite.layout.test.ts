@@ -29,7 +29,6 @@ const PROMOTED_ROUTE_TESTS = [
   'getNewDisks.test.ts',
   'getRadioLists.test.ts',
   'getRanks.test.ts',
-  'getSearchByKey.test.ts',
   'getSimilarSinger.test.ts',
   'getSingerList.test.ts',
   'getSingerMv.test.ts',
@@ -95,6 +94,9 @@ describe('default test suite layout', () => {
       'tests/services.qr-login.test.ts',
       'tests/operations.qr-check.test.ts',
       'tests/errors.runtime-baseline.test.ts',
+      'tests/song.like.routes.test.ts',
+      'tests/album.subscribe.routes.test.ts',
+      'tests/search.routes.test.ts',
     ]) {
       expect(contracts.split(' ')).toContain(file);
       expect(defaultSuiteFiles()).toContain(path.join(ROOT, file));

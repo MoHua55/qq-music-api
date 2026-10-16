@@ -49,6 +49,7 @@ export {
   type QrState,
   type RuntimeCapabilities,
   type SessionResolver,
+  type SessionRotation,
   SUPPORTED_LOGIN_CHANNELS,
 } from './qrTypes';
 export {

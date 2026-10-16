@@ -47,6 +47,11 @@ const LOGIN_UPSTREAM_OPERATIONS: Record<
     'credential-exchange': 'login.qq.credential-exchange',
     'get-login-user': 'login.qq.fallback-validation',
   },
+  // 同一支换凭证与回退读取，码表沿用手机 QQ 的登记。
+  qqmusic: {
+    'credential-exchange': 'login.qq.credential-exchange',
+    'get-login-user': 'login.qq.fallback-validation',
+  },
   wechat: {
     'credential-exchange': 'login.wechat.credential-exchange',
     'get-login-user': 'login.wechat.credential-validation',

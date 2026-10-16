@@ -20,7 +20,7 @@ const featuresFor = () => ({
     getUserAlbums: true,
     getLikedSongIds: true,
     getLikedSongs: true,
-    getCloudCollection: false,
+    getCloudCollection: true,
   },
   catalog: {
     getPlaylistTracks: true,
@@ -30,7 +30,7 @@ const featuresFor = () => ({
     getArtistDetail: true,
     getArtistSongs: true,
     getArtistAlbums: true,
-    getCloudTracks: false,
+    getCloudTracks: true,
     getSubscriptionStatus: true,
   },
   playback: {

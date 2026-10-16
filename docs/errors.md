@@ -86,6 +86,8 @@
 | `recommendation.rejected` | 502 | 推荐请求被 QQ 拒绝，原因不明 |
 | `search.rejected` | 502 | 搜索被 QQ 拒绝（不登录搜歌曲时常见），不是搜不到；登录后再搜 |
 
+Serverless（Vercel、Cloudflare）上的搜索还可能回 `200` 加空清单：QQ 对机房的网络有时回“成功、没有结果”而不是报错，服务分不出来，所以不会变成 `search.rejected`。要稳定搜索请用 Node、Docker 或 Electron（见使用文档）。
+
 ### 写入类接口出错时
 
 建立、改名、删除歌单，加歌删歌，收藏歌单，这些接口**只送一次、不会自动重试**。普通歌单接口遇到参数不对、不是自己的歌单、动到“我喜欢”或系统歌单，一律回 `400`，而且**什么都没写**。
@@ -187,7 +189,7 @@ QQ 出错时会回一个数字码。这个服务会把它原样交给你，让�
 - **自然过期**：不带下面这些诊断字段，直接请使用者重新拿一张二维码。
 - **登录失败**：会带 `failureStage`（哪一步失败）、`failureReason`（固定的原因）、`upstreamCode`（QQ 的数字码）。认得出原因时还会有：
   - `upstreamErrorKey`：对应上面“登录与会话”那张表；
-  - `failureHint: { key, message }`：可以直接给使用者看的说明，`key` 有 `login.device-limit`（登录设备已满）、`login.wrong-scan-app`（可能用错了 App 扫码，建议改用手机 QQ）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。
+  - `failureHint: { key, message }`：可以直接给使用者看的说明，`key` 有 `login.device-limit`（登录设备已满）、`login.wrong-scan-app`（可能用 QQ 音乐 App 扫了手机 QQ 的二维码，建议登录方式改选 QQ 音乐 App，或改用手机 QQ 扫）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。
 
 手机 QQ 扫码失败时还可能有 `primaryFailure` 和 `fallbackAttempted: true`。这是因为服务换凭证失败后会再验证一次，顶层字段写的是最后这次的结果；真正的原因（例如登录设备已满）要看 `primaryFailure`。
 

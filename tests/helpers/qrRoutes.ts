@@ -77,7 +77,7 @@ import type { ParityCallOptions } from './operationParity';
 
 type Purpose = 'key' | 'create' | 'check' | 'cancel' | 'channels';
 interface Setup {
-  channel?: 'qq' | 'wechat';
+  channel?: 'qq' | 'wechat' | 'qqmusic';
   mode?: 'valid' | 'invalid' | 'expired';
   relay?: boolean;
   previous?: boolean;
@@ -188,7 +188,7 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
       const channel = setup.channel ?? 'qq',
         mode = setup.mode ?? 'valid';
       const expiresAt = mode === 'expired' ? CONTRACT_NOW - 1 : CONTRACT_NOW + 180000;
-      const identifier = channel === 'qq' ? 'fixture-qr-id' : 'fixture-wx-id';
+      const identifier = channel === 'wechat' ? 'fixture-wx-id' : 'fixture-qr-id';
       const payload = {
         channel,
         createdAt: CONTRACT_NOW,
@@ -293,7 +293,7 @@ export const useQrUpstream = (runtime: CatalogRuntimeName) => {
             } finally {
               state.failPhase = failPhase;
             }
-            if (purpose === 'check' && channel === 'qq' && state.events)
+            if (purpose === 'check' && channel !== 'wechat' && state.events)
               await mockUpstream.observe(...state.events);
           }
         },

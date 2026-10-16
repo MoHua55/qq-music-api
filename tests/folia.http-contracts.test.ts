@@ -607,7 +607,8 @@ describe.each(['node', 'serverless'] as const)('Folia HTTP contracts: %s', (runt
     expect(result.body).toMatchObject({
       code: 200,
       data: {
-        channels: ['qq', 'wechat'],
+        // Folia 只留自己认得的 qq、wechat，多出来的 qqmusic 不会出现在它的登录选项里。
+        channels: ['qq', 'wechat', 'qqmusic'],
         sessionMode: runtime === 'node' ? 'stored' : 'sealed',
         configured: true,
       },

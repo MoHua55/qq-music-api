@@ -26,24 +26,24 @@ describe('apiExplorer util', () => {
   });
 
   it('应构造 GET 请求预览地址', () => {
-    const endpoint = apiExplorerMetadata.endpoints.find(({ id }) => id === 'get-search-by-key');
+    const endpoint = apiExplorerMetadata.endpoints.find(({ id }) => id === 'get-search');
 
     expect(endpoint).toBeDefined();
     if (!endpoint) {
-      throw new Error('Expected get-search-by-key endpoint to exist.');
+      throw new Error('Expected get-search endpoint to exist.');
     }
 
     const request = buildApiExplorerRequest(endpoint, {
       baseUrl: 'http://localhost:3200/',
       queryValues: {
-        key: '周杰伦',
+        keyword: '周杰伦',
         limit: '20',
       },
     });
 
     expect(request).toEqual({
       method: 'GET',
-      url: 'http://localhost:3200/getSearchByKey?key=%E5%91%A8%E6%9D%B0%E4%BC%A6&limit=20',
+      url: 'http://localhost:3200/search?keyword=%E5%91%A8%E6%9D%B0%E4%BC%A6&limit=20',
       body: undefined,
     });
   });
@@ -159,7 +159,7 @@ describe('apiExplorer util', () => {
     expect(filtered).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'get-hotkey' }),
-        expect.objectContaining({ id: 'get-search-by-key' }),
+        expect.objectContaining({ id: 'get-search' }),
       ]),
     );
   });
@@ -177,18 +177,18 @@ describe('apiExplorer util', () => {
   });
 
   it('应创建 pending 状态的请求日志记录', () => {
-    const endpoint = apiExplorerMetadata.endpoints.find(({ id }) => id === 'get-search-by-key');
+    const endpoint = apiExplorerMetadata.endpoints.find(({ id }) => id === 'get-search');
 
     expect(endpoint).toBeDefined();
     if (!endpoint) {
-      throw new Error('Expected get-search-by-key endpoint to exist.');
+      throw new Error('Expected get-search endpoint to exist.');
     }
 
     expect(
       createApiExplorerRequestLogEntry(
         endpoint,
         {
-          url: '/getSearchByKey?key=%E5%91%A8%E6%9D%B0%E4%BC%A6',
+          url: '/search?keyword=%E5%91%A8%E6%9D%B0%E4%BC%A6',
         },
         {
           id: 'log-1',
@@ -198,7 +198,7 @@ describe('apiExplorer util', () => {
     ).toEqual(
       expect.objectContaining({
         id: 'log-1',
-        endpointId: 'get-search-by-key',
+        endpointId: 'get-search',
         status: 'pending',
         requestBody: '',
         responsePreview: '请求进行中...',
@@ -211,10 +211,10 @@ describe('apiExplorer util', () => {
       {
         id: 'log-1',
         timestamp: '2026-05-01T12:00:00.000Z',
-        endpointId: 'get-search-by-key',
-        endpointName: 'getSearchByKey',
+        endpointId: 'get-search',
+        endpointName: 'getSearch',
         method: 'GET' as const,
-        url: '/getSearchByKey?key=%E5%91%A8%E6%9D%B0%E4%BC%A6',
+        url: '/search?keyword=%E5%91%A8%E6%9D%B0%E4%BC%A6',
         requestBody: '',
         status: 'pending' as const,
         duration: null,

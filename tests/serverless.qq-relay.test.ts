@@ -162,10 +162,10 @@ describe('serverless QQ App channel over a relay', () => {
       expect(body.data.channels).toEqual(['wechat']);
     });
 
-    it('should advertise qq as well once a relay is injected', async () => {
+    it('should advertise qq and qqmusic as well once a relay is injected', async () => {
       const body = await bodyOf(await call('/login/channels', createFakeRelay().relay));
 
-      expect(body.data.channels).toEqual(['qq', 'wechat']);
+      expect(body.data.channels).toEqual(['qq', 'wechat', 'qqmusic']);
     });
 
     it('should reject channel=qq without a relay rather than failing further in', async () => {

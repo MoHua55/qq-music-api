@@ -1,3 +1,34 @@
+## [3.3.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.1...v3.3.2) (2026-10-17)
+
+这一版加上音乐云盘、QQ 音乐 App 扫码、主动续期和歌词补翻译，修好 Vercel、Cloudflare 上搜索、红心、歌单写入等接口一直回 `502` 的问题，以及网络慢时微信扫码停在“请扫描”。Folia 已经在用的接口，路径、参数、字段和状态码都没变；唯一要注意的是旧的 `/getSearchByKey` 已经移除，见下面「给下游的通知」。
+
+### 新功能
+
+- **音乐云盘**：`GET /user/cloud?limit=&offset=`，要登录，回 `{ code, data, count, hasMore }`。每首带歌曲（上游格式）、文件名、加入时间和 `playable`：对得上曲库的歌拿 `song.mid` 照常用 `/getMusicPlay` 播放，自己上传、没对上的文件只给资料。`limit` 默认 200、最多 1000，一般一次请求只打一次上游。`features` 的 `library.getCloudCollection`、`catalog.getCloudTracks` 现在是 `true`。
+- **歌单详情带播放数**：`/user/playlist-detail?playCount=1` 在回包顶层多给一个 `play_cnt`，取自同一次读详情的结果，不多打上游。不公开的歌单是 `0`，“我喜欢”不给（官方也不显示）。不带这个参数时回包和以前一样。
+- **歌词补翻译**：`/getLyric?trans=1` 在旧接口的翻译是空的时，再去另一个歌词接口要一次翻译，要到就放进 `trans`（base64 的 LRC）。Node 和 Serverless 都能用，不用登录；补的那次只试一次，失败照常回原来的歌词。不带这个参数时只打一次上游，和以前一样。
+- **QQ 音乐 App 扫码登录**：新的登录通道 `qqmusic`（`/login/qr/key?channel=qqmusic`）。用 QQ 音乐 App 扫一扫，就用 App 里当下登录的账号登录，绑 QQ 或微信都行。二维码和手机 QQ 扫码同一种，Serverless 一样要中继。`/login/channels` 的 `channels` 多了 `qqmusic`，排在最后；只认得 `qq`、`wechat` 的前端（例如目前的 Folia）不受影响。
+- **主动续期** `POST /login/refresh`：回 `{ token, rotated, expiresAt }`。Serverless 在离到期不到 6 小时时续期并交出新 token（旧 token 照原到期时间可用），从第一次扫码算起最多 30 天；Node、Electron、Docker 照常静默续期、token 不变。不调用就和以前完全一样。新签发的 Serverless token 会多带续期需要的字段，以前签发的照常能用，只是不能续。
+
+### 改进
+
+- 用 QQ 音乐 App 扫手机 QQ 的二维码、App 登的是微信账号时，`login.wrong-scan-app` 的提示改成建议改用 QQ 音乐 App 登录。
+- **歌单播放数少打上游**：`/user/playlist?playCount=1` 同一账号 10 分钟内直接用上次读到的播放数，不再每次重扫，所以数字最多晚 10 分钟更新。上游没给明确的翻页信号时，补到的照给，但 `playCountComplete` 是 `false`。
+
+### 修复
+
+- **Vercel、Cloudflare 上搜索、推荐、红心、歌单写入等接口一直回 `502`**：这些接口共用的上游请求带了 `redirect: 'error'`，而 Vercel Edge 和 Cloudflare Workers 的 `fetch` 只认 `follow`、`manual`，请求一发就报错，结果是 `502`（`errorKey` 为 `network.unknown`）。受影响的有搜索、红心、收藏专辑和歌单、歌单加删歌和建立改名删除、会员状态、分类和推荐、每日 30 首、电台、猜你喜欢、云盘、歌词补翻译。现在改成 `manual`，上游真的转址时照旧算网络失败、不跟着跳，状态码和 `errorKey` 都和以前一样。登录、歌单读取、播放走的是另一套请求，本来就正常；Node、Electron、Docker 不受影响。
+- **网络慢时微信扫码一直停在“请扫描”**（Node、Electron、Docker）：以前每次 `/login/qr/check` 只等微信 1.5 秒，等不到就断开，下一次要重新连线、重新握手；电脑到微信的往返一慢（实测约 600 毫秒就会），一次都等不到微信回话，手机上同意了，电脑还一直是 `801`，也不报错。现在每次最多等 15 秒，有新状态时微信会马上回，所以扫码和登录成功的反应不会变慢，只有没动静时每次 check 会拖长；对上游的请求也从每分钟十几次降到几次。扫过之后的轮询会带 `last=404`，让微信一直等到授权结果，而不是重复回“已扫描”。Serverless 原本就等 20 秒，不受影响。
+
+### 给下游的通知
+
+- **移除旧搜索接口 `GET /getSearchByKey`**（只有 Node 有，3.3.1 已经预告过）。它实际只会搜歌曲，上游也常出错。现在访问它会回 `404`，请改用 `GET /search`：
+  - 参数 `key` 改成 `keyword`，`page`、`limit` 照旧（`limit` 最多 20）；要搜专辑、歌单、歌手就带 `type`。
+  - 回包从上游原样的 `{ response }` 变成 `{ code, type, page, limit, total, more, items }`，`items` 里的条目保持上游格式。
+  - 不登录搜歌曲常被上游拒绝，这时回 `502`（`errorKey` 为 `search.rejected`），登录后再搜即可。
+  - Folia 没用这条接口，不受影响。
+- **Node 的微信 `/login/qr/check` 最久会等 15 秒才回**（以前是 1.5 秒左右），回包内容不变。自己写客户端、给这个请求设了比 15 秒短的超时的，请调长；或者部署时设 `QQ_WECHAT_POLL_BUDGET_MS`（1000–20000 毫秒）改回较短的等待，代价是网络慢时又可能等不到扫码。Folia 不设超时，不受影响。
+
 ## [3.3.1](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.0...v3.3.1) (2026-10-15)
 
 这一版补上专辑收藏、红心、关键字搜索、Serverless 歌词和歌单播放数，并修好 Docker 镜像。Folia 已经在用的接口，路径、参数、字段和状态码都没变；新东西都是新路由、可选参数或可选字段，不用就和 3.3.0 完全一样。

@@ -30,7 +30,7 @@ const REMOTE_PLACE = 'search.android.keyboard';
  * 精简版客户端的匿名身份：只放协议需要的应用与版本常数，不带任何设备指纹。
  * 标头里的 `tmeLoginType=-1` 表示未登录。
  */
-const ANONYMOUS_LITE_COMM = {
+export const ANONYMOUS_LITE_COMM = {
   ct: 11,
   cv: '1003006',
   v: '1003006',
@@ -39,7 +39,7 @@ const ANONYMOUS_LITE_COMM = {
   udid: '0',
   uid: '0',
 };
-const ANONYMOUS_LITE_HEADERS = { Cookie: 'tmeLoginType=-1', 'User-Agent': 'okhttp/3.14.9' };
+export const ANONYMOUS_LITE_HEADERS = { Cookie: 'tmeLoginType=-1', 'User-Agent': 'okhttp/3.14.9' };
 
 const DEFAULT_LIMIT = 10;
 /** 实测验证过一页 10 与 20 条；更大的没有验证过。 */

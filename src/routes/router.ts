@@ -16,6 +16,7 @@ router.get('/login/qr/cancel', context.qrCancel);
 router.get('/login/status', context.loginStatus);
 router.get('/login/channels', context.loginChannels);
 router.get('/logout', context.logout);
+router.post('/login/refresh', context.loginRefresh);
 router.get('/user/detail', context.userDetail);
 router.get('/user/vip', context.userVip);
 router.post('/user/song/like', context.songLike);
@@ -32,6 +33,7 @@ router.get('/user/liked-songs', context.getUserLikedSongs);
 router.get('/user/playlist-detail', context.getOwnedPlaylistSongs);
 router.get('/user/guess-you-like', context.getGuessYouLike);
 router.get('/user/daily-songs', context.userDailySongs);
+router.get('/user/cloud', context.userCloud);
 
 // recommendations; a login session is used when present
 router.get('/recommend/playlists', context.getRecommendPlaylists);
@@ -52,8 +54,6 @@ router.get('/radio/tracks', context.getRadioTracks);
 router.get('/downloadQQMusic', context.getDownloadQQMusic);
 
 router.get('/getHotkey', context.getHotKey);
-
-router.get('/getSearchByKey/:key?/:limit?/:page?/:catZhida?', context.getSearchByKey);
 
 // search smartbox
 router.get('/getSmartbox/:key?', context.getSmartbox);

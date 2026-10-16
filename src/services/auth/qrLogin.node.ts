@@ -8,6 +8,7 @@ import {
   type QrLoginService,
   type WebSocketConstructor,
 } from './qrLogin';
+import { wechatPollBudgetMsOf } from './wechatLogin';
 
 /**
  * The Node runtime wrapper: `qrLogin.ts` is runtime-neutral, and this file is the only place that
@@ -38,6 +39,7 @@ export const createNodeQrLoginService = (): QrLoginService =>
     deviceRepository: createDefaultDeviceContextRepository(),
     listen: createMqttListen(WebSocketRuntime),
     randomBytes: crypto.randomBytes,
+    checkBudgetMs: wechatPollBudgetMsOf(process.env.QQ_WECHAT_POLL_BUDGET_MS),
   });
 
 export const qrLoginService = createNodeQrLoginService();

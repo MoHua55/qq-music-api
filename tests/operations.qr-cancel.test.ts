@@ -12,7 +12,7 @@ const parity = createParityRunner(
 );
 describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 共用处理与真实宿主契约（%s）', (runtime) => {
   const upstream = useQrUpstream(runtime);
-  it.each(['qq', 'wechat'] as const)('释放 %s 的宿主资源', async (channel) => {
+  it.each(['qq', 'wechat', 'qqmusic'] as const)('释放 %s 的宿主资源', async (channel) => {
     const options = await upstream.options('cancel', { channel });
     const legs = await parity(
       runtime,
@@ -22,7 +22,7 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/cancel 共用处理与真实宿主契
     );
     expect(legs.operation.status).toBe(200);
     expect(legs.operation.body).toEqual({ code: 200 });
-    if (channel === 'qq')
+    if (channel !== 'wechat')
       expect(legs.operation.calls).toEqual([
         { kind: runtime === 'node' ? 'listener' : 'relay', method: 'close', id: 'fixture-qr-id' },
         ...(runtime === 'node' ? [{ kind: 'listener', method: 'close', id: 'fixture-qr-id' }] : []),

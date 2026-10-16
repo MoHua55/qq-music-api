@@ -41,10 +41,10 @@ const COOKIE_NAME = /^[A-Za-z0-9_]{1,40}$/;
 const COOKIE_NAME_LIMIT = 20;
 
 /**
- * 手机 QQ 扫码通道收到 MQTT `cookies` 时，只记录 cookie 名称和 `tmeLoginType` 的数字。
- * 用来分辨用 QQ 音乐 App 扫码时回调内容跟手机 QQ 有什么不同；任何 cookie 的值都不记录。
+ * MQTT 通道（手机 QQ、QQ 音乐 App）收到 `cookies` 时，只记录 cookie 名称和 `tmeLoginType` 的数字。
+ * 用来分辨不同 App、不同账号类型扫码时回调内容有什么不同；任何 cookie 的值都不记录。
  */
-export const logQqCookies = (payload: unknown): void => {
+export const logQqCookies = (payload: unknown, loginChannel: 'qq' | 'qqmusic' = 'qq'): void => {
   try {
     const body =
       payload !== null && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
@@ -67,10 +67,18 @@ export const logQqCookies = (payload: unknown): void => {
         : typeof raw === 'string' && /^\d{1,3}$/.test(raw)
           ? Number(raw)
           : undefined;
+    // 账号 id 只记位数：微信账号是 19 位，超过 JavaScript 能精确表示的整数，排查换凭证时要知道。
+    const uinEntry = cookies.qqmusic_uin;
+    const uin =
+      uinEntry !== null && typeof uinEntry === 'object'
+        ? (uinEntry as Record<string, unknown>).value
+        : undefined;
+    const uinDigits = typeof uin === 'string' && /^\d{1,30}$/.test(uin) ? uin.length : undefined;
     logger.info('qq-auth.qq-cookies', {
-      loginChannel: 'qq',
+      loginChannel,
       cookieNames,
       ...(tmeLoginType === undefined ? {} : { tmeLoginType }),
+      ...(uinDigits === undefined ? {} : { uinDigits }),
       hasCommConf: body.commConf !== null && typeof body.commConf === 'object',
     });
   } catch {

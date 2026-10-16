@@ -35,11 +35,33 @@ const PNG_MAGIC = '89504e470d0a1a0a';
 const JPEG_MAGIC = 'ffd8ff';
 
 /**
- * How long one long poll may hold the connection. The upstream keeps it open until the QR state
- * changes, so the caller's budget — not a fixed interval — is what bounds a `check`.
+ * How long one long poll may hold the connection. The upstream keeps it open (about 15 s) until the
+ * QR state changes, so the caller's budget — not a fixed interval — is what bounds a `check`.
+ *
+ * Aborting at the budget also tears the socket down, so every next poll pays a fresh TCP + TLS
+ * handshake before the upstream can answer at all. A short budget therefore fails silently on a
+ * slow link: with 1.5 s and a ~600 ms round trip no poll ever got an answer, the phone confirmed
+ * and the client kept reading `801`. A state change still answers the held poll at once, so the
+ * longer budget only stretches the checks where nothing happens.
  */
-export const WECHAT_DEFAULT_POLL_BUDGET_MS = 1500;
+export const WECHAT_DEFAULT_POLL_BUDGET_MS = 15_000;
+/** Bounds for `QQ_WECHAT_POLL_BUDGET_MS`; the upper one stays clear of the 25 s HTTP timeout. */
+export const WECHAT_POLL_BUDGET_MIN_MS = 1000;
+export const WECHAT_POLL_BUDGET_MAX_MS = 20_000;
 export const MAX_CONSECUTIVE_POLL_ERRORS = 3;
+
+/**
+ * Reads an operator's poll budget override. Anything that is not a whole number of milliseconds
+ * inside the bounds falls back to the default rather than failing the service at startup.
+ */
+export const wechatPollBudgetMsOf = (raw: string | undefined): number => {
+  const text = raw?.trim() ?? '';
+  if (!/^\d+$/.test(text)) return WECHAT_DEFAULT_POLL_BUDGET_MS;
+  const value = Number(text);
+  return value >= WECHAT_POLL_BUDGET_MIN_MS && value <= WECHAT_POLL_BUDGET_MAX_MS
+    ? value
+    : WECHAT_DEFAULT_POLL_BUDGET_MS;
+};
 
 /**
  * `window.wx_errcode` values. The reference pairs each state with its QQ `ptuiCB` counterpart;
@@ -71,6 +93,11 @@ export interface WechatRequestOptions {
 export interface WechatPollOptions extends WechatRequestOptions {
   /** Caps how long the long poll may hold; the upstream is aborted when it elapses. */
   budgetMs?: number;
+  /**
+   * The state this client already saw. Once the scan is known, `last=404` asks the upstream to
+   * hold until the state moves on instead of answering the scan again or falling back to waiting.
+   */
+  last?: number;
 }
 
 /**
@@ -182,7 +209,11 @@ export const pollWechatQr = async (
   const response = await http.request<string>({
     url: POLL_URL,
     method: 'GET',
-    params: { uuid, _: String(Date.now()) },
+    params: {
+      uuid,
+      ...(options.last === undefined ? {} : { last: options.last }),
+      _: String(Date.now()),
+    },
     headers: { Referer: POLL_REFERER },
     responseType: 'text',
     signal: budgetSignal(options.budgetMs, options.signal),
