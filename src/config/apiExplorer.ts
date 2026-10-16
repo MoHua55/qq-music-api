@@ -376,7 +376,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   qrCheck: {
     description:
-      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. Stored WeChat sessions retain 802 after a later waiting response; only a completed credential exchange returns 803. Sealed serverless checks still reconstruct progress per request. Safe WeChat poll/state/check evidence is available in server logs at info level without adding response fields. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure. A recognised failure adds failureHint with a key and a default English message.',
+      'Poll QR state: 800 expired or failed, 801 waiting, 802 scanned, or 803 confirmed. Stored WeChat sessions retain 802 after a later waiting response; only a completed credential exchange returns 803. On Node a WeChat check waits up to 15 s (QQ_WECHAT_POLL_BUDGET_MS) when nothing changes, so do not give this request a shorter client timeout. Sealed serverless checks still reconstruct progress per request. Safe WeChat poll/state/check evidence is available in server logs at info level without adding response fields. A failed 800 may add upstreamErrorKey for a registered code, and mobile QQ may add primaryFailure with fallbackAttempted when its fallback check overwrote the first failure. A recognised failure adds failureHint with a key and a default English message.',
     queryParams: [
       {
         key: 'key',

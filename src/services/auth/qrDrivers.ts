@@ -16,6 +16,7 @@ import {
   eventForWechatStatus,
   fetchWechatQrImage,
   pollWechatQr,
+  WECHAT_STATUS,
 } from './wechatLogin';
 
 // src/services/auth/qrDrivers.ts
@@ -144,9 +145,12 @@ export const createWechatQrDriver = (options: {
     if (!session.identifier) return [];
     const startedAt = Date.now();
     try {
+      // A serverless check rebuilds the session as `waiting`, so only a runtime that kept the
+      // scan sends the cursor; without it the request is exactly what it was before.
       const status = await pollWechatQr(options.http(session), session.identifier, {
         budgetMs,
         signal,
+        last: session.state === 'scanned' ? WECHAT_STATUS.scanned : undefined,
       });
       const event = eventForWechatStatus(status);
       logWechatQr(session, 'poll', {

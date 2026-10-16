@@ -83,6 +83,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
+| `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 的微信扫码每次 `/login/qr/check` 最多等多久（毫秒，1000–20000，填错用默认值）。调短会让网络慢时等不到扫码 |
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
 | `QQ_SESSION_SECRET` | 无 | Serverless 会话或 Node 持久会话的加密密钥；持久部署重启时保持不变 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
@@ -211,6 +212,8 @@ Node 支持手机 QQ、微信和 QQ 音乐 App 扫码。`qq` 指手机 QQ 扫码
 扫码成功后设置 HttpOnly `qqmusic_session`，并在 check 响应的 `cookie` 字段返回同一个 opaque session。跨来源 transport 可以保存完整的 `qqmusic_session=<opaque token>`，再通过 `cookie` query 传回；支持相应入口时也可用 `X-QQ-Session` 请求头。含会话参数的完整 URL 不应写进日志或公开分享。QQ 原始凭证只保留在可信服务端。
 
 ### 扫码失败诊断
+
+Node、Electron、Docker 的微信扫码每次 check 最多等微信 15 秒（`QQ_WECHAT_POLL_BUDGET_MS` 可调）。有新状态时会马上回，没动静时这次 check 就会等满才回 `801`，客户端不要给它设比这更短的超时。等太短的话，网络一慢每次都等不到微信回话，手机上同意了画面还是 `801`；日志里会看到每次 `qq-auth.wechat-poll` 都是 `budget-expired`。扫过之后的轮询会带 `last=404`。
 
 Node、Electron、Docker 的微信扫码在后端收到“已扫描”后，会保留 `802`，后续的等待回包不会把它退回 `801`。这不代表授权已完成：只有授权成功并换出会话才回 `803`；手机拒绝、二维码过期和轮询失败仍按原规则处理。手机 QQ 通道不变。
 

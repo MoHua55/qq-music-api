@@ -323,8 +323,9 @@ export interface QrLoginDependencies {
   capabilities?: RuntimeCapabilities;
   /**
    * How long one `/login/qr/check` may observe a pull channel before answering. The Node default
-   * stays inside the client's existing 2 s poll cadence; a serverless runtime raises it so a
-   * single invocation can absorb a long poll.
+   * (15 s, `QQ_WECHAT_POLL_BUDGET_MS`) lets a slow link finish its handshake and still read the
+   * scan; a state change answers at once, so only idle checks get longer. A serverless runtime sets
+   * its own budget so a single invocation can absorb a long poll.
    */
   checkBudgetMs?: number;
   now?: () => number;
