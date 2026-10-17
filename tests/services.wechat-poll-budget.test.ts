@@ -125,8 +125,8 @@ describe('WeChat long poll budget', () => {
     });
   });
 
-  it('should keep Serverless at its own 20 s check budget', () => {
-    expect(CHECK_BUDGET_MS).toBe(20_000);
+  it('should keep Serverless at a 15 s check budget, under the 20 s Folia gives a login request', () => {
+    expect(CHECK_BUDGET_MS).toBe(15_000);
   });
 });
 
@@ -173,8 +173,10 @@ describe('QQ_WECHAT_POLL_BUDGET_MS', () => {
     ['8000', 8000],
     [' 3000 ', 3000],
     ['1000', 1000],
-    ['20000', 20_000],
+    ['15000', 15_000],
     ['999', 15_000],
+    ['15001', 15_000],
+    ['20000', 15_000],
     ['20001', 15_000],
     ['1.5', 15_000],
     ['abc', 15_000],

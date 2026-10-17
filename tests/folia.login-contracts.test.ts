@@ -273,6 +273,14 @@ describe.each(['node', 'serverless'] as const)('Folia 登录重构依赖的契�
         more: false,
       },
       { label: '上游没给总数', data: { hasmore: 0 }, total: 2, more: false },
+      { label: '上游总数是小数', data: { total_song_num: 1.5, hasmore: 0 }, total: 2, more: false },
+      { label: '上游总数是负数', data: { total_song_num: -1, hasmore: 0 }, total: 2, more: false },
+      {
+        label: '上游总数超出安全整数',
+        data: { total_song_num: 2 ** 53, hasmore: 0 },
+        total: 2,
+        more: false,
+      },
     ])('$label：total 是安全整数，more 是布尔值', async ({ data, total, more }) => {
       mockLikedData = { songlist: CONTRACT_SONGS.slice(0, 2), ...data };
       const result = await call(FOLIA_COUNT_PATH, true);
