@@ -1,3 +1,14 @@
+## 未发布
+
+### 改进
+
+- **登录检查不会再拖到 20 秒**：Folia 等一个登录请求 20 秒就当没回应。Serverless 的 `/login/qr/check` 每次最多做 15 秒（以前 20 秒）；Node 的 `QQ_WECHAT_POLL_BUDGET_MS` 上限从 20000 改成 15000 毫秒。
+- `/user/liked-songs` 的 `total` 只在上游给的是正常整数时照用，上游给了小数、负数或大得离谱的数时，改用这一页的条数。
+
+### 给下游的通知
+
+- 之前把 `QQ_WECHAT_POLL_BUDGET_MS` 设成 15001–20000 的，会改用默认的 15 秒；设在 15000 以内的不受影响。
+
 ## [3.3.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.1...v3.3.2) (2026-10-17)
 
 这一版加上音乐云盘、QQ 音乐 App 扫码、主动续期和歌词补翻译，修好 Vercel、Cloudflare 上搜索、红心、歌单写入等接口一直回 `502` 的问题，以及网络慢时微信扫码停在“请扫描”。Folia 已经在用的接口，路径、参数、字段和状态码都没变；唯一要注意的是旧的 `/getSearchByKey` 已经移除，见下面「给下游的通知」。

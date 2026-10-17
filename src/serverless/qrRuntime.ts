@@ -15,7 +15,8 @@ import { deriveAndroidDevice } from './derivedDevice';
 import type { ServerlessEnv, ServerlessOptions } from './index';
 import { AUTH_COOKIE_NAME } from './response';
 import type { SealedQrDeviceStateV1 } from './sealedQrState';
-export const CHECK_BUDGET_MS = 20_000;
+// 一次 /login/qr/check 最多做多久；Folia 等登录请求 20 秒，这里留出余量。
+export const CHECK_BUDGET_MS = 15_000;
 export const tokenFromCookieString = (cookie: string): string | undefined => {
   for (const entry of cookie.split(';')) {
     const separator = entry.indexOf('=');

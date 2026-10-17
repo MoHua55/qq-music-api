@@ -83,7 +83,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
-| `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 的微信扫码每次 `/login/qr/check` 最多等多久（毫秒，1000–20000，填错用默认值）。调短会让网络慢时等不到扫码 |
+| `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 的微信扫码每次 `/login/qr/check` 最多等多久（毫秒，1000–15000，填错或超出范围用默认值）。调短会让网络慢时等不到扫码 |
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
 | `QQ_SESSION_SECRET` | 无 | Serverless 会话或 Node 持久会话的加密密钥；持久部署重启时保持不变 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |

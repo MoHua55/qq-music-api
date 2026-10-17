@@ -45,9 +45,12 @@ const JPEG_MAGIC = 'ffd8ff';
  * longer budget only stretches the checks where nothing happens.
  */
 export const WECHAT_DEFAULT_POLL_BUDGET_MS = 15_000;
-/** Bounds for `QQ_WECHAT_POLL_BUDGET_MS`; the upper one stays clear of the 25 s HTTP timeout. */
+/**
+ * Bounds for `QQ_WECHAT_POLL_BUDGET_MS`. The upper one stays under the 20 s a client such as Folia
+ * gives a login request before it calls it unanswered.
+ */
 export const WECHAT_POLL_BUDGET_MIN_MS = 1000;
-export const WECHAT_POLL_BUDGET_MAX_MS = 20_000;
+export const WECHAT_POLL_BUDGET_MAX_MS = 15_000;
 export const MAX_CONSECUTIVE_POLL_ERRORS = 3;
 
 /**
