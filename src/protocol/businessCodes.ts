@@ -14,6 +14,8 @@ export const UPSTREAM_OPERATIONS = [
   'login.qq.credential-exchange',
   /** 手机 QQ 扫码：换凭证失败后，直接拿扫码票据去读登录用户。 */
   'login.qq.fallback-validation',
+  /** 手机 QQ 扫码走网页登录（Serverless）：用 QQ 互联给的 code 换凭证（`QQConnectLogin.LoginServer.QQLogin`）。 */
+  'login.qq.ptlogin-exchange',
   /** 微信扫码：用授权码换正式凭证。 */
   'login.wechat.credential-exchange',
   /** 微信扫码：用刚换到的凭证读登录用户。 */
@@ -184,9 +186,13 @@ const entries = (
     codes.map((upstreamCode) => ({ operation, sourceLayer, upstreamCode, ...body })),
   );
 
-/** 两个通道换凭证用的是同一个上游方法，刷新凭证也是；登录码只在这几步有意思。 */
+/**
+ * 两个通道换凭证用的是同一个上游方法，刷新凭证也是；登录码只在这几步有意思。
+ * 网页登录的换凭证是另一支方法，码义沿用这一组公开资料，那一支没有实测过。
+ */
 const LOGIN_EXCHANGE: readonly UpstreamOperation[] = [
   'login.qq.credential-exchange',
+  'login.qq.ptlogin-exchange',
   'login.wechat.credential-exchange',
   'login.wechat.credential-refresh',
 ];

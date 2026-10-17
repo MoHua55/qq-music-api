@@ -70,6 +70,15 @@ export const loginUpstreamErrorKeyOf = (
   error: unknown,
   channel: QrLoginChannel | undefined,
 ): string | undefined => {
+  // 网页登录换凭证（只有手机 QQ 通道会走）：HTTP 正常、外层码是 0 时才看单项码。
+  if (error instanceof PtloginError) {
+    if (channel !== 'qq' || error.step !== 'qq-login' || error.upstreamCode === undefined)
+      return undefined;
+    const status = error.httpStatus;
+    if ((status !== undefined && (status < 200 || status > 299)) || error.globalCode !== 0)
+      return undefined;
+    return exposedUpstreamErrorKeyOf('login.qq.ptlogin-exchange', 'business', error.upstreamCode);
+  }
   if (!channel || !(error instanceof QqProtocolError) || error.upstreamCode === undefined)
     return undefined;
   if (error.httpStatus < 200 || error.httpStatus > 299 || error.globalCode !== 0) return undefined;
