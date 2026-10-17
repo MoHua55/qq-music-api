@@ -112,7 +112,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 **Serverless 上的手机 QQ 扫码。** 没有中继时，手机 QQ 扫码走 QQ 互联的网页登录（和 QQ 音乐官网「QQ 登录」同一套），每次 `/login/qr/check` 只问一次二维码状态，二维码和进度都封在 `unikey` 里，不用另外的存储。和 Node 版相比有几点不同：
 - 二维码大约 120 秒失效（Node 版是 180 秒），过期后照常回 `800`，重新取码就好。
 - 手机上确认之后，那一次 `/login/qr/check` 要多跑几步换凭证，会比平常慢一些，最多 15 秒；换不完就回 `800`（`failureStage` 为 `credential-exchange`），重新扫一次即可。
-- 登录后的会话跟着 QQ 给的凭证寿命走（最长 7 天），到期后要重新扫码；这种会话目前还不支持 `POST /login/refresh` 续期。
+- 登录后的会话跟着 QQ 给的凭证寿命走（目前大约 3 天）。和微信扫码的会话一样能用 `POST /login/refresh` 续期：快到期时调一次就换一个新 token，从第一次扫码算起最多 30 天；不调的话到期后要重新扫码。
 - 用的是 QQ 音乐网页在 QQ 互联的身份，属于兼容做法：QQ 改了网页登录流程，或者对部署平台的机房网络另眼相看时，可能会失败。要最稳定的手机 QQ 登录，就用 Node、Docker 或 Electron。
 - 不想提供这种登录时，把 `QQ_PTLOGIN_HTTP_ENABLED` 设成 `0`，`/login/channels` 就只剩 `wechat`。
 
