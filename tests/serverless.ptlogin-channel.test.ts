@@ -45,6 +45,7 @@ const ptui = (code: string, url = ''): string => `ptuiCB('${code}','0','${url}',
 interface Upstream {
   poll: string;
   qqLogin: unknown;
+  refresh?: unknown;
   calls: Array<{ url: string; cookie: string | null; body: string }>;
 }
 
@@ -119,6 +120,8 @@ beforeEach(() => {
       const payload = JSON.parse(body || '{}');
       if (payload?.req?.method === 'QQLogin') return new Response(JSON.stringify(upstream.qqLogin));
       const method = payload?.req_0?.method;
+      if (method === 'Login' && upstream.refresh)
+        return new Response(JSON.stringify(upstream.refresh));
       if (method === 'GetSession')
         return new Response(
           JSON.stringify({
@@ -193,6 +196,96 @@ describe('Serverless 的 qq 通道走纯 HTTP 扫码', () => {
     );
     expect(status.status).toBe(200);
     expect(((await status.json()) as Record<string, any>).data.profile).toBeDefined();
+  });
+
+  it('快到期时 POST /login/refresh 用 openid、refresh_token 续期，交出新 token', async () => {
+    // 实测 QQLogin 回的 refresh_key 是空的，续期靠 openid、refresh_token 这几项（真账号验过这组参数）。
+    const data = (upstream.qqLogin as { req: { data: Record<string, unknown> } }).req.data;
+    Object.assign(data, {
+      openid: 'fixture-openid',
+      access_token: 'fixture-access-token',
+      refresh_token: 'fixture-refresh-token',
+      unionid: 'fixture-unionid',
+    });
+    const unikey = await startQr();
+    upstream.poll = ptui('0', CHECK_SIG);
+    const confirmed = await check(unikey);
+    expect(confirmed.body.code).toBe(803);
+    const token = String(confirmed.body.cookie).slice('qqmusic_session='.length);
+
+    // 凭证 72 小时，快进到第 70 小时，进了最后 6 小时的续期窗口。
+    const later = Date.now() + 70 * 60 * 60 * 1000;
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(later);
+    try {
+      const createdAt = Math.floor(later / 1000);
+      upstream.refresh = {
+        code: 0,
+        req_0: {
+          code: 0,
+          data: {
+            loginType: 2,
+            musicid: 10001,
+            musickey: 'fixture-ptlogin-new-musickey',
+            musickeyCreateTime: createdAt,
+            keyExpiresIn: 259200,
+            encryptUin: 'fixture-encrypt-uin',
+            refresh_key: '',
+          },
+        },
+      };
+      upstream.calls.length = 0;
+      const refreshed = await handleRequest(
+        new Request('https://worker.invalid/login/refresh', {
+          method: 'POST',
+          headers: { 'X-QQ-Session': token },
+        }),
+        ENV,
+      );
+      expect(refreshed.status).toBe(200);
+      const body = (await refreshed.json()) as { data: Record<string, unknown> };
+      expect(body).toEqual({
+        code: 200,
+        data: {
+          token: expect.any(String),
+          rotated: true,
+          expiresAt: (createdAt + 259200) * 1000,
+        },
+      });
+      expect(body.data.token).not.toBe(token);
+      expect(JSON.stringify(body)).not.toContain('fixture-ptlogin-new-musickey');
+
+      const logins = upstream.calls
+        .filter((entry) => entry.url === MUSICU_URL)
+        .map((entry) => JSON.parse(entry.body))
+        .filter((payload) => payload?.req_0?.method === 'Login');
+      expect(logins).toHaveLength(1);
+      expect(logins[0].comm.tmeLoginType).toBe(2);
+      expect(logins[0].req_0).toMatchObject({
+        module: 'music.login.LoginServer',
+        param: {
+          openid: 'fixture-openid',
+          refresh_token: 'fixture-refresh-token',
+          unionid: 'fixture-unionid',
+          musickey: MUSIC_KEY,
+          refresh_key: '',
+          loginMode: 2,
+        },
+      });
+
+      // 新 token 带着新的 musickey 去读。
+      upstream.calls.length = 0;
+      const status = await handleRequest(
+        new Request('https://worker.invalid/login/status', {
+          headers: { 'X-QQ-Session': String(body.data.token) },
+        }),
+        ENV,
+      );
+      expect(status.status).toBe(200);
+      const read = upstream.calls.find((entry) => entry.body.includes('GetLoginUserInfo'));
+      expect(read?.body).toContain('fixture-ptlogin-new-musickey');
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('旧写法 channel=mobile 一样走纯 HTTP 扫码', async () => {
