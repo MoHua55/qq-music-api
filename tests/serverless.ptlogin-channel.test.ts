@@ -329,6 +329,41 @@ describe('Serverless 的 qq 通道走纯 HTTP 扫码', () => {
     expect(JSON.stringify(result.body)).not.toContain(P_SKEY);
   });
 
+  // 网页登录换凭证（QQLogin）沿用手机 QQ 换凭证那一组登录码：错误键和提示与 MQTT 通道一致。
+  it.each([
+    [20279, 'auth.device-limit', 'login.device-limit'],
+    [104604, 'auth.rate-limited', 'login.rate-limited'],
+    [20277, 'auth.account-restricted', 'login.account-restricted'],
+    [20450, 'auth.account-banned', 'login.account-banned'],
+    [20272, 'auth.account-binding', 'login.account-binding'],
+    [20261, 'auth.login-rejected', 'login.rejected'],
+  ])('QQLogin 回 %d 时带错误键 %s 和提示 %s', async (code, errorKey, hintKey) => {
+    const unikey = await startQr();
+    upstream.poll = ptui('0', CHECK_SIG);
+    upstream.qqLogin = { code: 0, req: { code } };
+    const result = await check(unikey);
+    expect(result.body).toMatchObject({
+      code: 800,
+      failureStage: 'credential-exchange',
+      upstreamCode: code,
+      upstreamErrorKey: errorKey,
+      failureHint: { key: hintKey },
+    });
+  });
+
+  it.each([
+    ['没登记的码', { code: 0, req: { code: 1000 } }],
+    ['网关不是 0', { code: 500001, req: { code: 20277 } }],
+  ])('QQLogin %s时不给错误键', async (_label, reply) => {
+    const unikey = await startQr();
+    upstream.poll = ptui('0', CHECK_SIG);
+    upstream.qqLogin = reply;
+    const result = await check(unikey);
+    expect(result.body).toMatchObject({ code: 800, failureStage: 'credential-exchange' });
+    expect(result.body).not.toHaveProperty('upstreamErrorKey');
+    expect(result.body).not.toHaveProperty('failureHint');
+  });
+
   it('取消永远回 200，也不打上游', async () => {
     const unikey = await startQr();
     upstream.calls.length = 0;
