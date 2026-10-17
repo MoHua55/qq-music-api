@@ -3,6 +3,7 @@
 ### 新功能
 
 - **Vercel、Cloudflare 上也能用手机 QQ 扫码登录**：以前 Serverless 没有中继时只能微信扫码。现在没有中继时，手机 QQ 扫码（`qq` 通道）改走 QQ 互联的网页登录，全程是普通的 HTTP 请求，不用长连接，也不用另外配存储。二维码大约 120 秒失效；手机上确认后，那一次 `/login/qr/check` 会慢一些（最多 15 秒）。登录后的会话跟着 QQ 给的凭证寿命走（目前大约 3 天），快到期时调 `POST /login/refresh` 就能续，最多 30 天。不想提供时设 `QQ_PTLOGIN_HTTP_ENABLED=0`。注入了中继的部署照旧走 MQTT，Node、Electron、Docker 不受影响。
+- **刷歌模式**：`GET /recommend/radar?page=` 一页大约 10 首推荐歌，可以一直往下读（QQ 音乐客户端里的「雷达」）。登录了就按账号推荐，没登录也能读；`features.recommendations` 多了 `getRadarSongs`。
 - **新碟上架**：`GET /recommend/new-albums` 按地区读新专辑（带歌手、发行日期、歌曲数），可以翻页，同时给出可选的地区。不用登录，Node 和 Serverless 都能用；`features.recommendations` 多了 `getNewAlbums`。
 - **排行榜**：`GET /recommend/toplists` 列出全部榜单（按组分好，带封面、这一期是哪天或哪一周、前几名预览），`GET /recommend/toplist?id=` 读一个榜的歌，可以翻页，也可以指定往期。不用登录，Node 和 Serverless 都能用；`/login/channels` 的 `features.recommendations` 多了 `getToplists`、`getToplistSongs`。
 

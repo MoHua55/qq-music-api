@@ -58,6 +58,8 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.category-playlists',
   /** 新歌速递（`get_new_song_info`），匿名。 */
   'recommend.new-songs',
+  /** 刷歌模式（`TrackRelationServer.GetRadarSong`），有会话就带凭证。 */
+  'recommend.radar',
   /** 新碟地区清单（`get_new_album_area`），匿名。 */
   'recommend.new-album-areas',
   /** 新碟上架（`get_new_album_info`），匿名。 */
@@ -238,7 +240,7 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
     '本项目一直以来的处理：带凭证的 musicu 读取在单项这一层回这几个码，表示凭证不被认可，路由回 401',
   ),
   ...credentialRejected(
-    ['recommend.guess-you-like', 'recommend.playlists'],
+    ['recommend.guess-you-like', 'recommend.playlists', 'recommend.radar'],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
   ),
   ...credentialRejected(

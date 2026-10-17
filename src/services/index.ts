@@ -14,6 +14,7 @@ import getRadioLists from './radio/getRadioLists';
 // getTopLists
 import getTopLists from './rank/getTopLists';
 import getGuessYouLike from './recommend/getGuessYouLike';
+import getRadar from './recommend/getRadar';
 import { getRadioList, getRadioTracks } from './recommend/getRadio';
 import getRecommendPlaylists from './recommend/getRecommendPlaylists';
 // search
@@ -75,6 +76,7 @@ export default {
   // recommend
   getGuessYouLike,
   getRecommendPlaylists,
+  getRadar,
   getRadioList,
   getRadioTracks,
   // search

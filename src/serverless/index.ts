@@ -47,6 +47,7 @@ import {
 } from '../services/recommend/catalog';
 import { guessYouLikeResult } from '../services/recommend/guessYouLike';
 import type { NewRouteResult } from '../services/recommend/newRouteResult';
+import { radarPageOf, radarResult } from '../services/recommend/radar';
 import { radioListResult, radioTracksResult } from '../services/recommend/radio';
 import {
   recommendPlaylistsLimitOf,
@@ -196,6 +197,13 @@ const routes: Record<string, RouteHandler> = {
         recommendPlaylistsLimitOf(url.searchParams.get('limit')),
       ),
     );
+  },
+
+  // 刷歌模式：和推荐歌单一样，有会话就带凭证，没有就匿名。
+  '/recommend/radar': async ({ url, env, service: getService, token }) => {
+    const session =
+      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
+    return fromResult(await radarResult(session, radarPageOf(url.searchParams.get('page'))));
   },
 
   // 公开内容，一律匿名读；没设密钥也能用。

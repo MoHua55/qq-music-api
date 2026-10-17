@@ -141,6 +141,12 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   },
   { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
   {
+    name: 'getRecommendRadar',
+    method: 'GET',
+    routePath: '/recommend/radar',
+    category: 'Recommend',
+  },
+  {
     name: 'getNewAlbums',
     method: 'GET',
     routePath: '/recommend/new-albums',
@@ -537,6 +543,13 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         label: 'Area',
         description: 'Area id from the areas list; 5 (latest) by default.',
       },
+    ],
+  },
+  getRecommendRadar: {
+    description:
+      'Get one page (about 10 songs) of the radar, the endless personal song stream. Uses the session when present, otherwise reads anonymously.',
+    queryParams: [
+      { key: 'page', label: 'Page', description: 'Page number; 1 by default, at most 100.' },
     ],
   },
   getNewAlbums: {

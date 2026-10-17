@@ -54,6 +54,7 @@ import {
   getRecommendToplists,
 } from './getRecommendCatalog';
 import getRecommendPlaylists from './getRecommendPlaylists';
+import getRecommendRadar from './getRecommendRadar';
 import getSearch from './getSearch';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerDesc from './getSingerDesc';
@@ -150,6 +151,7 @@ export default {
   getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),
   getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
   getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
+  getRecommendRadar: withControllerLogging('getRecommendRadar', getRecommendRadar),
   getRadioList: withControllerLogging('getRadioList', getRadioList),
   getRadioTracks: withControllerLogging('getRadioTracks', getRadioTracks),
   getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
