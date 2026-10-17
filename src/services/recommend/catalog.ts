@@ -7,7 +7,7 @@ import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionM
 // src/services/recommend/catalog.ts
 //
 // `/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/toplists`、
-// `/recommend/toplist`：公开内容，一律匿名读，
+// `/recommend/toplist`、`/recommend/new-albums`：公开内容，一律匿名读，
 // 带了会话也不用。Node 与 serverless 共用。实测（2026-10，匿名）：分类是 `get_hot_category`，分类歌单是
 // `get_category_content`（`content.total_cnt`＋`v_item[].basic`），新歌是 `get_new_song_info`（`songlist` 与
 // `track_info` 同形、`lanlist` 是地区）。
@@ -350,5 +350,101 @@ export const toplistSongsResult = async (
     });
   } catch (error) {
     return failureResult('get-toplist', error);
+  }
+};
+
+// ---- 新碟上架 ----
+//
+// 实测（2026-10，官方网页登录与匿名都读得到）：地区清单是 `get_new_album_area`（无参数，`area[]`，id 1–5，
+// 没有「最新」），专辑是 `get_new_album_info { area, sin: 0, num, start }`，`sin` 一律 0，翻页用 `start`。
+// 两支放在同一次请求里；地区清单读不到不影响专辑。专辑摊平成和收藏专辑一样好用的字段。
+
+const DEFAULT_NEW_ALBUM_AREA = 1;
+const NEW_ALBUM_PAGE_SIZE = 20;
+/** 网页一次要 20 张；40 张在实网冒烟里验过。 */
+const MAX_NEW_ALBUM_PAGE_SIZE = 40;
+
+const NEW_ALBUM_AREAS: MusicuDescriptor<Dictionary> = {
+  module: 'newalbum.NewAlbumServer',
+  method: 'get_new_album_area',
+  param: {},
+  readOnly: true,
+  operation: 'recommend.new-album-areas',
+  decode: decodeDictionary,
+};
+
+const newAlbums = (area: number, start: number, size: number): MusicuDescriptor<Dictionary> => ({
+  module: 'newalbum.NewAlbumServer',
+  method: 'get_new_album_info',
+  param: { area, sin: 0, start, num: size },
+  readOnly: true,
+  operation: 'recommend.new-albums',
+  decode: decodeDictionary,
+});
+
+const toAlbumSinger = (entry: unknown): Dictionary | null => {
+  const singer = dictionaryOf(entry);
+  const mid = textOf(singer.mid);
+  return mid === undefined ? null : { mid, name: stringOf(singer.name) };
+};
+
+const toNewAlbum = (entry: unknown): Dictionary | null => {
+  const item = dictionaryOf(entry);
+  const mid = textOf(item.mid);
+  if (mid === undefined) return null;
+  const optional: Array<[string, unknown]> = [
+    ['id', positiveIdOf(item.id)],
+    ['publishDate', textOf(item.release_time)],
+    ['company', textOf(dictionaryOf(item.company).name)],
+    ['trackCount', countOf(dictionaryOf(item.ex).track_nums)],
+  ];
+  return {
+    mid,
+    name: stringOf(item.name),
+    singers: Array.isArray(item.singers) ? item.singers.map(toAlbumSinger).filter(Boolean) : [],
+    ...Object.fromEntries(optional.filter(([, value]) => value !== undefined)),
+  };
+};
+
+const toAlbumArea = (entry: unknown): Dictionary | null => {
+  const item = dictionaryOf(entry);
+  const id = positiveIdOf(item.id);
+  return id === undefined ? null : { id, name: stringOf(item.name) };
+};
+
+/** 没有专辑回 422，给了专辑却一张都读不出来回 502；`total` 不是正常整数时不给，也不报还有下一页。 */
+export const newAlbumsResult = async (
+  query: { area?: unknown; offset?: unknown; limit?: unknown },
+  options: SessionMusicuOptions = {},
+): Promise<NewRouteResult> => {
+  try {
+    const area =
+      query.area === undefined || query.area === null || query.area === ''
+        ? DEFAULT_NEW_ALBUM_AREA
+        : requiredIdOf(query.area);
+    const start = offsetOf(query.offset);
+    const size = pagingOf(query.limit, NEW_ALBUM_PAGE_SIZE, MAX_NEW_ALBUM_PAGE_SIZE);
+    const [areaResult, albumResult] = await anonymous(options).executeBatch([
+      NEW_ALBUM_AREAS,
+      newAlbums(area, start, size),
+    ]);
+    if (!albumResult.ok) throw albumResult.error;
+    const data = albumResult.data as Dictionary;
+    const entries = listOf(data.albums);
+    if (!entries.length) throw new QqApiError('not-found');
+    const albums = entries.map(toNewAlbum).filter(Boolean);
+    if (!albums.length) throw new QqApiError('invalid-response');
+    const areaList = areaResult.ok ? (areaResult.data as Dictionary).area : undefined;
+    const areas = Array.isArray(areaList) ? areaList.map(toAlbumArea).filter(Boolean) : [];
+    const total = countOf(data.total);
+    return okResult({
+      area,
+      albums,
+      areas,
+      ...(total === undefined ? {} : { total }),
+      more: total !== undefined && start + entries.length < total,
+    });
+  } catch (error) {
+    return failureResult('get-new-albums', error);
   }
 };

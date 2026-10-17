@@ -55,6 +55,7 @@ const featuresFor = () => ({
     getNewSongs: true,
     getToplists: true,
     getToplistSongs: true,
+    getNewAlbums: true,
   },
   radio: { getRadioList: true, getRadioTracks: true },
   mutations: {

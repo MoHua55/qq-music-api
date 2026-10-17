@@ -58,6 +58,10 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.category-playlists',
   /** 新歌速递（`get_new_song_info`），匿名。 */
   'recommend.new-songs',
+  /** 新碟地区清单（`get_new_album_area`），匿名。 */
+  'recommend.new-album-areas',
+  /** 新碟上架（`get_new_album_info`），匿名。 */
+  'recommend.new-albums',
   /** 排行榜清单（`ToplistInfoServer.GetAll`），匿名。 */
   'recommend.toplists',
   /** 单榜歌曲（`ToplistInfoServer.GetDetail`），匿名。 */

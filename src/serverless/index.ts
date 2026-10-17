@@ -39,6 +39,7 @@ import {
 import { setLegacyHttpTransport } from '../services/httpTransport';
 import {
   categoryPlaylistsResult,
+  newAlbumsResult,
   newSongsResult,
   playlistCategoriesResult,
   toplistSongsResult,
@@ -211,6 +212,15 @@ const routes: Record<string, RouteHandler> = {
 
   '/recommend/new-songs': async ({ url }) =>
     fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
+
+  '/recommend/new-albums': async ({ url }) =>
+    fromResult(
+      await newAlbumsResult({
+        area: url.searchParams.get('area') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
 
   '/recommend/toplists': async () => fromResult(await toplistsResult()),
 

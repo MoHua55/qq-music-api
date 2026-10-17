@@ -47,6 +47,7 @@ import getRanks from './getRanks';
 import getRecommend from './getRecommend';
 import {
   getCategoryPlaylists,
+  getNewAlbums,
   getNewSongs,
   getPlaylistCategories,
   getRecommendToplistSongs,
@@ -154,6 +155,7 @@ export default {
   getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
   getCategoryPlaylists: withControllerLogging('getCategoryPlaylists', getCategoryPlaylists),
   getNewSongs: withControllerLogging('getNewSongs', getNewSongs),
+  getNewAlbums: withControllerLogging('getNewAlbums', getNewAlbums),
   getRecommendToplists: withControllerLogging('getRecommendToplists', getRecommendToplists),
   getRecommendToplistSongs: withControllerLogging(
     'getRecommendToplistSongs',

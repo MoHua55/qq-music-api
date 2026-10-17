@@ -164,6 +164,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /recommend/playlists` | 可选 | 推荐歌单；登录了会更贴近个人口味 | ✓ |
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
+| `GET /recommend/new-albums` | 否 | 新碟上架，可选地区，可翻页 | ✓ |
 | `GET /recommend/toplists`、`/recommend/toplist` | 否 | 全部排行榜、某个榜这一期（或往期）的歌 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
 | **搜索** | | | |
@@ -500,6 +501,12 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 { "code": 200, "area": 5, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "areas": [{ "id": 5, "name": "最新" }] }
 ```
 
+`GET /recommend/new-albums?area=<地区>&offset=0&limit=20` 读新碟上架，不给 `area` 就是内地（1）。`offset` 从 0 开始，`limit` 默认 20、最多 40。每张专辑有 `mid`、`name`、`singers`（`mid`、`name`），以及可选的 `id`、`publishDate`（发行日期）、`company`（唱片公司，上游这个列表目前通常是空的，所以多半不会出现）、`trackCount`（几首歌），拿 `mid` 调 `/getAlbumInfo` 就能读歌。`areas` 列出可选的地区，读不到地区清单时是空的、专辑照样给；`total` 是这个地区一共几张，`more` 表示后面还有没有：
+
+```json
+{ "code": 200, "area": 1, "albums": [{ "mid": "demo-album-mid", "name": "示例专辑", "singers": [{ "mid": "demo-singer-mid", "name": "示例歌手" }], "publishDate": "2026-10-16", "trackCount": 12 }], "areas": [{ "id": 1, "name": "内地" }], "total": 1203, "more": true }
+```
+
 `GET /recommend/toplists` 读全部排行榜，按组分好（例如巅峰榜、地区榜、特色榜）。每个榜有 `id`、`title`、`cover`，还有可选的 `intro`、`period`（这一期是哪天或哪一周）、`updateTime`、`total`（这一期有几首）、`listenNum`，以及 `preview`（榜上前几名的 `rank`、`title`、`singer`）：
 
 ```json
@@ -577,7 +584,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getToplists`、`getToplistSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/toplists`、`/recommend/toplist`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |

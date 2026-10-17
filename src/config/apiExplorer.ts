@@ -141,6 +141,12 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   },
   { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
   {
+    name: 'getNewAlbums',
+    method: 'GET',
+    routePath: '/recommend/new-albums',
+    category: 'Recommend',
+  },
+  {
     name: 'getRecommendToplists',
     method: 'GET',
     routePath: '/recommend/toplists',
@@ -531,6 +537,15 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         label: 'Area',
         description: 'Area id from the areas list; 5 (latest) by default.',
       },
+    ],
+  },
+  getNewAlbums: {
+    description:
+      'Get new albums for one area (mainland by default) with the list of areas, one page at a time. Read anonymously.',
+    queryParams: [
+      { key: 'area', label: 'Area', description: 'Area id from the areas list; 1 by default.' },
+      { key: 'offset', label: 'Offset', description: 'Albums to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Albums per page; 20 by default, at most 40.' },
     ],
   },
   getRecommendToplists: {

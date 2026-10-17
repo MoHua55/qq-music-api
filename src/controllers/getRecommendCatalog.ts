@@ -1,6 +1,7 @@
 import type { Context } from 'koa';
 import {
   categoryPlaylistsResult,
+  newAlbumsResult,
   newSongsResult,
   playlistCategoriesResult,
   toplistSongsResult,
@@ -29,6 +30,15 @@ export const getCategoryPlaylists = async (ctx: Context): Promise<void> => {
 export const getNewSongs = async (ctx: Context): Promise<void> => {
   const { area } = getTypedQuery<{ area?: string }>(ctx);
   send(ctx, await newSongsResult(area));
+};
+
+export const getNewAlbums = async (ctx: Context): Promise<void> => {
+  const { area, offset, limit } = getTypedQuery<{
+    area?: string;
+    offset?: string;
+    limit?: string;
+  }>(ctx);
+  send(ctx, await newAlbumsResult({ area, offset, limit }));
 };
 
 export const getRecommendToplists = async (ctx: Context): Promise<void> =>
