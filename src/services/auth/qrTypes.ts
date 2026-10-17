@@ -231,6 +231,15 @@ export interface QrChannelDriver {
   /** Push drivers only: starts the event source once the record is final. */
   start?(session: QrSessionRecord, context: QrDriverContext): QrEventListener;
   advance(session: QrSessionRecord, budgetMs: number, signal?: AbortSignal): Promise<QrEvent[]>;
+  /**
+   * 自己换凭证的通道才有：`authorized` 事件之后由服务调用，`signal` 是这次 check 剩下的时间。
+   * 没有这个方法的通道照原来的规则换凭证。
+   */
+  exchange?(
+    session: QrSessionRecord,
+    payload: unknown,
+    signal?: AbortSignal,
+  ): Promise<QqCredential>;
   close(session: QrSessionRecord): void;
 }
 

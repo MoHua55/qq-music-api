@@ -88,6 +88,8 @@ export type { QqQrRelay, QrEvent } from '../services/auth/qrLogin';
 
 export interface ServerlessEnv {
   QQ_PLAYBACK_HINTS_ENABLED?: string;
+  /** 没有 relay 时手机 QQ 走纯 HTTP 扫码；设 `0` 或 `false` 关掉。 */
+  QQ_PTLOGIN_HTTP_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
   QQ_UNVERIFIED_WRITES_ENABLED?: string;

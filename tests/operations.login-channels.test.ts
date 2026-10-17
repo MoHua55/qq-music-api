@@ -29,7 +29,7 @@ describe.each(CATALOG_RUNTIMES)('/login/channels 共用处理与真实宿主契�
     expect(legs.operation.body).toMatchObject({
       code: 200,
       data: {
-        channels: runtime === 'node' || relay ? ['qq', 'wechat', 'qqmusic'] : ['wechat'],
+        channels: runtime === 'node' || relay ? ['qq', 'wechat', 'qqmusic'] : ['qq', 'wechat'],
         sessionMode: runtime === 'node' ? 'stored' : 'sealed',
         configured: runtime === 'node' ? true : configured,
         features: { recommendations: { getPersonalFm: true, getRecommendedCollections: true } },
@@ -65,7 +65,7 @@ describe.each(CATALOG_RUNTIMES)('/login/channels 共用处理与真实宿主契�
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
         code: 200,
-        data: { configured: false, channels: ['wechat'] },
+        data: { configured: false, channels: ['qq', 'wechat'] },
       });
       expect(upstream.calls).toEqual([]);
     });
