@@ -140,6 +140,18 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'Recommend',
   },
   { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
+  {
+    name: 'getRecommendToplists',
+    method: 'GET',
+    routePath: '/recommend/toplists',
+    category: 'Recommend',
+  },
+  {
+    name: 'getRecommendToplistSongs',
+    method: 'GET',
+    routePath: '/recommend/toplist',
+    category: 'Recommend',
+  },
   { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
   { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
@@ -519,6 +531,29 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         label: 'Area',
         description: 'Area id from the areas list; 5 (latest) by default.',
       },
+    ],
+  },
+  getRecommendToplists: {
+    description:
+      'Get all charts by group with id, title, cover, period and a few preview songs. Read anonymously.',
+  },
+  getRecommendToplistSongs: {
+    description:
+      'Get the songs of one chart. Songs keep the upstream format. Without period the latest issue is read. Read anonymously.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Chart ID',
+        description: 'Chart id from /recommend/toplists.',
+        required: true,
+      },
+      {
+        key: 'period',
+        label: 'Period',
+        description: 'Issue from the chart list (YYYY-MM-DD or YYYY_NN); latest when left out.',
+      },
+      { key: 'offset', label: 'Offset', description: 'Songs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Songs per page; 20 by default, at most 100.' },
     ],
   },
   getRadioList: {

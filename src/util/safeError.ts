@@ -48,6 +48,8 @@ export const UPSTREAM_PHASES = [
   'get-playlist-categories',
   'get-category-playlists',
   'get-new-songs',
+  'get-toplists',
+  'get-toplist',
   'search',
 ] as const;
 

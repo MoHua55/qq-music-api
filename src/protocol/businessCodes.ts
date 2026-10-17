@@ -58,6 +58,10 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.category-playlists',
   /** 新歌速递（`get_new_song_info`），匿名。 */
   'recommend.new-songs',
+  /** 排行榜清单（`ToplistInfoServer.GetAll`），匿名。 */
+  'recommend.toplists',
+  /** 单榜歌曲（`ToplistInfoServer.GetDetail`），匿名。 */
+  'recommend.toplist',
   /** 关键字搜索（桌面版 `DoSearchForQQMusicDesktop`），歌曲要登录、其他类型匿名可读；非零码都还是未知。 */
   'search',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */

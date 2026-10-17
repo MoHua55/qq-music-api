@@ -42,6 +42,8 @@ router.get('/recommend/playlists', context.getRecommendPlaylists);
 router.get('/recommend/categories', context.getPlaylistCategories);
 router.get('/recommend/category-playlists', context.getCategoryPlaylists);
 router.get('/recommend/new-songs', context.getNewSongs);
+router.get('/recommend/toplists', context.getRecommendToplists);
+router.get('/recommend/toplist', context.getRecommendToplistSongs);
 
 // keyword search; a login session is used when present
 router.get('/search', context.getSearch);

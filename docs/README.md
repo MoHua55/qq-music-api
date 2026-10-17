@@ -164,6 +164,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /recommend/playlists` | 可选 | 推荐歌单；登录了会更贴近个人口味 | ✓ |
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
+| `GET /recommend/toplists`、`/recommend/toplist` | 否 | 全部排行榜、某个榜这一期（或往期）的歌 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
 | **搜索** | | | |
 | `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
@@ -499,7 +500,21 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 { "code": 200, "area": 5, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "areas": [{ "id": 5, "name": "最新" }] }
 ```
 
-三条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
+`GET /recommend/toplists` 读全部排行榜，按组分好（例如巅峰榜、地区榜、特色榜）。每个榜有 `id`、`title`、`cover`，还有可选的 `intro`、`period`（这一期是哪天或哪一周）、`updateTime`、`total`（这一期有几首）、`listenNum`，以及 `preview`（榜上前几名的 `rank`、`title`、`singer`）：
+
+```json
+{ "code": 200, "groups": [{ "id": 1, "name": "巅峰榜", "toplists": [{ "id": 26, "title": "热歌榜", "period": "2026_41", "total": 100, "cover": "https://y.gtimg.cn/demo.jpg", "preview": [{ "rank": 1, "title": "示例歌曲", "singer": "示例歌手" }] }] }] }
+```
+
+`GET /recommend/toplist?id=<榜 id>&period=<期>&offset=0&limit=20` 读一个榜的歌。`period` 照抄上面清单里的值，不给就是最新一期；`offset` 从 0 开始；`limit` 默认 20、最多 100。`songs` 保持上游原来的格式（和 `/getSongInfo` 的 `track_info` 一样，拿 `mid` 就能播），`toplist` 是这个榜的资料，`total` 是这一期一共几首，`more` 表示后面还有没有：
+
+```json
+{ "code": 200, "toplist": { "id": 26, "title": "热歌榜", "period": "2026_41", "total": 100 }, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "total": 100, "more": true }
+```
+
+`id` 缺了或不是正整数、`period` 里有数字、`-`、`_` 以外的字符，都回 `400`。
+
+这几条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
 
 ### 关键字搜索
 
@@ -562,7 +577,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getToplists`、`getToplistSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/toplists`、`/recommend/toplist`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |

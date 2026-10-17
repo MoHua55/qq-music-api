@@ -41,6 +41,8 @@ import {
   categoryPlaylistsResult,
   newSongsResult,
   playlistCategoriesResult,
+  toplistSongsResult,
+  toplistsResult,
 } from '../services/recommend/catalog';
 import { guessYouLikeResult } from '../services/recommend/guessYouLike';
 import type { NewRouteResult } from '../services/recommend/newRouteResult';
@@ -209,6 +211,18 @@ const routes: Record<string, RouteHandler> = {
 
   '/recommend/new-songs': async ({ url }) =>
     fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
+
+  '/recommend/toplists': async () => fromResult(await toplistsResult()),
+
+  '/recommend/toplist': async ({ url }) =>
+    fromResult(
+      await toplistSongsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        period: url.searchParams.get('period') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
 
   // 有会话就带凭证，没有就匿名搜。没设密钥时解不开任何会话，也不建服务，直接匿名搜。
   '/search': async ({ url, env, service: getService, token }) => {
