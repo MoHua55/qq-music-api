@@ -170,7 +170,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /recommend/toplists`、`/recommend/toplist` | 否 | 全部排行榜、某个榜这一期（或往期）的歌 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
 | **搜索** | | | |
-| `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
+| `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页 | ✓ |
 | `GET /search/hot`、`/search/suggest` | 否 | 热搜、边打字边给的搜索建议 | ✓ |
 | **歌手** | | | |
 | `GET /singer/list` | 否 | 歌手列表，可按地区、性别、流派、首字母筛选，可翻页 | ✓ |
@@ -568,7 +568,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - `type` 可以是 `song`（不给就是歌曲）、`album`、`playlist`、`singer`；其他值回 `400`。
 - `keyword` 必填，去掉前后空白后最多 60 个字；`page` 从 1 开始；`limit` 默认 10、最多 20。
 - 不登录也能搜，登录了就带上会话。Serverless 没设 `QQ_SESSION_SECRET` 也能用（只是一律匿名）。
-- **不登录搜歌曲常被上游拒绝**：会回 `502`，`errorKey` 是 `search.rejected`（上游码 2001）。这不是「搜不到」，登录后再搜通常就有结果。专辑、歌单、歌手不登录时一般正常。
+- 不登录也能搜歌（3.3.3 起；以前不登录搜歌常被上游拒绝）。上游还是拒绝时会回 `502`，`errorKey` 是 `search.rejected`（上游码 2001）；这不是「搜不到」，登录后再搜通常就有结果。
 
 ```json
 { "code": 200, "type": "song", "page": 1, "limit": 10, "total": 36, "more": true, "items": [{ "mid": "demo-song-mid", "name": "示例歌曲" }] }
