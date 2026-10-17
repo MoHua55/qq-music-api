@@ -73,6 +73,7 @@ const expectedFeatures = (node: boolean) => ({
   },
   comments: { getHotComments: true, getNewComments: true, getCommentCount: true },
   mvs: { getMvList: true, getMvDetail: true, getMvUrl: true, getSongMvs: true },
+  songs: { getSongLabels: true },
   mutations: {
     updatePlaylistTracks: true,
     likeSong: true,
