@@ -360,9 +360,38 @@ export class QrLoginServiceImpl implements QrLoginService {
     return exchangeWechatCredential(this.http, this.deviceStore.get(), code);
   }
 
+  /**
+   * 通道自己会换凭证时（手机 QQ 的纯 HTTP 扫码）走这里。时限是这次 check 剩下的时间：
+   * 调用方等一个登录请求有上限，换不完就当这次失败，让用户重新扫。
+   */
+  private async exchangeWithDriver(
+    session: QrSessionRecord,
+    exchange: NonNullable<QrChannelDriver['exchange']>,
+    payload: unknown,
+  ): Promise<QqCredential> {
+    session.state = 'exchanging';
+    session.failureStage = 'credential-exchange';
+    const deadlineAt = this.qrRuntimes.get(session.key)?.deadlineAt;
+    const remainingMs = (deadlineAt ?? this.now() + this.checkBudgetMs) - this.now();
+    const signal = AbortSignal.timeout(Math.max(1, remainingMs));
+    try {
+      return await exchange(session, payload, signal);
+    } catch (error) {
+      // 到点中止时各平台给的错误不一样（DOMException、AbortError…），统一成同一种超时，
+      // 失败原因才会稳定地是 network-timeout。
+      if (signal.aborted)
+        throw Object.assign(new Error('Credential exchange ran out of time'), {
+          name: 'TimeoutError',
+        });
+      throw error;
+    }
+  }
+
   private async finalizeLogin(session: QrSessionRecord, payload: unknown): Promise<void> {
-    let credential =
-      session.channel === 'wechat'
+    const exchange = this.qrRuntimes.get(session.key)?.driver.exchange;
+    let credential = exchange
+      ? await this.exchangeWithDriver(session, exchange, payload)
+      : session.channel === 'wechat'
         ? await this.exchangeWechatLogin(session, payload)
         : await this.exchangeQqLogin(session, payload);
     if (session.channel === 'wechat') {
@@ -462,6 +491,7 @@ export class QrLoginServiceImpl implements QrLoginService {
     const runtime = this.runtimeFor(session);
     if (runtime.driver.mode !== 'pull' || terminalState(session.state)) return;
     let events: QrEvent[];
+    runtime.deadlineAt = this.now() + budgetMs;
     try {
       events = await runtime.driver.advance(session, budgetMs);
       runtime.pollErrors = 0;

@@ -19,6 +19,9 @@ import { openToken, SEALED_QR_PURPOSE, SealedSessionError, sealToken } from './s
  * `unikey` travels as a URL query parameter — sealing the image bloated it past what some HTTP
  * clients (and PowerShell's `EscapeDataString`) will accept. `identifier` is enough to re-fetch it:
  * see `fetchWechatQrImage` and the `session.identifier` branch in `createWechatQrDriver`.
+ *
+ * 例外是手机 QQ 的纯 HTTP 扫码（`image`）：它的图不到 4 KB，而且没法按 `identifier`（qrsig）
+ * 再拿一次——再调 ptqrshow 会出一张新码、换掉 qrsig。所以只有这个通道把图一起封进去。
  */
 
 /** The live device fields a fresh isolate cannot re-derive; see `deriveAndroidDevice`. */
@@ -40,7 +43,11 @@ export interface SealedQrPayloadV1 {
   /** The WeChat-session HTTP client's cookie jar at the moment `/login/qr/key` finished. */
   cookies: string;
   device: SealedQrDeviceStateV1;
+  /** 只有纯 HTTP 扫码有：二维码的 data URL。 */
+  image?: string;
 }
+
+const QR_IMAGE = /^data:image\/png;base64,[A-Za-z0-9+/]{1,8000}={0,2}$/;
 
 const isDeviceState = (value: unknown): value is SealedQrDeviceStateV1 => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
@@ -67,7 +74,9 @@ const isSealedQrPayload = (value: unknown): value is SealedQrPayloadV1 => {
     typeof candidate.identifier === 'string' &&
     candidate.identifier.length > 0 &&
     typeof candidate.cookies === 'string' &&
-    isDeviceState(candidate.device)
+    isDeviceState(candidate.device) &&
+    (candidate.image === undefined ||
+      (typeof candidate.image === 'string' && QR_IMAGE.test(candidate.image)))
   );
 };
 

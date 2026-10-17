@@ -168,10 +168,15 @@ describe('serverless QQ App channel over a relay', () => {
       expect(body.data.channels).toEqual(['qq', 'wechat', 'qqmusic']);
     });
 
-    it('should reject channel=qq without a relay rather than failing further in', async () => {
+    it('should reject channel=qq without a relay once the HTTP login is turned off', async () => {
       // A missing relay is a capability statement, not a 500: `createSession` validates the
-      // requested channel against what this runtime declared.
-      const response = await call('/login/qr/key?channel=qq');
+      // requested channel against what this runtime declared. 没有 relay 时 qq 默认改走纯 HTTP
+      // 扫码，所以这里要先把它关掉。
+      const response = await handleRequest(
+        new Request('https://worker.invalid/login/qr/key?channel=qq'),
+        { ...QR_ENV, QQ_PTLOGIN_HTTP_ENABLED: '0' },
+        {},
+      );
 
       expect(response.status).toBe(400);
       expect((await bodyOf(response)).message).toContain('qq');

@@ -195,6 +195,8 @@ export interface QrSessionRuntime {
   pollErrors: number;
   /** The in-flight credential exchange, so a pull channel can await it before answering. */
   finalizing?: Promise<void>;
+  /** 这次 check 必须回答的时间点；自己换凭证的通道用它给换凭证设时限。 */
+  deadlineAt?: number;
 }
 
 /** Same contract as `AuthSessionRepository`, for the pre-login half of the state. */

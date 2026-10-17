@@ -15,6 +15,7 @@ import {
   replayedRecord,
   replayQrSessionRepository,
   secretsOf,
+  usesPtlogin,
 } from './qrRuntime';
 import { openQrState, sealQrState } from './sealedQrState';
 import { createSealedSessionResolver } from './sealedResolver';
@@ -42,8 +43,8 @@ export const createServerlessQrOperations = ({
       deviceRepository,
       sessionResolver: createSealedSessionResolver({ secrets }),
       qrSessionRepository: qrSessions.repository,
-      capabilities: capabilitiesFor(options),
-      drivers: driversFor(options, http, deviceRepository, base),
+      capabilities: capabilitiesFor(options, env),
+      drivers: driversFor(options, http, deviceRepository, base, env),
       checkBudgetMs: CHECK_BUDGET_MS,
     });
 
@@ -74,6 +75,10 @@ export const createServerlessQrOperations = ({
           sessionSid: device.sessionSid,
           sessionVkey: device.sessionVkey,
         },
+        // 纯 HTTP 扫码的图没法再要一次，只有它把图一起封进去（见 sealedQrState.ts）。
+        ...(record.channel === 'qq' && usesPtlogin(options, env) && record.imageUrl
+          ? { image: record.imageUrl }
+          : {}),
       },
       secrets.current,
     );
@@ -96,8 +101,8 @@ export const createServerlessQrOperations = ({
       deviceRepository,
       sessionResolver: createSealedSessionResolver({ secrets }),
       qrSessionRepository: replayQrSessionRepository([replayedRecord(key, payload, 'created')]),
-      capabilities: capabilitiesFor(options),
-      drivers: driversFor(options, http, deviceRepository, base),
+      capabilities: capabilitiesFor(options, env),
+      drivers: driversFor(options, http, deviceRepository, base, env),
       checkBudgetMs: CHECK_BUDGET_MS,
     });
     return service.createQr(key);
@@ -126,8 +131,8 @@ export const createServerlessQrOperations = ({
       qrSessionRepository: replayQrSessionRepository(
         payload ? [replayedRecord(key, payload, 'waiting')] : [],
       ),
-      capabilities: capabilitiesFor(options),
-      drivers: driversFor(options, http, deviceRepository, base),
+      capabilities: capabilitiesFor(options, env),
+      drivers: driversFor(options, http, deviceRepository, base, env),
       checkBudgetMs: CHECK_BUDGET_MS,
     });
     return service.checkQr(key, CHECK_BUDGET_MS);

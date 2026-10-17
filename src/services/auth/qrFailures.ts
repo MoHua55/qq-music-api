@@ -5,6 +5,7 @@ import {
   isExposedUpstreamErrorKey,
 } from '../../protocol/upstreamErrorKeys';
 import { QqDeviceBootstrapError, QqProtocolError } from './musicuProtocol';
+import { PtloginError } from './ptlogin';
 import {
   type QrFailureDetails,
   type QrFailureReason,
@@ -35,6 +36,7 @@ export const confirmingState = (state: QrState): boolean =>
 export const upstreamCodeOf = (error: unknown): number | undefined => {
   if (error instanceof QqProtocolError) return error.upstreamCode;
   if (error instanceof WechatQrError) return error.upstreamCode;
+  if (error instanceof PtloginError) return error.upstreamCode;
   return undefined;
 };
 
@@ -85,6 +87,7 @@ export const qrFailureReasonOf = (error: unknown): QrFailureReason => {
   if (
     error instanceof QqProtocolError ||
     error instanceof WechatQrError ||
+    error instanceof PtloginError ||
     error instanceof QqDeviceBootstrapError
   )
     return 'upstream-rejected';
@@ -213,7 +216,9 @@ export const qrFailureDetailsOf = (
       error instanceof QqDeviceBootstrapError ? error.outerCode : upstreamCodeOf(error),
     ),
     upstreamGlobalCode:
-      error instanceof QqProtocolError ? safeDiagnosticNumber(error.globalCode) : undefined,
+      error instanceof QqProtocolError || error instanceof PtloginError
+        ? safeDiagnosticNumber(error.globalCode)
+        : undefined,
     upstreamSubCode:
       error instanceof QqDeviceBootstrapError ? safeDiagnosticNumber(error.innerCode) : undefined,
   };

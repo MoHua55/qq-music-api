@@ -2,6 +2,7 @@ import type { AndroidDevice } from '../services/auth/androidDevice';
 import type { DeviceContextRepository } from '../services/auth/deviceContext';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import type { AuthHttpClient } from '../services/auth/httpClient';
+import { createPtloginQrDriver } from '../services/auth/qrDrivers';
 import {
   createRelayQqQrDriver,
   type QrChannelDriver,
@@ -33,13 +34,29 @@ export const secretsOf = (env: ServerlessEnv) => ({
   previous: env.QQ_SESSION_SECRET_PREVIOUS,
 });
 
+/** 没有 relay 时手机 QQ 走纯 HTTP 扫码；默认开，`QQ_PTLOGIN_HTTP_ENABLED` 设 `0` 或 `false` 才关。 */
+export const ptloginEnabled = (env: ServerlessEnv): boolean =>
+  !['0', 'false'].includes((env.QQ_PTLOGIN_HTTP_ENABLED ?? '').trim().toLowerCase());
+
+/** 这个部署的 `qq` 通道是不是纯 HTTP 扫码（有 relay 时照旧走 MQTT）。 */
+export const usesPtlogin = (options: ServerlessOptions, env: ServerlessEnv): boolean =>
+  !options.qqRelay && ptloginEnabled(env);
+
 /**
  * 🔴 The single place this runtime decides what it can serve. Three call sites used to hard-code
  * `['wechat']` independently; deriving all of them from the injected relay is what makes "no relay
- * means no `qq`" impossible to get half-right.
+ * means no `qq`" impossible to get half-right. 没有 relay 时 `qq` 改走纯 HTTP 扫码；`qqmusic`
+ * 只有 MQTT 这一套，所以还是要 relay。
  */
-export const capabilitiesFor = (options: ServerlessOptions): RuntimeCapabilities => ({
-  channels: options.qqRelay ? (['qq', 'wechat', 'qqmusic'] as const) : (['wechat'] as const),
+export const capabilitiesFor = (
+  options: ServerlessOptions,
+  env: ServerlessEnv = {},
+): RuntimeCapabilities => ({
+  channels: options.qqRelay
+    ? (['qq', 'wechat', 'qqmusic'] as const)
+    : usesPtlogin(options, env)
+      ? (['qq', 'wechat'] as const)
+      : (['wechat'] as const),
   sessionMode: 'sealed',
 });
 
@@ -52,9 +69,10 @@ export const driversFor = (
   http: AuthHttpClient,
   deviceRepository: DeviceContextRepository,
   base: AndroidDevice,
+  env: ServerlessEnv = {},
 ): Partial<Record<QrLoginChannel, QrChannelDriver>> | undefined => {
   const relay = options.qqRelay;
-  if (!relay) return undefined;
+  if (!relay) return usesPtlogin(options, env) ? { qq: createPtloginQrDriver() } : undefined;
   const relayDriver = () =>
     createRelayQqQrDriver({
       http,
@@ -88,7 +106,13 @@ export const replayQrSessionRepository = (records: QrSessionRecord[]): QrSession
  */
 export const replayedRecord = (
   key: string,
-  payload: { channel: QrLoginChannel; createdAt: number; expiresAt: number; identifier: string },
+  payload: {
+    channel: QrLoginChannel;
+    createdAt: number;
+    expiresAt: number;
+    identifier: string;
+    image?: string;
+  },
   state: QrSessionRecord['state'],
 ): QrSessionRecord => ({
   key,
@@ -98,6 +122,8 @@ export const replayedRecord = (
   expiresAt: payload.expiresAt,
   identifier: payload.identifier,
   ...(isMqttLoginChannel(payload.channel) ? { qrcodeId: payload.identifier } : {}),
+  // 纯 HTTP 扫码的图跟着 unikey 走；有了它，`/login/qr/create` 就不会再去要一张新码。
+  ...(payload.image ? { imageUrl: payload.image } : {}),
 });
 
 /**

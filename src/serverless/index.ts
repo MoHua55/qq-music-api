@@ -313,7 +313,7 @@ const createServiceFor = async (
       await deriveAndroidDevice(secrets.current),
     ),
     sessionResolver: createSealedSessionResolver({ secrets }),
-    capabilities: capabilitiesFor(options),
+    capabilities: capabilitiesFor(options, env),
     checkBudgetMs: CHECK_BUDGET_MS,
   });
 };
