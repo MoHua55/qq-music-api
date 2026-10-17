@@ -63,6 +63,14 @@ const expectedFeatures = (node: boolean) => ({
     getRelatedPlaylists: true,
   },
   radio: { getRadioList: true, getRadioTracks: true },
+  singers: {
+    getSingerList: true,
+    getSingerDetail: true,
+    getSingerHomepage: true,
+    getSimilarSingers: true,
+    getSingerSongs: true,
+    getSingerMvs: true,
+  },
   mutations: {
     updatePlaylistTracks: true,
     likeSong: true,
