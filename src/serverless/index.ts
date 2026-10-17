@@ -59,6 +59,7 @@ import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
+import { songLabelsResult } from '../services/recommend/songLabels';
 import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
 import { searchResult } from '../services/search/search';
 import { hotSearchesResult, searchSuggestionsResult } from '../services/search/suggest';
@@ -375,6 +376,10 @@ const routes: Record<string, RouteHandler> = {
 
   '/song/mvs': async ({ url }) =>
     fromResult(await songMvsResult(url.searchParams.get('id') ?? undefined)),
+
+  // 歌曲标签：公开内容，一律匿名读；没设密钥也能用。
+  '/song/labels': async ({ url }) =>
+    fromResult(await songLabelsResult(url.searchParams.get('id') ?? undefined)),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),

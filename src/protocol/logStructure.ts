@@ -50,6 +50,7 @@ const STATIC_ROUTES = new Set([
   '/mv/detail',
   '/mv/url',
   '/song/mvs',
+  '/song/labels',
   '/radio/list',
   '/radio/tracks',
   '/login/qr/key',

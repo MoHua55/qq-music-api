@@ -73,6 +73,7 @@ import getSingerList from './getSingerList';
 import getSingerMv from './getSingerMv';
 import getSingerStarNum from './getSingerStarNum';
 import getSmartbox from './getSmartbox';
+import getSongLabels from './getSongLabels';
 import getSongListCategories from './getSongListCategories';
 import getSongLists from './getSongLists';
 import { getRelatedPlaylists, getSimilarSongs } from './getSongRelations';
@@ -193,4 +194,5 @@ export default {
   getMvDetail: withControllerLogging('getMvDetail', getMvDetail),
   getMvUrl: withControllerLogging('getMvUrl', getMvUrl),
   getSongMvs: withControllerLogging('getSongMvs', getSongMvs),
+  getSongLabels: withControllerLogging('getSongLabels', getSongLabels),
 };

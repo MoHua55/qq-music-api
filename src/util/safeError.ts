@@ -70,6 +70,7 @@ export const UPSTREAM_PHASES = [
   'get-mv-detail',
   'get-mv-url',
   'get-song-mvs',
+  'get-song-labels',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

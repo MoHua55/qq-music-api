@@ -181,6 +181,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | **MV** | | | |
 | `GET /mv/list`、`/mv/detail`、`/mv/url` | 否 | MV 列表（可按地区、版本筛选，可翻页）、MV 详情、MV 播放链接 | ✓ |
 | `GET /song/mvs` | 否 | 一首歌相关的 MV | ✓ |
+| `GET /song/labels` | 否 | 一首歌的标签 | ✓ |
 | **播放与曲库** | | | |
 | `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
@@ -649,6 +650,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 `GET /song/mvs?id=` 读一首歌相关的 MV（数字歌曲 id），条目和 `/mv/list` 一样，`more` 表示上游说还有。
 
+`GET /song/labels?id=` 读一首歌的标签（数字歌曲 id），不用登录。每个标签有 `text`，以及可选的 `id`、`type`、`icon`、`url`：`{ "code": 200, "id": 4242, "labels": [{ "text": "示例标签" }] }`。没有标签回 `422`。
+
 这几条都是：上游给空清单回 `422`；给了条目却一支都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
 ### 出错时的响应
@@ -697,6 +700,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
+| `songs` | `getSongLabels`（`/song/labels`） | — |
 | `mvs` | `getMvList`（`/mv/list`）、`getMvDetail`（`/mv/detail`）、`getMvUrl`（`/mv/url`）、`getSongMvs`（`/song/mvs`） | — |
 | `comments` | `getHotComments`（`/comment/hot`）、`getNewComments`（`/comment/new`）、`getCommentCount`（`/comment/count`） | — |
 | `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |

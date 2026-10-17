@@ -251,6 +251,7 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getMvDetail', method: 'GET', routePath: '/mv/detail', category: 'MV' },
   { name: 'getMvUrl', method: 'GET', routePath: '/mv/url', category: 'MV' },
   { name: 'getSongMvs', method: 'GET', routePath: '/song/mvs', category: 'MV' },
+  { name: 'getSongLabels', method: 'GET', routePath: '/song/labels', category: 'Song' },
   {
     name: 'getSingerList',
     method: 'GET',
@@ -744,6 +745,10 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         description: 'Comments per page; 20 by default, at most 50.',
       },
     ],
+  },
+  getSongLabels: {
+    description: 'Get the labels of one song (text with optional icon and link). Read anonymously.',
+    queryParams: [{ key: 'id', label: 'Song id', description: 'Numeric song id.' }],
   },
   getMvList: {
     description:

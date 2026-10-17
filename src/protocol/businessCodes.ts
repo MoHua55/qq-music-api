@@ -106,6 +106,8 @@ export const UPSTREAM_OPERATIONS = [
   'mv.url',
   /** 歌曲相关 MV（`MvInfoProServer.GetSongRelatedMv`），匿名。 */
   'song.mvs',
+  /** 歌曲标签（`TrackRelationServer.GetSongLabels`），匿名；非零码都还是未知。 */
+  'song.labels',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
   'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
