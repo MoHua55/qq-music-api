@@ -17,6 +17,7 @@ import getGuessYouLike from './recommend/getGuessYouLike';
 import getRadar from './recommend/getRadar';
 import { getRadioList, getRadioTracks } from './recommend/getRadio';
 import getRecommendPlaylists from './recommend/getRecommendPlaylists';
+import { getRelatedPlaylists, getSimilarSongs } from './recommend/getSongRelations';
 // search
 import getHotKey from './search/getHotKey';
 import getSearch from './search/getSearch';
@@ -77,6 +78,8 @@ export default {
   getGuessYouLike,
   getRecommendPlaylists,
   getRadar,
+  getSimilarSongs,
+  getRelatedPlaylists,
   getRadioList,
   getRadioTracks,
   // search

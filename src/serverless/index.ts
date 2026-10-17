@@ -53,6 +53,7 @@ import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
+import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
 import { searchResult } from '../services/search/search';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
@@ -199,6 +200,23 @@ const routes: Record<string, RouteHandler> = {
     );
   },
 
+  // 相似歌曲、包含这首歌的歌单：要登录，匿名时上游只给空清单。
+  '/song/similar': async ({ url, service: getService, token }) =>
+    fromResult(
+      await similarSongsResult(
+        await (await getService()).resolveSession(token),
+        url.searchParams.get('id') ?? undefined,
+      ),
+    ),
+
+  '/song/related-playlists': async ({ url, service: getService, token }) =>
+    fromResult(
+      await relatedPlaylistsResult(
+        await (await getService()).resolveSession(token),
+        url.searchParams.get('id') ?? undefined,
+      ),
+    ),
+
   // 刷歌模式：和推荐歌单一样，有会话就带凭证，没有就匿名。
   '/recommend/radar': async ({ url, env, service: getService, token }) => {
     const session =
@@ -320,6 +338,8 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist-detail',
   '/user/guess-you-like',
   '/user/daily-songs',
+  '/song/similar',
+  '/song/related-playlists',
   '/user/cloud',
   '/radio/list',
   '/radio/tracks',

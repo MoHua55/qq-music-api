@@ -140,6 +140,13 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'Recommend',
   },
   { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
+  { name: 'getSimilarSongs', method: 'GET', routePath: '/song/similar', category: 'Song' },
+  {
+    name: 'getRelatedPlaylists',
+    method: 'GET',
+    routePath: '/song/related-playlists',
+    category: 'Song',
+  },
   {
     name: 'getRecommendRadar',
     method: 'GET',
@@ -542,6 +549,30 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         key: 'area',
         label: 'Area',
         description: 'Area id from the areas list; 5 (latest) by default.',
+      },
+    ],
+  },
+  getSimilarSongs: {
+    description:
+      'Get songs similar to one song. Requires login: without a session the upstream only answers an empty list.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'Numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
+  getRelatedPlaylists: {
+    description:
+      'Get playlists that contain one song. Requires login: without a session the upstream only answers an empty list.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'Numeric song id (not the mid).',
+        required: true,
       },
     ],
   },

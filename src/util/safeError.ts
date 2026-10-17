@@ -50,6 +50,8 @@ export const UPSTREAM_PHASES = [
   'get-new-songs',
   'get-new-albums',
   'get-radar',
+  'get-similar-songs',
+  'get-related-playlists',
   'get-toplists',
   'get-toplist',
   'search',

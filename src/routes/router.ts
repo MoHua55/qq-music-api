@@ -44,6 +44,8 @@ router.get('/recommend/category-playlists', context.getCategoryPlaylists);
 router.get('/recommend/new-songs', context.getNewSongs);
 router.get('/recommend/new-albums', context.getNewAlbums);
 router.get('/recommend/radar', context.getRecommendRadar);
+router.get('/song/similar', context.getSimilarSongs);
+router.get('/song/related-playlists', context.getRelatedPlaylists);
 router.get('/recommend/toplists', context.getRecommendToplists);
 router.get('/recommend/toplist', context.getRecommendToplistSongs);
 

@@ -163,6 +163,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /user/cloud` | 是 | 音乐云盘里的歌，分页 | ✓ |
 | `GET /recommend/playlists` | 可选 | 推荐歌单；登录了会更贴近个人口味 | ✓ |
 | `GET /recommend/radar` | 可选 | 刷歌模式，一页大约 10 首，可以一直往下读 | ✓ |
+| `GET /song/similar`、`/song/related-playlists` | 是 | 一首歌的相似歌曲、包含这首歌的歌单 | ✓ |
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
 | `GET /recommend/new-albums` | 否 | 新碟上架，可选地区，可翻页 | ✓ |
@@ -454,6 +455,21 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - `id` 必须是正整数，缺了或格式不对回 `400`（`input.invalid`），不会打上游。
 - 上游成功但没给歌回 `422`；凭证被 QQ 拒绝回 `401`。补歌时按歌曲标识去重。
 
+### 相似歌曲和包含这首歌的歌单
+
+`GET /song/similar?id=<歌曲 id>` 读和这首歌相似的歌，`GET /song/related-playlists?id=<歌曲 id>` 读包含这首歌的歌单。`id` 是数字歌曲 id（`track_info` 里的 `id`，不是 `mid`），缺了或不是正整数回 `400`。
+
+**两条都要登录。** 不登录时 QQ 只回空清单，看起来像「没有」，所以没有会话直接回 `401`；Serverless 没设 `QQ_SESSION_SECRET` 回 `501`。会话解得开但 QQ 不认凭证时也回 `401`。
+
+- 相似歌曲：`songs` 保持上游原来的格式（和 `/getSongInfo` 的 `track_info` 一样），一首歌一般给几首到十几首。
+- 相关歌单：字段和 `/recommend/playlists` 一样（`tid`、`title`、`picurl`、`songnum`、`play_cnt`、`creator.nick`），拿 `tid` 调 `/getSongListDetail` 就能读歌。
+
+```json
+{ "code": 200, "songs": [{ "id": 1001, "mid": "demo-song-mid", "name": "示例歌曲" }] }
+```
+
+上游成功但没有条目回 `422`。
+
 ### 刷歌模式
 
 `GET /recommend/radar?page=1` 读刷歌模式（QQ 音乐客户端里的「雷达」），一页大约 10 首，`page` 从 1 开始、最多 100。有登录会话就按这个账号推荐，没有就匿名读（大家看到的差不多）；Serverless 没设 `QQ_SESSION_SECRET` 也能匿名读。`songs` 保持上游原来的格式（和 `/getSongInfo` 的 `track_info` 一样），`more` 表示还能不能往下一页读：
@@ -595,7 +611,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
 | `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |

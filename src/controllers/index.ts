@@ -64,6 +64,7 @@ import getSingerStarNum from './getSingerStarNum';
 import getSmartbox from './getSmartbox';
 import getSongListCategories from './getSongListCategories';
 import getSongLists from './getSongLists';
+import { getRelatedPlaylists, getSimilarSongs } from './getSongRelations';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
 import logoutOperationController from './logoutOperation';
@@ -152,6 +153,8 @@ export default {
   getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
   getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
   getRecommendRadar: withControllerLogging('getRecommendRadar', getRecommendRadar),
+  getSimilarSongs: withControllerLogging('getSimilarSongs', getSimilarSongs),
+  getRelatedPlaylists: withControllerLogging('getRelatedPlaylists', getRelatedPlaylists),
   getRadioList: withControllerLogging('getRadioList', getRadioList),
   getRadioTracks: withControllerLogging('getRadioTracks', getRadioTracks),
   getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
