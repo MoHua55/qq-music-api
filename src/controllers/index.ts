@@ -58,6 +58,14 @@ import getRecommendRadar from './getRecommendRadar';
 import getSearch from './getSearch';
 import { getHotSearches, getSearchSuggestions } from './getSearchSuggest';
 import getSimilarSinger from './getSimilarSinger';
+import {
+  getSimilarSingers,
+  getSingerDetail,
+  getSingerHomepage,
+  getSingerMvs,
+  getSingerSongs,
+  listSingers,
+} from './getSingerCatalog';
 import getSingerDesc from './getSingerDesc';
 import getSingerList from './getSingerList';
 import getSingerMv from './getSingerMv';
@@ -170,4 +178,10 @@ export default {
   getSearch: withControllerLogging('getSearch', getSearch),
   getHotSearches: withControllerLogging('getHotSearches', getHotSearches),
   getSearchSuggestions: withControllerLogging('getSearchSuggestions', getSearchSuggestions),
+  listSingers: withControllerLogging('listSingers', listSingers),
+  getSingerDetail: withControllerLogging('getSingerDetail', getSingerDetail),
+  getSingerHomepage: withControllerLogging('getSingerHomepage', getSingerHomepage),
+  getSimilarSingers: withControllerLogging('getSimilarSingers', getSimilarSingers),
+  getSingerSongs: withControllerLogging('getSingerSongs', getSingerSongs),
+  getSingerMvs: withControllerLogging('getSingerMvs', getSingerMvs),
 };

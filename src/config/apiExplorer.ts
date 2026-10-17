@@ -233,6 +233,17 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     routePath: '/getMv/:area_id?/:version_id?/:limit?/:page?',
     category: 'MV',
   },
+  { name: 'listSingers', method: 'GET', routePath: '/singer/list', category: 'Singer' },
+  { name: 'getSingerDetail', method: 'GET', routePath: '/singer/detail', category: 'Singer' },
+  {
+    name: 'getSingerHomepage',
+    method: 'GET',
+    routePath: '/singer/homepage',
+    category: 'Singer',
+  },
+  { name: 'getSimilarSingers', method: 'GET', routePath: '/singer/similar', category: 'Singer' },
+  { name: 'getSingerSongs', method: 'GET', routePath: '/singer/songs', category: 'Singer' },
+  { name: 'getSingerMvs', method: 'GET', routePath: '/singer/mvs', category: 'Singer' },
   {
     name: 'getSingerList',
     method: 'GET',
@@ -654,6 +665,51 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         label: 'Keyword',
         description: 'What has been typed so far, up to 60 characters.',
       },
+    ],
+  },
+  listSingers: {
+    description:
+      'List singers with optional filters, plus the filter values to choose from. The upstream gives 80 singers per page. Read anonymously.',
+    queryParams: [
+      { key: 'area', label: 'Area', description: 'Area id from tags.area; -100 (all) by default.' },
+      { key: 'sex', label: 'Sex', description: 'Id from tags.sex; -100 (all) by default.' },
+      { key: 'genre', label: 'Genre', description: 'Id from tags.genre; -100 (all) by default.' },
+      {
+        key: 'index',
+        label: 'Index',
+        description: 'Initial letter id from tags.index; -100 (all) by default.',
+      },
+      { key: 'offset', label: 'Offset', description: 'Singers to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Singers per page; 80 by default, at most 80.' },
+    ],
+  },
+  getSingerDetail: {
+    description: 'Get one singer with picture, description and wiki text. Read anonymously.',
+    queryParams: [{ key: 'mid', label: 'Singer MID', description: 'Singer MID.' }],
+  },
+  getSingerHomepage: {
+    description: 'Get the fan and follow counts of one singer. Read anonymously.',
+    queryParams: [{ key: 'mid', label: 'Singer MID', description: 'Singer MID.' }],
+  },
+  getSimilarSingers: {
+    description: 'Get up to 10 similar singers. Some singers have none (422). Read anonymously.',
+    queryParams: [{ key: 'mid', label: 'Singer MID', description: 'Singer MID.' }],
+  },
+  getSingerSongs: {
+    description:
+      'Get songs of one singer in the upstream format, one page at a time. Read anonymously.',
+    queryParams: [
+      { key: 'mid', label: 'Singer MID', description: 'Singer MID.' },
+      { key: 'offset', label: 'Offset', description: 'Songs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Songs per page; 30 by default, at most 30.' },
+    ],
+  },
+  getSingerMvs: {
+    description: 'Get MVs of one singer, one page at a time. Read anonymously.',
+    queryParams: [
+      { key: 'mid', label: 'Singer MID', description: 'Singer MID.' },
+      { key: 'offset', label: 'Offset', description: 'MVs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'MVs per page; 20 by default, at most 40.' },
     ],
   },
   getSearch: {

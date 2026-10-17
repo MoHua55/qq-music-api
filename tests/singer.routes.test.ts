@@ -106,7 +106,15 @@ const DETAIL = {
   ],
 };
 
-const HOMEPAGE = { Info: { BaseInfo: { Name: 'Fixture singer A' }, FansNum: 1200, FollowNum: 7 } };
+const counter = (Num: unknown) => ({ HasEntry: 1, Num, Add: 0, jumpURL: '' });
+const HOMEPAGE = {
+  Info: {
+    BaseInfo: { Name: 'Fixture singer A' },
+    FansNum: counter(1200),
+    FollowNum: counter('7'),
+  },
+  Status: 0,
+};
 
 const similarSinger = (index: number, overrides: Record<string, unknown> = {}) => ({
   singerId: 600 + index,
@@ -420,7 +428,9 @@ describe.each(['node', 'serverless'] as const)('singer routes: %s', (runtime) =>
     });
 
     it('also accepts code 0 and leaves out a count that is not a whole number', async () => {
-      replies.GetHomepageHeader = { data: { Info: { FansNum: 5, FollowNum: -1 } } };
+      replies.GetHomepageHeader = {
+        data: { Info: { FansNum: counter(5), FollowNum: counter(-1), VisitorNum: counter('1e3') } },
+      };
 
       const result = await call(`/singer/homepage?mid=${MID}`);
 
@@ -430,6 +440,7 @@ describe.each(['node', 'serverless'] as const)('singer routes: %s', (runtime) =>
     it.each([
       ['no profile', {}],
       ['no counts', { Info: { BaseInfo: {} } }],
+      ['counts that are not numbers', { Info: { FansNum: counter('many'), FollowNum: 3 } }],
     ])('answers 502 for %s', async (_label, data) => {
       replies.GetHomepageHeader = { code: 10000, data };
 

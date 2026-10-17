@@ -172,6 +172,10 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | **搜索** | | | |
 | `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
 | `GET /search/hot`、`/search/suggest` | 否 | 热搜、边打字边给的搜索建议 | ✓ |
+| **歌手** | | | |
+| `GET /singer/list` | 否 | 歌手列表，可按地区、性别、流派、首字母筛选，可翻页 | ✓ |
+| `GET /singer/detail`、`/singer/homepage` | 否 | 歌手资料（简介、百科）、粉丝数和关注数 | ✓ |
+| `GET /singer/similar`、`/singer/songs`、`/singer/mvs` | 否 | 相似歌手、歌手的歌、歌手的 MV（后两个可翻页） | ✓ |
 | **播放与曲库** | | | |
 | `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
@@ -584,6 +588,28 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 两条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
+### 歌手
+
+下面几条都不用登录，Node 和 Serverless 都能用。要 `mid` 的都是歌手 mid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
+
+`GET /singer/list?area=&sex=&genre=&index=&offset=0&limit=80` 读歌手列表。四个筛选不给就是「全部」（`-100`），可以用的值在回包的 `tags` 里（`area`、`sex`、`genre`、`index` 各是一组 `{ id, name }`）。上游一页固定 80 位，`limit` 默认 80、最多 80，一次不会跨页；`total` 是一共几位，`more` 表示后面还有没有：
+
+```json
+{ "code": 200, "singers": [{ "mid": "demoSingerMid", "name": "示例歌手", "id": 1, "pic": "https://example.com/singer.jpg", "country": "示例地区" }], "tags": { "area": [{ "id": -100, "name": "全部" }], "sex": [], "genre": [], "index": [] }, "total": 1, "more": false }
+```
+
+`GET /singer/detail?mid=` 读一位歌手的资料：`mid`、`name`，以及可选的 `id`、`pic`、`desc`（简介）、`wiki`（百科文字）、`foreignName`、`birthday`，上游没给就不出现。
+
+`GET /singer/homepage?mid=` 读这位歌手的 `fansNum`（粉丝数）和 `followNum`（关注数）。
+
+`GET /singer/similar?mid=` 给最多 10 位相似歌手（`mid`、`name`、可选的 `id`、`pic`）；有的歌手上游没有相似歌手，这时回 `422`。
+
+`GET /singer/songs?mid=&offset=0&limit=30` 读歌手的歌，`songs` 保持上游原来的格式（和 `/getSongInfo` 一样带 `mid`、`file.media_mid`）。上游一次大约给 30 首、不照 `limit` 给，这里会按 `limit` 截断；`limit` 默认 30、最多 30。
+
+`GET /singer/mvs?mid=&offset=0&limit=20` 读歌手的 MV，每支有 `vid`、`title`，以及可选的 `id`、`cover`、`playCount`、`duration`（秒）、`publishTime`（秒级时间戳）。`limit` 默认 20、最多 40。
+
+这几条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
 ### 出错时的响应
 
 ```json
@@ -630,6 +656,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
+| `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |
 
@@ -708,7 +735,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取歌手信息
 
-`GET /getSingerDesc?singermid=demo-singer-mid` 返回歌手资料；`singermid` 必填。
+`GET /getSingerDesc?singermid=demo-singer-mid` 返回歌手资料；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/detail`](#歌手)。
 
 ### 获取歌手热门歌曲
 
@@ -720,15 +747,15 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取相似歌手
 
-`GET /getSimilarSinger?singermid=demo-singer-mid` 返回相似歌手；`singermid` 必填。
+`GET /getSimilarSinger?singermid=demo-singer-mid` 返回相似歌手；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/similar`](#歌手)。
 
 ### 获取歌手列表
 
-`GET /getSingerList` 返回歌手列表。可用 `area`、`sex`、`genre`、`index` 筛选，默认都为 `-100`；`page` 默认 1。具体筛选值以返回数据为准。
+`GET /getSingerList` 返回歌手列表。可用 `area`、`sex`、`genre`、`index` 筛选，默认都为 `-100`；`page` 默认 1。具体筛选值以返回数据为准。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/list`](#歌手)。
 
 ### 获取歌手被关注数量信息
 
-`GET /getSingerStarNum?singermid=demo-singer-mid` 返回关注数量；`singermid` 必填。
+`GET /getSingerStarNum?singermid=demo-singer-mid` 返回关注数量；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/homepage`](#歌手) 的 `fansNum`。
 
 ### 获取歌曲相关信息
 
@@ -824,7 +851,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取歌手MV
 
-`GET /getSingerMv?singermid=demo-singer-mid&num=5&order=time` 返回歌手 MV。`singermid` 必填，`num` 默认 5；数量 query 参数是 `num`。`order=time` 会启用对应的时间排序请求。
+`GET /getSingerMv?singermid=demo-singer-mid&num=5&order=time` 返回歌手 MV。`singermid` 必填，`num` 默认 5；数量 query 参数是 `num`。`order=time` 会启用对应的时间排序请求。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/mvs`](#歌手)。
 
 ### 获取新碟信息
 

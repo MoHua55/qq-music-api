@@ -78,6 +78,18 @@ export const UPSTREAM_OPERATIONS = [
   'search.hot',
   /** 搜索建议（`SmartBoxCgi.GetSmartBoxResult`），匿名；非零码都还是未知。 */
   'search.suggest',
+  /** 歌手清单（`SingerList.GetSingerListIndex`），匿名；非零码都还是未知。 */
+  'singer.list',
+  /** 歌手资料（`SingerInfoInter.GetSingerDetail`），匿名。 */
+  'singer.detail',
+  /** 歌手主页（`UnifiedHomepageSrv.GetHomepageHeader`），匿名；成功时单项码是 10000，由请求放行。 */
+  'singer.homepage',
+  /** 相似歌手（`SimilarSingerSvr.GetSimilarSingerList`），匿名。 */
+  'singer.similar',
+  /** 歌手的歌（`song_list_server.GetSingerSongList`），匿名。 */
+  'singer.songs',
+  /** 歌手的 MV（`MvInfoProServer.GetSingerMvList`），匿名。 */
+  'singer.mvs',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
   'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */

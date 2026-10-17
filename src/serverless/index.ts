@@ -56,6 +56,14 @@ import {
 import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
 import { searchResult } from '../services/search/search';
 import { hotSearchesResult, searchSuggestionsResult } from '../services/search/suggest';
+import {
+  similarSingersResult,
+  singerDetailResult,
+  singerHomepageResult,
+  singerListResult,
+  singerMvsResult,
+  singerSongsResult,
+} from '../services/singers/catalog';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -279,6 +287,46 @@ const routes: Record<string, RouteHandler> = {
 
   '/search/suggest': async ({ url }) =>
     fromResult(await searchSuggestionsResult(url.searchParams.get('keyword') ?? undefined)),
+
+  // 歌手：公开内容，一律匿名读；没设密钥也能用。
+  '/singer/list': async ({ url }) =>
+    fromResult(
+      await singerListResult({
+        area: url.searchParams.get('area') ?? undefined,
+        sex: url.searchParams.get('sex') ?? undefined,
+        genre: url.searchParams.get('genre') ?? undefined,
+        index: url.searchParams.get('index') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/singer/detail': async ({ url }) =>
+    fromResult(await singerDetailResult(url.searchParams.get('mid') ?? undefined)),
+
+  '/singer/homepage': async ({ url }) =>
+    fromResult(await singerHomepageResult(url.searchParams.get('mid') ?? undefined)),
+
+  '/singer/similar': async ({ url }) =>
+    fromResult(await similarSingersResult(url.searchParams.get('mid') ?? undefined)),
+
+  '/singer/songs': async ({ url }) =>
+    fromResult(
+      await singerSongsResult({
+        mid: url.searchParams.get('mid') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/singer/mvs': async ({ url }) =>
+    fromResult(
+      await singerMvsResult({
+        mid: url.searchParams.get('mid') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),

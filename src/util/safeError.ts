@@ -57,6 +57,12 @@ export const UPSTREAM_PHASES = [
   'search',
   'get-hot-searches',
   'get-search-suggestions',
+  'get-singer-list',
+  'get-singer-detail',
+  'get-singer-homepage',
+  'get-similar-singers',
+  'get-singer-songs',
+  'get-singer-mvs',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];
