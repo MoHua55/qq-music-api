@@ -1,6 +1,12 @@
 import { type AndroidDevice } from './androidDevice';
 import { createNativeQr } from './bootstrap';
 import type { AuthHttpClient } from './httpClient';
+import {
+  createPtloginQr,
+  exchangePtloginCredential,
+  type PtloginFetch,
+  pollPtloginQr,
+} from './ptlogin';
 import { logWechatQr } from './qrDiagnostics';
 import { qrFailureDetailsOf } from './qrFailures';
 import {
@@ -10,7 +16,7 @@ import {
   type QrListenerFactory,
   type QrSessionRecord,
 } from './qrTypes';
-import { isAbortError } from './values';
+import { dictionaryOf, isAbortError } from './values';
 import {
   createWechatQr,
   eventForWechatStatus,
@@ -183,6 +189,39 @@ export const createWechatQrDriver = (options: {
       });
       throw error;
     }
+  },
+  close: () => undefined,
+});
+
+/**
+ * `qq` 在没有 relay 的 Serverless 上改走纯 HTTP 扫码（QQ 互联网页登录，见 `ptlogin.ts`）。
+ * 每次 `advance()` 只查一次 ptqrlogin；确认之后由服务调 `exchange()` 一路换到凭证，
+ * 时限是这次 check 剩下的时间。中间拿到的 QQ 全局 Cookie 不出 `exchangePtloginCredential`。
+ */
+export const createPtloginQrDriver = (options: { fetch?: PtloginFetch } = {}): QrChannelDriver => ({
+  mode: 'pull',
+  createQr: async (session, signal) => {
+    // 封存的 unikey 自己带着图片（见 qrRuntime 的 replayedRecord），服务不会为同一张码再来要图；
+    // 再调一次 ptqrshow 会换掉 qrsig，手机上那张码就永远登不进来了。
+    if (session.identifier) throw new Error('Ptlogin QR cannot be redrawn');
+    const qr = await createPtloginQr({ fetch: options.fetch, signal });
+    return { identifier: qr.qrsig, imageUrl: qr.imageUrl, expiresIn: qr.expiresIn };
+  },
+  advance: async (session, budgetMs, signal) => {
+    if (!session.identifier) return [];
+    const poll = await pollPtloginQr(session.identifier, {
+      fetch: options.fetch,
+      signal: signal ?? AbortSignal.timeout(Math.max(1, Math.min(budgetMs, 10_000))),
+    });
+    if (poll.status === 'waiting') return [{ type: 'waiting', payload: null }];
+    if (poll.status === 'scanned') return [{ type: 'scanned', payload: null }];
+    if (poll.status === 'expired') return [{ type: 'timeout', payload: null }];
+    return [{ type: 'authorized', payload: { checkSigUrl: poll.checkSigUrl } }];
+  },
+  exchange: async (_session, payload, signal) => {
+    const checkSigUrl = dictionaryOf(payload).checkSigUrl;
+    if (typeof checkSigUrl !== 'string') throw new Error('Ptlogin check_sig URL is missing');
+    return exchangePtloginCredential(checkSigUrl, { fetch: options.fetch, signal });
   },
   close: () => undefined,
 });

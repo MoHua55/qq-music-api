@@ -6,7 +6,8 @@ import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionM
 
 // src/services/recommend/catalog.ts
 //
-// `/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`：公开内容，一律匿名读，
+// `/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/toplists`、
+// `/recommend/toplist`、`/recommend/new-albums`：公开内容，一律匿名读，
 // 带了会话也不用。Node 与 serverless 共用。实测（2026-10，匿名）：分类是 `get_hot_category`，分类歌单是
 // `get_category_content`（`content.total_cnt`＋`v_item[].basic`），新歌是 `get_new_song_info`（`songlist` 与
 // `track_info` 同形、`lanlist` 是地区）。
@@ -215,5 +216,235 @@ export const newSongsResult = async (
     return okResult({ area: positiveIdOf(data.type) ?? area, songs, areas });
   } catch (error) {
     return failureResult('get-new-songs', error);
+  }
+};
+
+// ---- 排行榜 ----
+//
+// 实测（2026-10，官方网页登录与匿名都读得到）：榜单清单是 `ToplistInfoServer.GetAll`（`group[].toplist[]`），
+// 单榜是 `GetDetail`，参数要全小写的 `topid`（大写的 `topId` 会被忽略）。`period` 照抄清单里那个榜的值
+// （日榜 `YYYY-MM-DD`、周榜 `YYYY_NN`），送空字符串时上游给最新一期。`songInfoList` 与 `track_info` 同形。
+
+const TOPLIST_PAGE_SIZE = 20;
+/** 榜单一般 100 首；一次要整榜还没有实测过更大的。 */
+const MAX_TOPLIST_PAGE_SIZE = 100;
+const PERIOD_PATTERN = /^[0-9_-]{0,20}$/;
+
+const TOPLISTS: MusicuDescriptor<Dictionary> = {
+  module: 'musicToplist.ToplistInfoServer',
+  method: 'GetAll',
+  param: {},
+  readOnly: true,
+  operation: 'recommend.toplists',
+  decode: decodeDictionary,
+};
+
+const toplistDetail = (
+  id: number,
+  offset: number,
+  size: number,
+  period: string,
+): MusicuDescriptor<Dictionary> => ({
+  module: 'musicToplist.ToplistInfoServer',
+  method: 'GetDetail',
+  param: { topid: id, offset, num: size, period },
+  readOnly: true,
+  operation: 'recommend.toplist',
+  decode: decodeDictionary,
+});
+
+const textOf = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.length > 0 ? value : undefined;
+
+/** 榜单的公开资料；缺字段或型别不对的就不给。 */
+const toChartInfo = (entry: unknown): Dictionary | null => {
+  const item = dictionaryOf(entry);
+  const id = positiveIdOf(item.topId);
+  if (id === undefined) return null;
+  const optional: Array<[string, unknown]> = [
+    ['intro', textOf(item.intro)],
+    ['period', textOf(item.period)],
+    ['updateType', countOf(item.updateType)],
+    ['updateTime', textOf(item.updateTime)],
+    ['total', countOf(item.totalNum)],
+    ['listenNum', countOf(item.listenNum)],
+    ['cover', textOf(item.headPicUrl) ?? textOf(item.frontPicUrl) ?? textOf(item.musichallPicUrl)],
+  ];
+  return {
+    id,
+    title: stringOf(item.title),
+    ...Object.fromEntries(optional.filter(([, value]) => value !== undefined)),
+  };
+};
+
+const toPreview = (entry: unknown): Dictionary | null => {
+  const item = dictionaryOf(entry);
+  const rank = positiveIdOf(item.rank);
+  return rank === undefined
+    ? null
+    : { rank, title: stringOf(item.title), singer: stringOf(item.singerName) };
+};
+
+/** 清单里没有可用 id 的榜跳过，一个榜都没有的组也跳过；上游给空清单回 422，读不出任何榜回 502。 */
+export const toplistsResult = async (
+  options: SessionMusicuOptions = {},
+): Promise<NewRouteResult> => {
+  try {
+    const groups = listOf((await anonymous(options).execute(TOPLISTS)).group);
+    if (!groups.length) throw new QqApiError('not-found');
+    const readable = groups
+      .map((entry) => {
+        const group = dictionaryOf(entry);
+        const toplists = (Array.isArray(group.toplist) ? group.toplist : [])
+          .map((item) => {
+            const info = toChartInfo(item);
+            if (!info) return null;
+            const songs = dictionaryOf(item).song;
+            return {
+              ...info,
+              preview: Array.isArray(songs) ? songs.map(toPreview).filter(Boolean) : [],
+            };
+          })
+          .filter(Boolean);
+        const id = positiveIdOf(group.groupId);
+        return toplists.length && id !== undefined
+          ? { id, name: stringOf(group.groupName), toplists }
+          : null;
+      })
+      .filter(Boolean);
+    if (!readable.length) throw new QqApiError('invalid-response');
+    return okResult({ groups: readable });
+  } catch (error) {
+    return failureResult('get-toplists', error);
+  }
+};
+
+const offsetOf = (raw: unknown): number => {
+  const value = Number.parseInt(String(raw ?? ''), 10);
+  return Number.isSafeInteger(value) && value > 0 ? value : 0;
+};
+
+/** 单榜的歌：`songs` 保持上游原来的格式；`total` 只在上游给的是正常整数时才有，没有就不报还有下一页。 */
+export const toplistSongsResult = async (
+  query: { id?: unknown; period?: unknown; offset?: unknown; limit?: unknown },
+  options: SessionMusicuOptions = {},
+): Promise<NewRouteResult> => {
+  try {
+    const id = requiredIdOf(query.id);
+    const period = query.period === undefined || query.period === null ? '' : String(query.period);
+    if (!PERIOD_PATTERN.test(period)) throw new QqApiError('input');
+    const offset = offsetOf(query.offset);
+    const size = pagingOf(query.limit, TOPLIST_PAGE_SIZE, MAX_TOPLIST_PAGE_SIZE);
+    const data = await anonymous(options).execute(toplistDetail(id, offset, size, period));
+    if (!isDictionary(data.data)) throw new QqApiError('invalid-response');
+    const songs = listOf(data.songInfoList);
+    if (!songs.length) throw new QqApiError('not-found');
+    const info = toChartInfo(data.data);
+    if (!info) throw new QqApiError('invalid-response');
+    const count = countOf(info.total);
+    return okResult({
+      toplist: info,
+      songs,
+      ...(count === undefined ? {} : { total: count }),
+      more: count !== undefined && offset + songs.length < count,
+    });
+  } catch (error) {
+    return failureResult('get-toplist', error);
+  }
+};
+
+// ---- 新碟上架 ----
+//
+// 实测（2026-10，官方网页登录与匿名都读得到）：地区清单是 `get_new_album_area`（无参数，`area[]`，id 1–5，
+// 没有「最新」），专辑是 `get_new_album_info { area, sin: 0, num, start }`，`sin` 一律 0，翻页用 `start`。
+// 两支放在同一次请求里；地区清单读不到不影响专辑。专辑摊平成和收藏专辑一样好用的字段。
+
+const DEFAULT_NEW_ALBUM_AREA = 1;
+const NEW_ALBUM_PAGE_SIZE = 20;
+/** 网页一次要 20 张；40 张在实网冒烟里验过。 */
+const MAX_NEW_ALBUM_PAGE_SIZE = 40;
+
+const NEW_ALBUM_AREAS: MusicuDescriptor<Dictionary> = {
+  module: 'newalbum.NewAlbumServer',
+  method: 'get_new_album_area',
+  param: {},
+  readOnly: true,
+  operation: 'recommend.new-album-areas',
+  decode: decodeDictionary,
+};
+
+const newAlbums = (area: number, start: number, size: number): MusicuDescriptor<Dictionary> => ({
+  module: 'newalbum.NewAlbumServer',
+  method: 'get_new_album_info',
+  param: { area, sin: 0, start, num: size },
+  readOnly: true,
+  operation: 'recommend.new-albums',
+  decode: decodeDictionary,
+});
+
+const toAlbumSinger = (entry: unknown): Dictionary | null => {
+  const singer = dictionaryOf(entry);
+  const mid = textOf(singer.mid);
+  return mid === undefined ? null : { mid, name: stringOf(singer.name) };
+};
+
+const toNewAlbum = (entry: unknown): Dictionary | null => {
+  const item = dictionaryOf(entry);
+  const mid = textOf(item.mid);
+  if (mid === undefined) return null;
+  const optional: Array<[string, unknown]> = [
+    ['id', positiveIdOf(item.id)],
+    ['publishDate', textOf(item.release_time)],
+    ['company', textOf(dictionaryOf(item.company).name)],
+    ['trackCount', countOf(dictionaryOf(item.ex).track_nums)],
+  ];
+  return {
+    mid,
+    name: stringOf(item.name),
+    singers: Array.isArray(item.singers) ? item.singers.map(toAlbumSinger).filter(Boolean) : [],
+    ...Object.fromEntries(optional.filter(([, value]) => value !== undefined)),
+  };
+};
+
+const toAlbumArea = (entry: unknown): Dictionary | null => {
+  const item = dictionaryOf(entry);
+  const id = positiveIdOf(item.id);
+  return id === undefined ? null : { id, name: stringOf(item.name) };
+};
+
+/** 没有专辑回 422，给了专辑却一张都读不出来回 502；`total` 不是正常整数时不给，也不报还有下一页。 */
+export const newAlbumsResult = async (
+  query: { area?: unknown; offset?: unknown; limit?: unknown },
+  options: SessionMusicuOptions = {},
+): Promise<NewRouteResult> => {
+  try {
+    const area =
+      query.area === undefined || query.area === null || query.area === ''
+        ? DEFAULT_NEW_ALBUM_AREA
+        : requiredIdOf(query.area);
+    const start = offsetOf(query.offset);
+    const size = pagingOf(query.limit, NEW_ALBUM_PAGE_SIZE, MAX_NEW_ALBUM_PAGE_SIZE);
+    const [areaResult, albumResult] = await anonymous(options).executeBatch([
+      NEW_ALBUM_AREAS,
+      newAlbums(area, start, size),
+    ]);
+    if (!albumResult.ok) throw albumResult.error;
+    const data = albumResult.data as Dictionary;
+    const entries = listOf(data.albums);
+    if (!entries.length) throw new QqApiError('not-found');
+    const albums = entries.map(toNewAlbum).filter(Boolean);
+    if (!albums.length) throw new QqApiError('invalid-response');
+    const areaList = areaResult.ok ? (areaResult.data as Dictionary).area : undefined;
+    const areas = Array.isArray(areaList) ? areaList.map(toAlbumArea).filter(Boolean) : [];
+    const total = countOf(data.total);
+    return okResult({
+      area,
+      albums,
+      areas,
+      ...(total === undefined ? {} : { total }),
+      more: total !== undefined && start + entries.length < total,
+    });
+  } catch (error) {
+    return failureResult('get-new-albums', error);
   }
 };

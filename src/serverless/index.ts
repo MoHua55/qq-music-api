@@ -36,20 +36,41 @@ import {
   type QqQrRelay,
   type QrLoginService,
 } from '../services/auth/qrLogin';
+import {
+  commentCountResult,
+  hotCommentsResult,
+  newCommentsResult,
+} from '../services/comments/catalog';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import { mvDetailResult, mvListResult, mvUrlResult, songMvsResult } from '../services/mv/catalog';
 import {
   categoryPlaylistsResult,
+  newAlbumsResult,
   newSongsResult,
   playlistCategoriesResult,
+  toplistSongsResult,
+  toplistsResult,
 } from '../services/recommend/catalog';
 import { guessYouLikeResult } from '../services/recommend/guessYouLike';
 import type { NewRouteResult } from '../services/recommend/newRouteResult';
+import { radarPageOf, radarResult } from '../services/recommend/radar';
 import { radioListResult, radioTracksResult } from '../services/recommend/radio';
 import {
   recommendPlaylistsLimitOf,
   recommendPlaylistsResult,
 } from '../services/recommend/recommendPlaylists';
+import { songLabelsResult } from '../services/recommend/songLabels';
+import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
 import { searchResult } from '../services/search/search';
+import { hotSearchesResult, searchSuggestionsResult } from '../services/search/suggest';
+import {
+  similarSingersResult,
+  singerDetailResult,
+  singerHomepageResult,
+  singerListResult,
+  singerMvsResult,
+  singerSongsResult,
+} from '../services/singers/catalog';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -88,6 +109,8 @@ export type { QqQrRelay, QrEvent } from '../services/auth/qrLogin';
 
 export interface ServerlessEnv {
   QQ_PLAYBACK_HINTS_ENABLED?: string;
+  /** 没有 relay 时手机 QQ 走纯 HTTP 扫码；设 `0` 或 `false` 关掉。 */
+  QQ_PTLOGIN_HTTP_ENABLED?: string;
   QQ_SESSION_SECRET?: string;
   QQ_SESSION_SECRET_PREVIOUS?: string;
   QQ_UNVERIFIED_WRITES_ENABLED?: string;
@@ -193,6 +216,30 @@ const routes: Record<string, RouteHandler> = {
     );
   },
 
+  // 相似歌曲、包含这首歌的歌单：要登录，匿名时上游只给空清单。
+  '/song/similar': async ({ url, service: getService, token }) =>
+    fromResult(
+      await similarSongsResult(
+        await (await getService()).resolveSession(token),
+        url.searchParams.get('id') ?? undefined,
+      ),
+    ),
+
+  '/song/related-playlists': async ({ url, service: getService, token }) =>
+    fromResult(
+      await relatedPlaylistsResult(
+        await (await getService()).resolveSession(token),
+        url.searchParams.get('id') ?? undefined,
+      ),
+    ),
+
+  // 刷歌模式：和推荐歌单一样，有会话就带凭证，没有就匿名。
+  '/recommend/radar': async ({ url, env, service: getService, token }) => {
+    const session =
+      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
+    return fromResult(await radarResult(session, radarPageOf(url.searchParams.get('page'))));
+  },
+
   // 公开内容，一律匿名读；没设密钥也能用。
   '/recommend/categories': async () => fromResult(await playlistCategoriesResult()),
 
@@ -208,6 +255,27 @@ const routes: Record<string, RouteHandler> = {
   '/recommend/new-songs': async ({ url }) =>
     fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
 
+  '/recommend/new-albums': async ({ url }) =>
+    fromResult(
+      await newAlbumsResult({
+        area: url.searchParams.get('area') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/recommend/toplists': async () => fromResult(await toplistsResult()),
+
+  '/recommend/toplist': async ({ url }) =>
+    fromResult(
+      await toplistSongsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        period: url.searchParams.get('period') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
   // 有会话就带凭证，没有就匿名搜。没设密钥时解不开任何会话，也不建服务，直接匿名搜。
   '/search': async ({ url, env, service: getService, token }) => {
     const query = {
@@ -220,6 +288,98 @@ const routes: Record<string, RouteHandler> = {
       env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
     return fromResult(await searchResult(query, session));
   },
+
+  // 热搜、搜索建议：公开内容，一律匿名读；没设密钥也能用。
+  '/search/hot': async () => fromResult(await hotSearchesResult()),
+
+  '/search/suggest': async ({ url }) =>
+    fromResult(await searchSuggestionsResult(url.searchParams.get('keyword') ?? undefined)),
+
+  // 歌手：公开内容，一律匿名读；没设密钥也能用。
+  '/singer/list': async ({ url }) =>
+    fromResult(
+      await singerListResult({
+        area: url.searchParams.get('area') ?? undefined,
+        sex: url.searchParams.get('sex') ?? undefined,
+        genre: url.searchParams.get('genre') ?? undefined,
+        index: url.searchParams.get('index') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/singer/detail': async ({ url }) =>
+    fromResult(await singerDetailResult(url.searchParams.get('mid') ?? undefined)),
+
+  '/singer/homepage': async ({ url }) =>
+    fromResult(await singerHomepageResult(url.searchParams.get('mid') ?? undefined)),
+
+  '/singer/similar': async ({ url }) =>
+    fromResult(await similarSingersResult(url.searchParams.get('mid') ?? undefined)),
+
+  '/singer/songs': async ({ url }) =>
+    fromResult(
+      await singerSongsResult({
+        mid: url.searchParams.get('mid') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/singer/mvs': async ({ url }) =>
+    fromResult(
+      await singerMvsResult({
+        mid: url.searchParams.get('mid') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  // 歌曲评论：公开内容，一律匿名读；没设密钥也能用。
+  '/comment/hot': async ({ url }) =>
+    fromResult(
+      await hotCommentsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/comment/new': async ({ url }) =>
+    fromResult(
+      await newCommentsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/comment/count': async ({ url }) =>
+    fromResult(await commentCountResult(url.searchParams.get('id') ?? undefined)),
+
+  // MV：公开内容，一律匿名读；没设密钥也能用。
+  '/mv/list': async ({ url }) =>
+    fromResult(
+      await mvListResult({
+        area: url.searchParams.get('area') ?? undefined,
+        version: url.searchParams.get('version') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/mv/detail': async ({ url }) =>
+    fromResult(await mvDetailResult(url.searchParams.get('vid') ?? undefined)),
+
+  '/mv/url': async ({ url }) =>
+    fromResult(await mvUrlResult(url.searchParams.get('vid') ?? undefined)),
+
+  '/song/mvs': async ({ url }) =>
+    fromResult(await songMvsResult(url.searchParams.get('id') ?? undefined)),
+
+  // 歌曲标签：公开内容，一律匿名读；没设密钥也能用。
+  '/song/labels': async ({ url }) =>
+    fromResult(await songLabelsResult(url.searchParams.get('id') ?? undefined)),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),
@@ -286,6 +446,8 @@ const LOGIN_ROUTES = new Set([
   '/user/playlist-detail',
   '/user/guess-you-like',
   '/user/daily-songs',
+  '/song/similar',
+  '/song/related-playlists',
   '/user/cloud',
   '/radio/list',
   '/radio/tracks',
@@ -311,7 +473,7 @@ const createServiceFor = async (
       await deriveAndroidDevice(secrets.current),
     ),
     sessionResolver: createSealedSessionResolver({ secrets }),
-    capabilities: capabilitiesFor(options),
+    capabilities: capabilitiesFor(options, env),
     checkBudgetMs: CHECK_BUDGET_MS,
   });
 };

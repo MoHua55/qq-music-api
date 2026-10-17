@@ -13,6 +13,7 @@ import { inspectRuntimeClosure } from './helpers/runtimeClosure';
 
 const LOGIN_EXCHANGE = [
   'login.qq.credential-exchange',
+  'login.qq.ptlogin-exchange',
   'login.wechat.credential-exchange',
   'login.wechat.credential-refresh',
 ] as const;

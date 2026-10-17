@@ -140,12 +140,50 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'Recommend',
   },
   { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
+  { name: 'getSimilarSongs', method: 'GET', routePath: '/song/similar', category: 'Song' },
+  {
+    name: 'getRelatedPlaylists',
+    method: 'GET',
+    routePath: '/song/related-playlists',
+    category: 'Song',
+  },
+  {
+    name: 'getRecommendRadar',
+    method: 'GET',
+    routePath: '/recommend/radar',
+    category: 'Recommend',
+  },
+  {
+    name: 'getNewAlbums',
+    method: 'GET',
+    routePath: '/recommend/new-albums',
+    category: 'Recommend',
+  },
+  {
+    name: 'getRecommendToplists',
+    method: 'GET',
+    routePath: '/recommend/toplists',
+    category: 'Recommend',
+  },
+  {
+    name: 'getRecommendToplistSongs',
+    method: 'GET',
+    routePath: '/recommend/toplist',
+    category: 'Recommend',
+  },
   { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
   { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
   { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
+  { name: 'getHotSearches', method: 'GET', routePath: '/search/hot', category: 'Search' },
+  {
+    name: 'getSearchSuggestions',
+    method: 'GET',
+    routePath: '/search/suggest',
+    category: 'Search',
+  },
   {
     name: 'getSongListCategories',
     method: 'GET',
@@ -195,6 +233,25 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     routePath: '/getMv/:area_id?/:version_id?/:limit?/:page?',
     category: 'MV',
   },
+  { name: 'listSingers', method: 'GET', routePath: '/singer/list', category: 'Singer' },
+  { name: 'getSingerDetail', method: 'GET', routePath: '/singer/detail', category: 'Singer' },
+  {
+    name: 'getSingerHomepage',
+    method: 'GET',
+    routePath: '/singer/homepage',
+    category: 'Singer',
+  },
+  { name: 'getSimilarSingers', method: 'GET', routePath: '/singer/similar', category: 'Singer' },
+  { name: 'getSingerSongs', method: 'GET', routePath: '/singer/songs', category: 'Singer' },
+  { name: 'getSingerMvs', method: 'GET', routePath: '/singer/mvs', category: 'Singer' },
+  { name: 'getHotComments', method: 'GET', routePath: '/comment/hot', category: 'Common' },
+  { name: 'getNewComments', method: 'GET', routePath: '/comment/new', category: 'Common' },
+  { name: 'getCommentCount', method: 'GET', routePath: '/comment/count', category: 'Common' },
+  { name: 'getMvList', method: 'GET', routePath: '/mv/list', category: 'MV' },
+  { name: 'getMvDetail', method: 'GET', routePath: '/mv/detail', category: 'MV' },
+  { name: 'getMvUrl', method: 'GET', routePath: '/mv/url', category: 'MV' },
+  { name: 'getSongMvs', method: 'GET', routePath: '/song/mvs', category: 'MV' },
+  { name: 'getSongLabels', method: 'GET', routePath: '/song/labels', category: 'Song' },
   {
     name: 'getSingerList',
     method: 'GET',
@@ -355,7 +412,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         key: 'channel',
         label: 'Login Channel',
         description:
-          'qq (scan with mobile QQ, default), wechat (scan with WeChat) or qqmusic (scan with the QQ Music app, whether its account is linked to QQ or WeChat).',
+          'qq (scan with mobile QQ, default), wechat (scan with WeChat) or qqmusic (scan with the QQ Music app, whether its account is linked to QQ or WeChat). On a serverless deployment without a relay, qq uses the QQ web login over plain HTTP and its code expires after about 120 s; qqmusic needs a relay.',
       },
     ],
   },
@@ -521,6 +578,69 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       },
     ],
   },
+  getSimilarSongs: {
+    description:
+      'Get songs similar to one song. Requires login: without a session the upstream only answers an empty list.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'Numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
+  getRelatedPlaylists: {
+    description:
+      'Get playlists that contain one song. Requires login: without a session the upstream only answers an empty list.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Song ID',
+        description: 'Numeric song id (not the mid).',
+        required: true,
+      },
+    ],
+  },
+  getRecommendRadar: {
+    description:
+      'Get one page (about 10 songs) of the radar, the endless personal song stream. Uses the session when present, otherwise reads anonymously.',
+    queryParams: [
+      { key: 'page', label: 'Page', description: 'Page number; 1 by default, at most 100.' },
+    ],
+  },
+  getNewAlbums: {
+    description:
+      'Get new albums for one area (mainland by default) with the list of areas, one page at a time. Read anonymously.',
+    queryParams: [
+      { key: 'area', label: 'Area', description: 'Area id from the areas list; 1 by default.' },
+      { key: 'offset', label: 'Offset', description: 'Albums to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Albums per page; 20 by default, at most 40.' },
+    ],
+  },
+  getRecommendToplists: {
+    description:
+      'Get all charts by group with id, title, cover, period and a few preview songs. Read anonymously.',
+  },
+  getRecommendToplistSongs: {
+    description:
+      'Get the songs of one chart. Songs keep the upstream format. Without period the latest issue is read. Read anonymously.',
+    queryParams: [
+      {
+        key: 'id',
+        label: 'Chart ID',
+        description: 'Chart id from /recommend/toplists.',
+        required: true,
+      },
+      {
+        key: 'period',
+        label: 'Period',
+        description: 'Issue from the chart list (YYYY-MM-DD or YYYY_NN); latest when left out.',
+      },
+      { key: 'offset', label: 'Offset', description: 'Songs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Songs per page; 20 by default, at most 100.' },
+    ],
+  },
   getRadioList: {
     description:
       'List QQ Music radio stations in groups for the authenticated user. Each radio has id, title, picurl and listenNum when known. Without a session it answers 401.',
@@ -540,9 +660,130 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
   },
+  getHotSearches: {
+    description:
+      'Get the hot search keywords, each with an optional title and description. Read anonymously.',
+  },
+  getSearchSuggestions: {
+    description:
+      'Get search word suggestions for a keyword (only search words, no other items). Read anonymously.',
+    queryParams: [
+      {
+        key: 'keyword',
+        label: 'Keyword',
+        description: 'What has been typed so far, up to 60 characters.',
+      },
+    ],
+  },
+  listSingers: {
+    description:
+      'List singers with optional filters, plus the filter values to choose from. The upstream gives 80 singers per page. Read anonymously.',
+    queryParams: [
+      { key: 'area', label: 'Area', description: 'Area id from tags.area; -100 (all) by default.' },
+      { key: 'sex', label: 'Sex', description: 'Id from tags.sex; -100 (all) by default.' },
+      { key: 'genre', label: 'Genre', description: 'Id from tags.genre; -100 (all) by default.' },
+      {
+        key: 'index',
+        label: 'Index',
+        description: 'Initial letter id from tags.index; -100 (all) by default.',
+      },
+      { key: 'offset', label: 'Offset', description: 'Singers to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Singers per page; 80 by default, at most 80.' },
+    ],
+  },
+  getSingerDetail: {
+    description: 'Get one singer with picture, description and wiki text. Read anonymously.',
+    queryParams: [{ key: 'mid', label: 'Singer MID', description: 'Singer MID.' }],
+  },
+  getSingerHomepage: {
+    description: 'Get the fan and follow counts of one singer. Read anonymously.',
+    queryParams: [{ key: 'mid', label: 'Singer MID', description: 'Singer MID.' }],
+  },
+  getSimilarSingers: {
+    description: 'Get up to 10 similar singers. Some singers have none (422). Read anonymously.',
+    queryParams: [{ key: 'mid', label: 'Singer MID', description: 'Singer MID.' }],
+  },
+  getSingerSongs: {
+    description:
+      'Get songs of one singer in the upstream format, one page at a time. Read anonymously.',
+    queryParams: [
+      { key: 'mid', label: 'Singer MID', description: 'Singer MID.' },
+      { key: 'offset', label: 'Offset', description: 'Songs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'Songs per page; 30 by default, at most 30.' },
+    ],
+  },
+  getSingerMvs: {
+    description: 'Get MVs of one singer, one page at a time. Read anonymously.',
+    queryParams: [
+      { key: 'mid', label: 'Singer MID', description: 'Singer MID.' },
+      { key: 'offset', label: 'Offset', description: 'MVs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'MVs per page; 20 by default, at most 40.' },
+    ],
+  },
+  getHotComments: {
+    description:
+      'Get hot comments of one song, one page at a time. Pages after the first are not fully verified. Read anonymously.',
+    queryParams: [
+      { key: 'id', label: 'Song id', description: 'Numeric song id.' },
+      { key: 'offset', label: 'Offset', description: 'Comments to skip; 0 by default.' },
+      {
+        key: 'limit',
+        label: 'Limit',
+        description: 'Comments per page; 20 by default, at most 50.',
+      },
+    ],
+  },
+  getNewComments: {
+    description:
+      'Get the newest comments of one song, one page at a time. Pages after the first are not fully verified. Read anonymously.',
+    queryParams: [
+      { key: 'id', label: 'Song id', description: 'Numeric song id.' },
+      { key: 'offset', label: 'Offset', description: 'Comments to skip; 0 by default.' },
+      {
+        key: 'limit',
+        label: 'Limit',
+        description: 'Comments per page; 20 by default, at most 50.',
+      },
+    ],
+  },
+  getSongLabels: {
+    description: 'Get the labels of one song (text with optional icon and link). Read anonymously.',
+    queryParams: [{ key: 'id', label: 'Song id', description: 'Numeric song id.' }],
+  },
+  getMvList: {
+    description:
+      'List MVs with optional area and version filters, plus the filter values to choose from. Read anonymously.',
+    queryParams: [
+      { key: 'area', label: 'Area', description: 'Area id from tags.area; 15 (all) by default.' },
+      {
+        key: 'version',
+        label: 'Version',
+        description: 'Version id from tags.version; 7 (all) by default.',
+      },
+      { key: 'offset', label: 'Offset', description: 'MVs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'MVs per page; 20 by default, at most 40.' },
+    ],
+  },
+  getMvDetail: {
+    description: 'Get one MV with title, description, cover, counts and singers. Read anonymously.',
+    queryParams: [{ key: 'vid', label: 'MV vid', description: 'MV vid.' }],
+  },
+  getMvUrl: {
+    description:
+      'Get the MP4 files of one MV that come with links, lowest quality first. Higher qualities may need login and are left out. Read anonymously.',
+    queryParams: [{ key: 'vid', label: 'MV vid', description: 'MV vid.' }],
+  },
+  getSongMvs: {
+    description: 'Get the MVs related to one song. Read anonymously.',
+    queryParams: [{ key: 'id', label: 'Song id', description: 'Numeric song id.' }],
+  },
+  getCommentCount: {
+    description: 'Get how many comments one song has. Read anonymously.',
+    queryParams: [{ key: 'id', label: 'Song id', description: 'Numeric song id.' }],
+  },
   getSearch: {
     description:
-      'Search songs, albums, playlists or singers by keyword. Works without logging in and uses the session when there is one. Anonymous song searches are often rejected upstream (502 search.rejected, code 2001); logging in avoids that. Items keep the upstream format with all MIDs. No results is 200 with an empty list; a rejection is never reported as empty. Not retried automatically.',
+      'Search songs, albums, playlists or singers by keyword. Works without logging in and uses the session when there is one. When the upstream still rejects a search it answers 502 search.rejected (code 2001); logging in usually avoids that. Items keep the upstream format with all MIDs. No results is 200 with an empty list; a rejection is never reported as empty. Not retried automatically.',
     queryParams: [
       { key: 'keyword', label: 'Keyword', description: 'Search words, up to 60 characters.' },
       {

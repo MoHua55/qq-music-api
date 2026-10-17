@@ -42,7 +42,7 @@ export const operationRequestOf = ({
   sessionConfigured: Boolean(env?.QQ_SESSION_SECRET),
   service,
   qr: createServerlessQrOperations({ env: env ?? {}, options: options ?? {}, service }),
-  capabilities: capabilitiesFor(options ?? {}),
+  capabilities: capabilitiesFor(options ?? {}, env ?? {}),
 });
 
 export const operationRoute =

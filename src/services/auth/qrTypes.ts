@@ -195,6 +195,8 @@ export interface QrSessionRuntime {
   pollErrors: number;
   /** The in-flight credential exchange, so a pull channel can await it before answering. */
   finalizing?: Promise<void>;
+  /** 这次 check 必须回答的时间点；自己换凭证的通道用它给换凭证设时限。 */
+  deadlineAt?: number;
 }
 
 /** Same contract as `AuthSessionRepository`, for the pre-login half of the state. */
@@ -231,6 +233,15 @@ export interface QrChannelDriver {
   /** Push drivers only: starts the event source once the record is final. */
   start?(session: QrSessionRecord, context: QrDriverContext): QrEventListener;
   advance(session: QrSessionRecord, budgetMs: number, signal?: AbortSignal): Promise<QrEvent[]>;
+  /**
+   * 自己换凭证的通道才有：`authorized` 事件之后由服务调用，`signal` 是这次 check 剩下的时间。
+   * 没有这个方法的通道照原来的规则换凭证。
+   */
+  exchange?(
+    session: QrSessionRecord,
+    payload: unknown,
+    signal?: AbortSignal,
+  ): Promise<QqCredential>;
   close(session: QrSessionRecord): void;
 }
 

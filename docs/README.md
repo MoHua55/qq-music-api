@@ -83,10 +83,11 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
-| `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 的微信扫码每次 `/login/qr/check` 最多等多久（毫秒，1000–20000，填错用默认值）。调短会让网络慢时等不到扫码 |
+| `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 的微信扫码每次 `/login/qr/check` 最多等多久（毫秒，1000–15000，填错或超出范围用默认值）。调短会让网络慢时等不到扫码 |
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
 | `QQ_SESSION_SECRET` | 无 | Serverless 会话或 Node 持久会话的加密密钥；持久部署重启时保持不变 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
+| `QQ_PTLOGIN_HTTP_ENABLED` | 开启 | 只对 Serverless 有用：没有注入中继时，手机 QQ 扫码走纯 HTTP 的网页登录。设成 `0` 或 `false` 就关掉，只剩微信扫码 |
 
 设备身份文件不包含用户凭证。多实例部署应各自指定身份文件，避免多个实例共用同一个设备身份。
 
@@ -98,7 +99,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `@yakult-green-tea/qq-music-api/serverless` | 使用 Web 标准 Request / Response 的运行时 | `handleRequest(request, env, options)` |
 | `@yakult-green-tea/qq-music-api/mqtt` | 可以维持 WebSocket 长连接的可信宿主 | 手机 QQ 扫码的 MQTT 编解码与监听器 |
 
-手机 QQ 扫码需要持续的 MQTT over WSS 连接。Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`。Vercel Functions 部署只应提供微信通道；没有中继的 Serverless 入口也只提供微信。
+Node、Electron、Docker 的手机 QQ 扫码用 MQTT over WSS 长连接。Serverless 撑不住长连接，所以没有注入 `qqRelay` 时，手机 QQ 扫码改走纯 HTTP 的网页登录（见下面「Serverless 上的手机 QQ 扫码」），Vercel 和没绑 Durable Object 的 Cloudflare 都能直接用，不用另外配存储。QQ 音乐 App 扫码（`qqmusic`）只有 MQTT 这一套，还是要宿主提供中继：Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`；注入中继后，手机 QQ 扫码也照旧走 MQTT。
 
 Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。轮换时可以暂时保留 `QQ_SESSION_SECRET_PREVIOUS`，等旧会话失效后再移除。
 
@@ -108,7 +109,14 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 
 **网页版的搜索可能一直是空的。** 同样的原因：QQ 对机房的网络有时不报错，而是回“成功、但没有结果”，`/search` 只能照实回 `200` 加空清单，分不出是真的搜不到还是被挡了。实测过同一个 Serverless 部署，一小时前还搜得到，之后不管登不登录、搜什么都是空的；同一份程序跑在自己的网络上就正常。需要稳定的搜索，就用 Node、Docker 或 Electron。
 
-**每个新部署对 QQ 来说都是一台新设备。** Serverless 没有设备文件，设备身份是从 `QQ_SESSION_SECRET` 推导出来的：换一个部署、或者换了密钥，就算一台新设备。账号的登录设备已经满了的话，第一次扫码会失败（`upstreamErrorKey` 是 `auth.device-limit`，`failureHint.key` 是 `login.device-limit`；手机 QQ 扫码时要看 `primaryFailure`，见[扫码失败诊断](#扫码失败诊断)）。先在手机上移除不再使用的登录设备，再扫一次就好。所以密钥定下来以后别随便换；轮换密钥时，也要预期大家下次登录会被当成新设备。
+**Serverless 上的手机 QQ 扫码。** 没有中继时，手机 QQ 扫码走 QQ 互联的网页登录（和 QQ 音乐官网「QQ 登录」同一套），每次 `/login/qr/check` 只问一次二维码状态，二维码和进度都封在 `unikey` 里，不用另外的存储。和 Node 版相比有几点不同：
+- 二维码大约 120 秒失效（Node 版是 180 秒），过期后照常回 `800`，重新取码就好。
+- 手机上确认之后，那一次 `/login/qr/check` 要多跑几步换凭证，会比平常慢一些，最多 15 秒；换不完就回 `800`（`failureStage` 为 `credential-exchange`），重新扫一次即可。
+- 登录后的会话跟着 QQ 给的凭证寿命走（目前大约 3 天）。和微信扫码的会话一样能用 `POST /login/refresh` 续期：快到期时调一次就换一个新 token，从第一次扫码算起最多 30 天；不调的话到期后要重新扫码。
+- 用的是 QQ 音乐网页在 QQ 互联的身份，属于兼容做法：QQ 改了网页登录流程，或者对部署平台的机房网络另眼相看时，可能会失败。要最稳定的手机 QQ 登录，就用 Node、Docker 或 Electron。
+- 不想提供这种登录时，把 `QQ_PTLOGIN_HTTP_ENABLED` 设成 `0`，`/login/channels` 就只剩 `wechat`。
+
+**每个新部署对 QQ 来说都是一台新设备。** Serverless 没有设备文件，设备身份是从 `QQ_SESSION_SECRET` 推导出来的：换一个部署、或者换了密钥，就算一台新设备。账号的登录设备已经满了的话，第一次扫码会失败（`upstreamErrorKey` 是 `auth.device-limit`，`failureHint.key` 是 `login.device-limit`；Node、Docker 这类走 MQTT 的手机 QQ 扫码要看 `primaryFailure`，Serverless 的网页登录直接在顶层，见[扫码失败诊断](#扫码失败诊断)）。先在手机上移除不再使用的登录设备，再扫一次就好。所以密钥定下来以后别随便换；轮换密钥时，也要预期大家下次登录会被当成新设备。
 
 ### 嵌入 Node.js 与 Electron
 
@@ -154,11 +162,26 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /user/daily-songs` | 是 | 今天的每日 30 首 | ✓ |
 | `GET /user/cloud` | 是 | 音乐云盘里的歌，分页 | ✓ |
 | `GET /recommend/playlists` | 可选 | 推荐歌单；登录了会更贴近个人口味 | ✓ |
+| `GET /recommend/radar` | 可选 | 刷歌模式，一页大约 10 首，可以一直往下读 | ✓ |
+| `GET /song/similar`、`/song/related-playlists` | 是 | 一首歌的相似歌曲、包含这首歌的歌单 | ✓ |
 | `GET /recommend/categories`、`/recommend/category-playlists` | 否 | 歌单分类、某个分类下的歌单（可翻页） | ✓ |
 | `GET /recommend/new-songs` | 否 | 新歌速递，可选地区 | ✓ |
+| `GET /recommend/new-albums` | 否 | 新碟上架，可选地区，可翻页 | ✓ |
+| `GET /recommend/toplists`、`/recommend/toplist` | 否 | 全部排行榜、某个榜这一期（或往期）的歌 | ✓ |
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
 | **搜索** | | | |
-| `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
+| `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页 | ✓ |
+| `GET /search/hot`、`/search/suggest` | 否 | 热搜、边打字边给的搜索建议 | ✓ |
+| **歌手** | | | |
+| `GET /singer/list` | 否 | 歌手列表，可按地区、性别、流派、首字母筛选，可翻页 | ✓ |
+| `GET /singer/detail`、`/singer/homepage` | 否 | 歌手资料（简介、百科）、粉丝数和关注数 | ✓ |
+| `GET /singer/similar`、`/singer/songs`、`/singer/mvs` | 否 | 相似歌手、歌手的歌、歌手的 MV（后两个可翻页） | ✓ |
+| **评论** | | | |
+| `GET /comment/hot`、`/comment/new`、`/comment/count` | 否 | 一首歌的热评、最新评论（可翻页）和评论数 | ✓ |
+| **MV** | | | |
+| `GET /mv/list`、`/mv/detail`、`/mv/url` | 否 | MV 列表（可按地区、版本筛选，可翻页）、MV 详情、MV 播放链接 | ✓ |
+| `GET /song/mvs` | 否 | 一首歌相关的 MV | ✓ |
+| `GET /song/labels` | 否 | 一首歌的标签 | ✓ |
 | **播放与曲库** | | | |
 | `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
@@ -241,7 +264,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lastFailure` | 本地退避 `429` 的前一次失败摘要；重启或换实例后不保留 |
 | `upstreamErrorKey` | 可选。只有通道、步骤和上游数字码都对得上有出处的登记时才给，例如 `auth.device-limit`（登录设备已满）、`auth.rate-limited`（操作太频繁）、`auth.account-restricted`、`auth.account-banned`、`auth.account-binding`、`auth.login-rejected`；没把握的码不给 |
 | `failureHint` | 可选，给使用者看的原因 `{ key, message }`，只在认得出的失败时给：`login.device-limit`（登录设备已满）、`login.wrong-scan-app`（手机 QQ 扫码换凭证被拒、可能是用 QQ 音乐 App 扫的，建议改用 QQ 音乐 App 登录或手机 QQ）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。`message` 是英文预设文案，前端可以按 `key` 换成自己的文字；取消、过期、网络错误这类不给 |
-| `primaryFailure`、`fallbackAttempted` | 可选，目前只有手机 QQ 和 QQ 音乐 App 扫码会出现。换凭证失败后服务会用扫码票据再验证一次，顶层字段写的是最后这次验证的结果，`primaryFailure` 交出被它盖掉的换凭证结果（`failureStage`、`failureReason`、`upstreamCode`，能分类时还有 `upstreamErrorKey`），`fallbackAttempted` 是 `true`。想知道真正的原因（比如设备已满 `20279`）就看 `primaryFailure` |
+| `primaryFailure`、`fallbackAttempted` | 可选，目前只有走 MQTT 的手机 QQ 和 QQ 音乐 App 扫码会出现（Serverless 的网页登录没有再验证这一步，不会出现）。换凭证失败后服务会用扫码票据再验证一次，顶层字段写的是最后这次验证的结果，`primaryFailure` 交出被它盖掉的换凭证结果（`failureStage`、`failureReason`、`upstreamCode`，能分类时还有 `upstreamErrorKey`），`fallbackAttempted` 是 `true`。想知道真正的原因（比如设备已满 `20279`）就看 `primaryFailure` |
 
 本地退避使用 `qr-key` / `local-backoff`，仍在确认中的会话使用 `qr-key` / `session-busy`。没有取得的字段不会出现。上游拒绝时保留安全数字码，但不把未知码解释成设备超限或账号问题。
 
@@ -443,6 +466,31 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - `id` 必须是正整数，缺了或格式不对回 `400`（`input.invalid`），不会打上游。
 - 上游成功但没给歌回 `422`；凭证被 QQ 拒绝回 `401`。补歌时按歌曲标识去重。
 
+### 相似歌曲和包含这首歌的歌单
+
+`GET /song/similar?id=<歌曲 id>` 读和这首歌相似的歌，`GET /song/related-playlists?id=<歌曲 id>` 读包含这首歌的歌单。`id` 是数字歌曲 id（`track_info` 里的 `id`，不是 `mid`），缺了或不是正整数回 `400`。
+
+**两条都要登录。** 不登录时 QQ 只回空清单，看起来像「没有」，所以没有会话直接回 `401`；Serverless 没设 `QQ_SESSION_SECRET` 回 `501`。会话解得开但 QQ 不认凭证时也回 `401`。
+
+- 相似歌曲：`songs` 保持上游原来的格式（和 `/getSongInfo` 的 `track_info` 一样），一首歌一般给几首到十几首。
+- 相关歌单：字段和 `/recommend/playlists` 一样（`tid`、`title`、`picurl`、`songnum`、`play_cnt`、`creator.nick`），拿 `tid` 调 `/getSongListDetail` 就能读歌。
+
+```json
+{ "code": 200, "songs": [{ "id": 1001, "mid": "demo-song-mid", "name": "示例歌曲" }] }
+```
+
+上游成功但没有条目回 `422`。
+
+### 刷歌模式
+
+`GET /recommend/radar?page=1` 读刷歌模式（QQ 音乐客户端里的「雷达」），一页大约 10 首，`page` 从 1 开始、最多 100。有登录会话就按这个账号推荐，没有就匿名读（大家看到的差不多）；Serverless 没设 `QQ_SESSION_SECRET` 也能匿名读。`songs` 保持上游原来的格式（和 `/getSongInfo` 的 `track_info` 一样），`more` 表示还能不能往下一页读：
+
+```json
+{ "code": 200, "page": 1, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "more": true }
+```
+
+会话解得开但 QQ 不认这组凭证时回 `401`；上游成功但没有歌回 `422`。
+
 ### 推荐歌单
 
 `GET /recommend/playlists`，可选 `limit`（默认 25，最多 60）。有登录会话就带着凭证去读，没有就匿名读；Serverless 没设 `QQ_SESSION_SECRET` 也能匿名读。
@@ -491,7 +539,27 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 { "code": 200, "area": 5, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "areas": [{ "id": 5, "name": "最新" }] }
 ```
 
-三条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
+`GET /recommend/new-albums?area=<地区>&offset=0&limit=20` 读新碟上架，不给 `area` 就是内地（1）。`offset` 从 0 开始，`limit` 默认 20、最多 40。每张专辑有 `mid`、`name`、`singers`（`mid`、`name`），以及可选的 `id`、`publishDate`（发行日期）、`company`（唱片公司，上游这个列表目前通常是空的，所以多半不会出现）、`trackCount`（几首歌），拿 `mid` 调 `/getAlbumInfo` 就能读歌。`areas` 列出可选的地区，读不到地区清单时是空的、专辑照样给；`total` 是这个地区一共几张，`more` 表示后面还有没有：
+
+```json
+{ "code": 200, "area": 1, "albums": [{ "mid": "demo-album-mid", "name": "示例专辑", "singers": [{ "mid": "demo-singer-mid", "name": "示例歌手" }], "publishDate": "2026-10-16", "trackCount": 12 }], "areas": [{ "id": 1, "name": "内地" }], "total": 1203, "more": true }
+```
+
+`GET /recommend/toplists` 读全部排行榜，按组分好（例如巅峰榜、地区榜、特色榜）。每个榜有 `id`、`title`、`cover`，还有可选的 `intro`、`period`（这一期是哪天或哪一周）、`updateTime`、`total`（这一期有几首）、`listenNum`，以及 `preview`（榜上前几名的 `rank`、`title`、`singer`）：
+
+```json
+{ "code": 200, "groups": [{ "id": 1, "name": "巅峰榜", "toplists": [{ "id": 26, "title": "热歌榜", "period": "2026_41", "total": 100, "cover": "https://y.gtimg.cn/demo.jpg", "preview": [{ "rank": 1, "title": "示例歌曲", "singer": "示例歌手" }] }] }] }
+```
+
+`GET /recommend/toplist?id=<榜 id>&period=<期>&offset=0&limit=20` 读一个榜的歌。`period` 照抄上面清单里的值，不给就是最新一期；`offset` 从 0 开始；`limit` 默认 20、最多 100。`songs` 保持上游原来的格式（和 `/getSongInfo` 的 `track_info` 一样，拿 `mid` 就能播），`toplist` 是这个榜的资料，`total` 是这一期一共几首，`more` 表示后面还有没有：
+
+```json
+{ "code": 200, "toplist": { "id": 26, "title": "热歌榜", "period": "2026_41", "total": 100 }, "songs": [{ "mid": "demo-song-mid", "name": "示例歌曲" }], "total": 100, "more": true }
+```
+
+`id` 缺了或不是正整数、`period` 里有数字、`-`、`_` 以外的字符，都回 `400`。
+
+这几条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
 
 ### 关键字搜索
 
@@ -500,7 +568,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - `type` 可以是 `song`（不给就是歌曲）、`album`、`playlist`、`singer`；其他值回 `400`。
 - `keyword` 必填，去掉前后空白后最多 60 个字；`page` 从 1 开始；`limit` 默认 10、最多 20。
 - 不登录也能搜，登录了就带上会话。Serverless 没设 `QQ_SESSION_SECRET` 也能用（只是一律匿名）。
-- **不登录搜歌曲常被上游拒绝**：会回 `502`，`errorKey` 是 `search.rejected`（上游码 2001）。这不是「搜不到」，登录后再搜通常就有结果。专辑、歌单、歌手不登录时一般正常。
+- 不登录也能搜歌（3.3.3 起；以前不登录搜歌常被上游拒绝）。上游还是拒绝时会回 `502`，`errorKey` 是 `search.rejected`（上游码 2001）；这不是「搜不到」，登录后再搜通常就有结果。
 
 ```json
 { "code": 200, "type": "song", "page": 1, "limit": 10, "total": 36, "more": true, "items": [{ "mid": "demo-song-mid", "name": "示例歌曲" }] }
@@ -509,6 +577,82 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 `items` 保持上游原来的格式：歌曲带 `mid`、`file.media_mid`、歌手和专辑的 `mid`；专辑带 `albummid`，歌单带 `dissid`，歌手带 `singerMID`。登录与否用的是同一种上游格式。`total` 是上游给的总数，`more` 表示上游说还有下一页。
 
 真的搜不到回 `200` 加空的 `items`。上游拒绝回 `502` 并保留数字，**不会**当成搜不到；不会自动重试。第二页以后没有完整实测过。
+
+### 热搜和搜索建议
+
+`GET /search/hot` 读现在的热搜，不用登录，Node 和 Serverless 都能用。每一条有 `keyword`（拿去调 `/search` 就行），以及可选的 `title`、`description`（上游给了才有）：
+
+```json
+{ "code": 200, "hotkeys": [{ "keyword": "示例热搜", "title": "示例热搜", "description": "示例说明" }] }
+```
+
+`GET /search/suggest?keyword=<已经打的字>` 给搜索建议，同样不用登录。`keyword` 的规则和 `/search` 一样：去掉前后空白后不能是空的、最多 60 个字，不对就回 `400`。`suggestions` 只放搜索词（去掉前后空白、去重），上游同一个列表里夹的其他东西（例如 AI 助手）不给：
+
+```json
+{ "code": 200, "keyword": "示例", "suggestions": ["示例歌曲", "示例歌手"] }
+```
+
+两条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
+### 歌手
+
+下面几条都不用登录，Node 和 Serverless 都能用。要 `mid` 的都是歌手 mid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
+
+`GET /singer/list?area=&sex=&genre=&index=&offset=0&limit=80` 读歌手列表。四个筛选不给就是「全部」（`-100`），可以用的值在回包的 `tags` 里（`area`、`sex`、`genre`、`index` 各是一组 `{ id, name }`）。上游一页固定 80 位，`limit` 默认 80、最多 80，一次不会跨页；`total` 是一共几位，`more` 表示后面还有没有：
+
+```json
+{ "code": 200, "singers": [{ "mid": "demoSingerMid", "name": "示例歌手", "id": 1, "pic": "https://example.com/singer.jpg", "country": "示例地区" }], "tags": { "area": [{ "id": -100, "name": "全部" }], "sex": [], "genre": [], "index": [] }, "total": 1, "more": false }
+```
+
+`GET /singer/detail?mid=` 读一位歌手的资料：`mid`、`name`，以及可选的 `id`、`pic`、`desc`（简介）、`wiki`（百科文字）、`foreignName`、`birthday`，上游没给就不出现。
+
+`GET /singer/homepage?mid=` 读这位歌手的 `fansNum`（粉丝数）和 `followNum`（关注数）。
+
+`GET /singer/similar?mid=` 给最多 10 位相似歌手（`mid`、`name`、可选的 `id`、`pic`）；有的歌手上游没有相似歌手，这时回 `422`。
+
+`GET /singer/songs?mid=&offset=0&limit=30` 读歌手的歌，`songs` 保持上游原来的格式（和 `/getSongInfo` 一样带 `mid`、`file.media_mid`）。上游一次大约给 30 首、不照 `limit` 给，这里会按 `limit` 截断；`limit` 默认 30、最多 30。
+
+`GET /singer/mvs?mid=&offset=0&limit=20` 读歌手的 MV，每支有 `vid`、`title`，以及可选的 `id`、`cover`、`playCount`、`duration`（秒）、`publishTime`（秒级时间戳）。`limit` 默认 20、最多 40。
+
+这几条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
+### 歌曲评论
+
+不用登录，Node 和 Serverless 都能用。`id` 是数字歌曲 id（和 `/song/similar` 一样），没给或不是正整数回 `400`、不请求上游。
+
+`GET /comment/hot?id=&offset=0&limit=20` 读热评，`GET /comment/new?id=&offset=0&limit=20` 读最新评论（不会混进热评）。`limit` 默认 20、最多 50；`offset` 会换算成第几页（`offset ÷ limit` 取整），第二页以后没有完整实测过。每则有 `id`、`content`、`nick`，以及可选的 `avatar`、`praiseCount`（点赞数）、`time`（秒级时间戳）、`replyCount`、`location`；`total` 是上游给的总数，`more` 表示上游说还有：
+
+```json
+{ "code": 200, "comments": [{ "id": "demo-comment-id", "content": "示例评论", "nick": "示例昵称", "praiseCount": 12, "time": 1700000000 }], "total": 40, "more": true }
+```
+
+`GET /comment/count?id=` 读这首歌一共几则评论：`{ "code": 200, "id": 4242, "count": 1234 }`。
+
+这几条都是：上游给空清单回 `422`；给了评论却一则都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
+### MV
+
+不用登录，Node 和 Serverless 都能用。`vid` 是 MV 的 vid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
+
+`GET /mv/list?area=15&version=7&offset=0&limit=20` 读 MV 列表。`area`、`version` 不给就是「全部」（15、7），可以用的值在回包的 `tags` 里（`area`、`version` 各是一组 `{ id, name }`），读不到时是空的、MV 照样给。`limit` 默认 20、最多 40。每支 MV 有 `vid`、`title`、`singers`（`mid`、`name`），以及可选的 `id`、`cover`、`playCount`、`duration`（秒）、`publishTime`（秒级时间戳）：
+
+```json
+{ "code": 200, "mvs": [{ "vid": "demovid", "title": "示例 MV", "cover": "https://example.com/mv.jpg", "playCount": 1000, "singers": [{ "mid": "demoSingerMid", "name": "示例歌手" }] }], "tags": { "area": [{ "id": 15, "name": "全部" }], "version": [] }, "total": 500, "more": true }
+```
+
+`GET /mv/detail?vid=` 读一支 MV：`vid`、`title`、`singers`，以及可选的 `desc`、`cover`、`playCount`、`duration`、`publishTime`。
+
+`GET /mv/url?vid=` 给这支 MV 的 MP4 播放链接。`files` 只放真的有链接的档，按上游的顺序（画质由低到高）：`quality` 是上游的档位数字（目前看到 10、20、30），`urls` 是同一个文件的几个链接，`size` 是文件大小（字节，有才给）。不登录时更高的档位上游不给链接，这里也就没有；一档都没有回 `422`：
+
+```json
+{ "code": 200, "vid": "demovid", "files": [{ "quality": 10, "size": 12345678, "urls": ["https://example.com/demo.mp4"] }] }
+```
+
+`GET /song/mvs?id=` 读一首歌相关的 MV（数字歌曲 id），条目和 `/mv/list` 一样，`more` 表示上游说还有。
+
+`GET /song/labels?id=` 读一首歌的标签（数字歌曲 id），不用登录。每个标签有 `text`，以及可选的 `id`、`type`、`icon`、`url`：`{ "code": 200, "id": 4242, "labels": [{ "text": "示例标签" }] }`。没有标签回 `422`。
+
+这几条都是：上游给空清单回 `422`；给了条目却一支都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
 ### 出错时的响应
 
@@ -539,7 +683,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 | 字段 | 怎么读 |
 | --- | --- |
-| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认只有 `wechat`，注入 QQ 中继后才有 `qq` 和 `qqmusic`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
+| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认是 `qq`（纯 HTTP 网页登录）和 `wechat`，注入 QQ 中继后是 `qq`、`wechat`、`qqmusic`（`qq` 改走中继），`QQ_PTLOGIN_HTTP_ENABLED=0` 又没有中继时只有 `wechat`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
 | `data.sessionMode` | Node 为 `stored`，serverless 为 `sealed` |
 | `data.configured` | Node 可直接使用内存会话，始终为 `true`；serverless 保持按 `QQ_SESSION_SECRET` 是否存在判断，只有旧密钥时仍为 `false` |
 | `data.features` | 按共用接口分组的方法布尔值，说明后端是否已实现相应能力。它与当前用户是否登录、上游是否接受凭证分开；需要登录的功能还要检查 `configured` 和 `/login/status` |
@@ -552,10 +696,14 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs`、`getCloudCollection`（`/user/cloud`） | — |
 | `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums`、`getCloudTracks`（`/user/cloud`）、`getSubscriptionStatus`（`/user/subscription-status`） | `getPlaylistDetail` |
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
-| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
+| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`）、`getHotSearches`（`/search/hot`）、`getSearchSuggestions`（`/search/suggest`），两个运行时都是 `true` | — |
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
+| `songs` | `getSongLabels`（`/song/labels`） | — |
+| `mvs` | `getMvList`（`/mv/list`）、`getMvDetail`（`/mv/detail`）、`getMvUrl`（`/mv/url`）、`getSongMvs`（`/song/mvs`） | — |
+| `comments` | `getHotComments`（`/comment/hot`）、`getNewComments`（`/comment/new`）、`getCommentCount`（`/comment/count`） | — |
+| `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |
 
@@ -634,7 +782,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取歌手信息
 
-`GET /getSingerDesc?singermid=demo-singer-mid` 返回歌手资料；`singermid` 必填。
+`GET /getSingerDesc?singermid=demo-singer-mid` 返回歌手资料；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/detail`](#歌手)。
 
 ### 获取歌手热门歌曲
 
@@ -646,15 +794,15 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取相似歌手
 
-`GET /getSimilarSinger?singermid=demo-singer-mid` 返回相似歌手；`singermid` 必填。
+`GET /getSimilarSinger?singermid=demo-singer-mid` 返回相似歌手；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/similar`](#歌手)。
 
 ### 获取歌手列表
 
-`GET /getSingerList` 返回歌手列表。可用 `area`、`sex`、`genre`、`index` 筛选，默认都为 `-100`；`page` 默认 1。具体筛选值以返回数据为准。
+`GET /getSingerList` 返回歌手列表。可用 `area`、`sex`、`genre`、`index` 筛选，默认都为 `-100`；`page` 默认 1。具体筛选值以返回数据为准。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/list`](#歌手)。
 
 ### 获取歌手被关注数量信息
 
-`GET /getSingerStarNum?singermid=demo-singer-mid` 返回关注数量；`singermid` 必填。
+`GET /getSingerStarNum?singermid=demo-singer-mid` 返回关注数量；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/homepage`](#歌手) 的 `fansNum`。
 
 ### 获取歌曲相关信息
 
@@ -730,27 +878,27 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取搜索热词
 
-`GET /getHotkey` 返回搜索热词。
+`GET /getHotkey` 返回搜索热词。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/search/hot`](#热搜和搜索建议)。
 
 ### 获取关键字搜索提示
 
-`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。
+`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，以后会移除（3.3.4 先留着）：要搜索词请用 [`/search/suggest`](#热搜和搜索建议)，要直接找歌曲、歌手、专辑请用 `/search`。
 
 ### 获取MV标签
 
-`GET /getMvByTag` 返回 MV 标签。
+`GET /getMvByTag` 返回 MV 标签。只在 Node 上有，打算在 3.3.4 移除，筛选值请改用 [`/mv/list`](#mv) 回包里的 `tags`。
 
 ### 获取MV
 
-`GET /getMv?area_id=15&version_id=7&limit=20&page=0` 返回 MV 列表，示例显示默认值。分类可从返回的标签数据中读取。
+`GET /getMv?area_id=15&version_id=7&limit=20&page=0` 返回 MV 列表，示例显示默认值。分类可从返回的标签数据中读取。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/mv/list`](#mv)。
 
 ### 获取MV播放信息
 
-`GET /getMvPlay?vid=demo-video-id` 返回 MV 播放信息；`vid` 必填。
+`GET /getMvPlay?vid=demo-video-id` 返回 MV 播放信息；`vid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/mv/detail`、`/mv/url`](#mv)。
 
 ### 获取歌手MV
 
-`GET /getSingerMv?singermid=demo-singer-mid&num=5&order=time` 返回歌手 MV。`singermid` 必填，`num` 默认 5；数量 query 参数是 `num`。`order=time` 会启用对应的时间排序请求。
+`GET /getSingerMv?singermid=demo-singer-mid&num=5&order=time` 返回歌手 MV。`singermid` 必填，`num` 默认 5；数量 query 参数是 `num`。`order=time` 会启用对应的时间排序请求。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/mvs`](#歌手)。
 
 ### 获取新碟信息
 
@@ -772,7 +920,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取评论信息
 
-`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。
+`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。只在 Node 上有，以后会移除（3.3.4 先留着，专辑、歌单等其他评论还没有新路由）；歌曲评论请改用 [`/comment/hot`、`/comment/new`](#歌曲评论)。
 
 其他参数 `cid`、`cmd`、`reqtype`、`biztype` 保留原有传递方式，默认分别为 `205360772`、`8`、`2`、`1`；具体上游含义未完整确认，不把这些参数当作通用分类保证。
 

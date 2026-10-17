@@ -42,8 +42,30 @@ router.get('/recommend/playlists', context.getRecommendPlaylists);
 router.get('/recommend/categories', context.getPlaylistCategories);
 router.get('/recommend/category-playlists', context.getCategoryPlaylists);
 router.get('/recommend/new-songs', context.getNewSongs);
+router.get('/recommend/new-albums', context.getNewAlbums);
+router.get('/recommend/radar', context.getRecommendRadar);
+router.get('/song/similar', context.getSimilarSongs);
+router.get('/song/related-playlists', context.getRelatedPlaylists);
+router.get('/recommend/toplists', context.getRecommendToplists);
+router.get('/recommend/toplist', context.getRecommendToplistSongs);
 
 // keyword search; a login session is used when present
+router.get('/search/hot', context.getHotSearches);
+router.get('/search/suggest', context.getSearchSuggestions);
+router.get('/singer/list', context.listSingers);
+router.get('/singer/detail', context.getSingerDetail);
+router.get('/singer/homepage', context.getSingerHomepage);
+router.get('/singer/similar', context.getSimilarSingers);
+router.get('/singer/songs', context.getSingerSongs);
+router.get('/singer/mvs', context.getSingerMvs);
+router.get('/comment/hot', context.getHotComments);
+router.get('/comment/new', context.getNewComments);
+router.get('/comment/count', context.getCommentCount);
+router.get('/mv/list', context.getMvList);
+router.get('/mv/detail', context.getMvDetail);
+router.get('/mv/url', context.getMvUrl);
+router.get('/song/mvs', context.getSongMvs);
+router.get('/song/labels', context.getSongLabels);
 router.get('/search', context.getSearch);
 
 // radio; a login session is required

@@ -11,7 +11,12 @@ export const getUserLikedSongs: OperationHandler = async (request) => {
   const data = await (await request.service()).getUserLikedSongs(request.token, offset, limit);
   if (!data) return { status: 401, headers: {}, body: { code: 401, message: 'Login required' } };
   const songs = Array.isArray(data.songlist) ? data.songlist : [];
-  const total = typeof data.total_song_num === 'number' ? data.total_song_num : songs.length;
+  // 上游总数只认非负的安全整数，其他值（小数、负数、太大）退回这一页的条数。
+  const upstreamTotal = data.total_song_num;
+  const total =
+    Number.isSafeInteger(upstreamTotal) && (upstreamTotal as number) >= 0
+      ? (upstreamTotal as number)
+      : songs.length;
   return {
     status: 200,
     headers: {},

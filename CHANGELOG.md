@@ -1,3 +1,34 @@
+## [3.3.3](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.2...v3.3.3) (2026-10-18)
+
+这一版让 Vercel、Cloudflare 不用中继也能手机 QQ 扫码登录，不登录也搜得到歌了，还加上排行榜、新碟、刷歌模式、相似歌曲，以及歌手、评论、MV、热搜和搜索建议、歌曲标签这一批新接口。Folia 已经在用的接口，路径、参数、字段和状态码都没变；要注意的是 Serverless 的 `/login/channels` 默认多了 `qq`，见下面「给下游的通知」。
+
+### 新功能
+
+- **Vercel、Cloudflare 上也能用手机 QQ 扫码登录**：以前 Serverless 没有中继时只能微信扫码。现在没有中继时，手机 QQ 扫码（`qq` 通道）改走 QQ 互联的网页登录，全程是普通的 HTTP 请求，不用长连接，也不用另外配存储。二维码大约 120 秒失效；手机上确认后，那一次 `/login/qr/check` 会慢一些（最多 15 秒）。登录后的会话跟着 QQ 给的凭证寿命走（目前大约 3 天），快到期时调 `POST /login/refresh` 就能续，最多 30 天。不想提供时设 `QQ_PTLOGIN_HTTP_ENABLED=0`。注入了中继的部署照旧走 MQTT，Node、Electron、Docker 不受影响。
+- **歌曲标签**：`GET /song/labels?id=` 读一首歌的标签。不用登录，Node 和 Serverless 都能用；`features` 多了 `songs.getSongLabels`。
+- **MV**：`GET /mv/list`（可按地区、版本筛选，带可选的筛选值）、`/mv/detail`、`/mv/url`（MP4 播放链接，只给有链接的档位）、`/song/mvs`（一首歌相关的 MV）。不用登录，Node 和 Serverless 都能用；`features` 多了 `mvs` 一组。
+- **歌曲评论**：`GET /comment/hot`、`/comment/new` 读一首歌的热评和最新评论（可翻页），`/comment/count` 读评论数。不用登录，Node 和 Serverless 都能用；`features` 多了 `comments` 一组。
+- **歌手**：`GET /singer/list`（可按地区、性别、流派、首字母筛选，带可选的筛选值）、`/singer/detail`（简介、百科）、`/singer/homepage`（粉丝数、关注数）、`/singer/similar`（相似歌手）、`/singer/songs`、`/singer/mvs`（歌手的歌和 MV，可翻页）。不用登录，Node 和 Serverless 都能用；`features` 多了 `singers` 一组。
+- **热搜和搜索建议**：`GET /search/hot` 读现在的热搜，`GET /search/suggest?keyword=` 边打字边给搜索词。不用登录，Node 和 Serverless 都能用；`features.search` 多了 `getHotSearches`、`getSearchSuggestions`。
+- **相似歌曲、包含这首歌的歌单**：`GET /song/similar?id=` 和 `GET /song/related-playlists?id=`，用数字歌曲 id。要登录（不登录时 QQ 只回空清单），Node 和 Serverless 都能用；`features.recommendations` 多了 `getSimilarSongs`、`getRelatedPlaylists`。
+- **刷歌模式**：`GET /recommend/radar?page=` 一页大约 10 首推荐歌，可以一直往下读（QQ 音乐客户端里的「雷达」）。登录了就按账号推荐，没登录也能读；`features.recommendations` 多了 `getRadarSongs`。
+- **新碟上架**：`GET /recommend/new-albums` 按地区读新专辑（带歌手、发行日期、歌曲数），可以翻页，同时给出可选的地区。不用登录，Node 和 Serverless 都能用；`features.recommendations` 多了 `getNewAlbums`。
+- **排行榜**：`GET /recommend/toplists` 列出全部榜单（按组分好，带封面、这一期是哪天或哪一周、前几名预览），`GET /recommend/toplist?id=` 读一个榜的歌，可以翻页，也可以指定往期。不用登录，Node 和 Serverless 都能用；`/login/channels` 的 `features.recommendations` 多了 `getToplists`、`getToplistSongs`。
+
+### 改进
+
+- **不登录也能搜歌了**：`/search` 不登录搜歌以前常被上游拒绝（`502 search.rejected`），原因是上游已经不认搜歌原来的类型值；现在不登录时改送新的值，就搜得到了，条目格式不变。登录后的搜索照旧。
+- **Serverless 上手机 QQ 扫码被拒时也说得出原因**：网页登录换凭证被拒（例如登录设备满了、登录太频繁、账号受限）时，`800` 回应会和 MQTT 通道一样带上 `upstreamErrorKey` 和 `failureHint`，前端可以直接提示该怎么做。网页登录没有再验证这一步，所以这些字段就在顶层，不用看 `primaryFailure`。这几个码的含义沿用公开资料，网页登录这一步还没实测。
+- **登录检查不会再拖到 20 秒**：Folia 等一个登录请求 20 秒就当没回应。Serverless 的 `/login/qr/check` 每次最多做 15 秒（以前 20 秒）；Node 的 `QQ_WECHAT_POLL_BUDGET_MS` 上限从 20000 改成 15000 毫秒。
+- `/user/liked-songs` 的 `total` 只在上游给的是正常整数时照用，上游给了小数、负数或大得离谱的数时，改用这一页的条数。
+
+### 给下游的通知
+
+- **Serverless 的 `/login/channels` 默认多了 `qq`**：没有中继的部署以前只回 `["wechat"]`，现在回 `["qq", "wechat"]`。照 `data.channels` 显示登录方式的前端（例如 Folia）会多出手机 QQ 这一项，不用改代码；不想要就设 `QQ_PTLOGIN_HTTP_ENABLED=0`。
+- 之前把 `QQ_WECHAT_POLL_BUDGET_MS` 设成 15001–20000 的，会改用默认的 15 秒；设在 15000 以内的不受影响。
+- **打算在 3.3.4 移除的旧路由**（都只在 Node 上有，已经有新路由接手）：`/getHotkey` 改用 `/search/hot`；`/getSingerList` 改用 `/singer/list`；`/getSingerDesc` 改用 `/singer/detail`；`/getSingerStarNum` 改用 `/singer/homepage`；`/getSimilarSinger` 改用 `/singer/similar`；`/getSingerMv` 改用 `/singer/mvs`。`/getMv`、`/getMvByTag` 改用 `/mv/list`；`/getMvPlay` 改用 `/mv/detail` 和 `/mv/url`。Folia 在用的 `/getSingerHotsong`、`/getSingerAlbum` 不动。
+- **以后也会移除、但 3.3.4 先留着的旧路由**：`/getSmartbox`（要搜索词改用 `/search/suggest`，要直接找歌曲、歌手、专辑改用 `/search`；它一次给的「直接命中」还没有完全一样的新路由）、`/getComments`（歌曲评论改用 `/comment/hot`、`/comment/new`；专辑、歌单等其他评论还没有新路由）。
+
 ## [3.3.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.1...v3.3.2) (2026-10-17)
 
 这一版加上音乐云盘、QQ 音乐 App 扫码、主动续期和歌词补翻译，修好 Vercel、Cloudflare 上搜索、红心、歌单写入等接口一直回 `502` 的问题，以及网络慢时微信扫码停在“请扫描”。Folia 已经在用的接口，路径、参数、字段和状态码都没变；唯一要注意的是旧的 `/getSearchByKey` 已经移除，见下面「给下游的通知」。

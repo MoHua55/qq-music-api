@@ -10,13 +10,18 @@ import { createSessionMusicuClient, type SessionMusicuOptions } from '../recomme
 //
 // `/search`：按关键字搜歌曲、专辑、歌单、歌手。Node 与 serverless 共用。
 // 实测（2026-10）：精简版搜索方法用不签名的 musicu 就能读。有会话时带会话，四种类型都有结果；
-// 没有会话时用精简版的匿名身份，专辑、歌单、歌手有结果，歌曲常被上游以 2001 拒绝。
+// 没有会话时用精简版的匿名身份，四种类型都有结果（搜歌要送 7，见下）。
 // 单项码不是 0 时清单也是空的，一律当失败，不当成「没有结果」。
 
 export const SEARCH_TYPES = ['song', 'album', 'playlist', 'singer'] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
 const SEARCH_TYPE_CODES: Record<SearchType, number> = { song: 0, singer: 1, album: 2, playlist: 3 };
+/**
+ * 不登录搜歌送 7：2026-10 实测上游已经不认 0，不登录时一律回 2001，送 7 就有结果、条目格式相同。
+ * 带会话时 0 一直搜得到，7 还没在带会话时验过，所以照旧送 0。
+ */
+const ANONYMOUS_SONG_SEARCH_TYPE = 7;
 /** 精简版把各类型的条目直接放在 `body` 下的数组里，歌手那组没有 `item_` 前缀。 */
 const LIST_KEYS: Record<SearchType, string> = {
   song: 'item_song',
@@ -55,7 +60,7 @@ export const searchTypeOf = (raw: unknown): SearchType => {
   return type;
 };
 
-const keywordOf = (raw: unknown): string => {
+export const keywordOf = (raw: unknown): string => {
   const keyword = typeof raw === 'string' ? raw.trim() : '';
   if (!keyword || keyword.length > MAX_KEYWORD_LENGTH) throw new QqApiError('input');
   return keyword;
@@ -72,7 +77,7 @@ const countOf = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 
 /** 每次搜索带一个随机数字串；不需要密码学强度，也不能依赖 `node:*`。 */
-const searchIdOf = (): string =>
+export const searchIdOf = (): string =>
   `${Math.floor(Math.random() * 9 + 1)}${Array.from({ length: 17 }, () =>
     Math.floor(Math.random() * 10),
   ).join('')}`;
@@ -107,6 +112,7 @@ const searchRequest = (
   keyword: string,
   page: number,
   limit: number,
+  anonymous: boolean,
 ): MusicuDescriptor<SearchData> => ({
   module: 'music.search.SearchCgiService',
   method: 'DoSearchForQQMusicLite',
@@ -114,7 +120,8 @@ const searchRequest = (
     search_id: searchIdOf(),
     remoteplace: REMOTE_PLACE,
     query: keyword,
-    search_type: SEARCH_TYPE_CODES[type],
+    search_type:
+      anonymous && type === 'song' ? ANONYMOUS_SONG_SEARCH_TYPE : SEARCH_TYPE_CODES[type],
     num_per_page: limit,
     page_num: page,
     highlight: 0,
@@ -151,7 +158,7 @@ export const searchResult = async (
     const page = pagingOf(raw.page, 1);
     const limit = pagingOf(raw.limit, DEFAULT_LIMIT, MAX_LIMIT);
     const data = await clientFor(session, options).execute(
-      searchRequest(type, keyword, page, limit),
+      searchRequest(type, keyword, page, limit, session === null),
     );
     return okResult({
       type,

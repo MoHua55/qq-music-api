@@ -102,10 +102,10 @@ describe('handleRequest', () => {
     it('should advertise what this runtime actually serves', async () => {
       const body = await bodyOf(await call('/login/channels'));
 
-      // WeChat only: the QQ App channel needs a long-lived MQTT socket an invocation cannot hold.
+      // 手机 QQ 走纯 HTTP 扫码；QQ 音乐 App 扫码要一直开着的 MQTT，一次调用撑不住。
       expect(body).toMatchObject({
         code: 200,
-        data: { channels: ['wechat'], sessionMode: 'sealed', configured: true },
+        data: { channels: ['qq', 'wechat'], sessionMode: 'sealed', configured: true },
       });
     });
 

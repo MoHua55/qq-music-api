@@ -114,7 +114,7 @@ QQ 出错时会回一个数字码。这个服务会把它原样交给你，让�
 | 在哪里看 | 字段 |
 | --- | --- |
 | 新接口出错 | `upstreamCode`（有子码时另有 `upstreamSubCode`，QQ 网关层的码在 `upstreamGlobalCode`，QQ 的 HTTP 状态在 `upstreamHttpStatus`） |
-| 扫码失败（`800`） | `upstreamCode`；手机 QQ 另看 `primaryFailure.upstreamCode` |
+| 扫码失败（`800`） | `upstreamCode`；走 MQTT 的手机 QQ 另看 `primaryFailure.upstreamCode`（Serverless 网页登录直接在顶层） |
 | 播放某首拿不到链接 | `restriction.codes`（例如 `result`、`subcode`） |
 | 旧接口回 `500` | `error` 文字里的 `failed (HTTP 200, global=…, code=…)`，`global` 是网关层的码、`code` 是业务码 |
 
@@ -191,7 +191,7 @@ QQ 出错时会回一个数字码。这个服务会把它原样交给你，让�
   - `upstreamErrorKey`：对应上面“登录与会话”那张表；
   - `failureHint: { key, message }`：可以直接给使用者看的说明，`key` 有 `login.device-limit`（登录设备已满）、`login.wrong-scan-app`（可能用 QQ 音乐 App 扫了手机 QQ 的二维码，建议登录方式改选 QQ 音乐 App，或改用手机 QQ 扫）、`login.rate-limited`、`login.account-restricted`、`login.account-banned`、`login.account-binding`、`login.rejected`。
 
-手机 QQ 扫码失败时还可能有 `primaryFailure` 和 `fallbackAttempted: true`。这是因为服务换凭证失败后会再验证一次，顶层字段写的是最后这次的结果；真正的原因（例如登录设备已满）要看 `primaryFailure`。
+手机 QQ 扫码失败时还可能有 `primaryFailure` 和 `fallbackAttempted: true`。这是因为服务换凭证失败后会再验证一次，顶层字段写的是最后这次的结果；真正的原因（例如登录设备已满）要看 `primaryFailure`。Serverless 没有中继时，手机 QQ 走网页登录，没有这次再验证：换凭证被拒的 `upstreamCode`、`upstreamErrorKey` 和 `failureHint` 直接在顶层。
 
 ## 重试与冷却
 

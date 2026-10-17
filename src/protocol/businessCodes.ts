@@ -14,6 +14,8 @@ export const UPSTREAM_OPERATIONS = [
   'login.qq.credential-exchange',
   /** 手机 QQ 扫码：换凭证失败后，直接拿扫码票据去读登录用户。 */
   'login.qq.fallback-validation',
+  /** 手机 QQ 扫码走网页登录（Serverless）：用 QQ 互联给的 code 换凭证（`QQConnectLogin.LoginServer.QQLogin`）。 */
+  'login.qq.ptlogin-exchange',
   /** 微信扫码：用授权码换正式凭证。 */
   'login.wechat.credential-exchange',
   /** 微信扫码：用刚换到的凭证读登录用户。 */
@@ -58,8 +60,56 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.category-playlists',
   /** 新歌速递（`get_new_song_info`），匿名。 */
   'recommend.new-songs',
+  /** 相似歌曲（`TrackRelationServer.GetSimilarSongs`），要登录。 */
+  'song.similar',
+  /** 包含这首歌的歌单（`TrackRelationServer.GetRelatedPlaylist`），要登录。 */
+  'song.related-playlists',
+  /** 刷歌模式（`TrackRelationServer.GetRadarSong`），有会话就带凭证。 */
+  'recommend.radar',
+  /** 新碟地区清单（`get_new_album_area`），匿名。 */
+  'recommend.new-album-areas',
+  /** 新碟上架（`get_new_album_info`），匿名。 */
+  'recommend.new-albums',
+  /** 排行榜清单（`ToplistInfoServer.GetAll`），匿名。 */
+  'recommend.toplists',
+  /** 单榜歌曲（`ToplistInfoServer.GetDetail`），匿名。 */
+  'recommend.toplist',
   /** 关键字搜索（桌面版 `DoSearchForQQMusicDesktop`），歌曲要登录、其他类型匿名可读；非零码都还是未知。 */
   'search',
+  /** 热搜（`HotkeyService.GetHotkeyForQQMusicMobile`），匿名；非零码都还是未知。 */
+  'search.hot',
+  /** 搜索建议（`SmartBoxCgi.GetSmartBoxResult`），匿名；非零码都还是未知。 */
+  'search.suggest',
+  /** 歌手清单（`SingerList.GetSingerListIndex`），匿名；非零码都还是未知。 */
+  'singer.list',
+  /** 歌手资料（`SingerInfoInter.GetSingerDetail`），匿名。 */
+  'singer.detail',
+  /** 歌手主页（`UnifiedHomepageSrv.GetHomepageHeader`），匿名；成功时单项码是 10000，由请求放行。 */
+  'singer.homepage',
+  /** 相似歌手（`SimilarSingerSvr.GetSimilarSingerList`），匿名。 */
+  'singer.similar',
+  /** 歌手的歌（`song_list_server.GetSingerSongList`），匿名。 */
+  'singer.songs',
+  /** 歌手的 MV（`MvInfoProServer.GetSingerMvList`），匿名。 */
+  'singer.mvs',
+  /** 歌曲热评（`CommentRead.GetHotCommentList`），匿名；非零码都还是未知。 */
+  'comment.hot',
+  /** 歌曲新评（`CommentRead.GetNewCommentList`），匿名。 */
+  'comment.new',
+  /** 歌曲评论数（`CommentCountSrv.GetCmCount`），匿名；成功时单项码是 10000，由请求放行。 */
+  'comment.count',
+  /** MV 筛选值（`MvInfoProServer.GetAllocTag`），匿名；读不到不影响清单。 */
+  'mv.tags',
+  /** MV 清单（`MvInfoProServer.GetAllocMvInfo`），匿名；非零码都还是未知。 */
+  'mv.list',
+  /** MV 详情（`VideoDataServer.get_video_info_batch`），匿名。 */
+  'mv.detail',
+  /** MV 播放链接（`MvUrlProxy.GetMvUrls`），匿名；单档的码另外看，不在这里登记。 */
+  'mv.url',
+  /** 歌曲相关 MV（`MvInfoProServer.GetSongRelatedMv`），匿名。 */
+  'song.mvs',
+  /** 歌曲标签（`TrackRelationServer.GetSongLabels`），匿名；非零码都还是未知。 */
+  'song.labels',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
   'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
@@ -136,9 +186,13 @@ const entries = (
     codes.map((upstreamCode) => ({ operation, sourceLayer, upstreamCode, ...body })),
   );
 
-/** 两个通道换凭证用的是同一个上游方法，刷新凭证也是；登录码只在这几步有意思。 */
+/**
+ * 两个通道换凭证用的是同一个上游方法，刷新凭证也是；登录码只在这几步有意思。
+ * 网页登录的换凭证是另一支方法，码义沿用这一组公开资料，那一支没有实测过。
+ */
 const LOGIN_EXCHANGE: readonly UpstreamOperation[] = [
   'login.qq.credential-exchange',
+  'login.qq.ptlogin-exchange',
   'login.wechat.credential-exchange',
   'login.wechat.credential-refresh',
 ];
@@ -230,7 +284,13 @@ export const UPSTREAM_CODES: readonly UpstreamCodeEntry[] = [
     '本项目一直以来的处理：带凭证的 musicu 读取在单项这一层回这几个码，表示凭证不被认可，路由回 401',
   ),
   ...credentialRejected(
-    ['recommend.guess-you-like', 'recommend.playlists'],
+    [
+      'recommend.guess-you-like',
+      'recommend.playlists',
+      'recommend.radar',
+      'song.similar',
+      'song.related-playlists',
+    ],
     '推荐路由一上线就这样处理：会话解得开但上游不认凭证时回 401，让前端清掉坏会话；猜你喜欢不带凭证时实测回 1000',
   ),
   ...credentialRejected(

@@ -41,13 +41,10 @@ describe.each(CATALOG_RUNTIMES)('/login/qr/key 共用处理与真实宿主契约
     '?channel=qq',
     '?channel=mobile',
     '?channel=wechat',
-  ])('没有 relay %s 保留两边支持的通道', async (query) => {
-    const legs = await parity(
-      runtime,
-      '/login/qr/key' + query,
-      upstream.calls,
-      await upstream.options('key', { relay: false }),
-    );
+  ])('没有 relay 又关掉纯 HTTP 扫码时 %s 保留两边支持的通道', async (query) => {
+    const options = await upstream.options('key', { relay: false });
+    options.env = { ...options.env, QQ_PTLOGIN_HTTP_ENABLED: '0' };
+    const legs = await parity(runtime, '/login/qr/key' + query, upstream.calls, options);
     expect(legs.operation.status).toBe(
       runtime === 'serverless' && ['?channel=qq', '?channel=mobile'].includes(query) ? 400 : 200,
     );
