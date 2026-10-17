@@ -1,5 +1,9 @@
 ## 未发布
 
+### 新功能
+
+- **Vercel、Cloudflare 上也能用手机 QQ 扫码登录**：以前 Serverless 没有中继时只能微信扫码。现在没有中继时，手机 QQ 扫码（`qq` 通道）改走 QQ 互联的网页登录，全程是普通的 HTTP 请求，不用长连接，也不用另外配存储。二维码大约 120 秒失效；手机上确认后，那一次 `/login/qr/check` 会慢一些（最多 15 秒）。登录后的会话跟着 QQ 给的凭证寿命走，到期要重新扫码。不想提供时设 `QQ_PTLOGIN_HTTP_ENABLED=0`。注入了中继的部署照旧走 MQTT，Node、Electron、Docker 不受影响。
+
 ### 改进
 
 - **登录检查不会再拖到 20 秒**：Folia 等一个登录请求 20 秒就当没回应。Serverless 的 `/login/qr/check` 每次最多做 15 秒（以前 20 秒）；Node 的 `QQ_WECHAT_POLL_BUDGET_MS` 上限从 20000 改成 15000 毫秒。
@@ -7,6 +11,7 @@
 
 ### 给下游的通知
 
+- **Serverless 的 `/login/channels` 默认多了 `qq`**：没有中继的部署以前只回 `["wechat"]`，现在回 `["qq", "wechat"]`。照 `data.channels` 显示登录方式的前端（例如 Folia）会多出手机 QQ 这一项，不用改代码；不想要就设 `QQ_PTLOGIN_HTTP_ENABLED=0`。
 - 之前把 `QQ_WECHAT_POLL_BUDGET_MS` 设成 15001–20000 的，会改用默认的 15 秒；设在 15000 以内的不受影响。
 
 ## [3.3.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.1...v3.3.2) (2026-10-17)

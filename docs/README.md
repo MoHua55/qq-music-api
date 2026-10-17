@@ -87,6 +87,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
 | `QQ_SESSION_SECRET` | 无 | Serverless 会话或 Node 持久会话的加密密钥；持久部署重启时保持不变 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 无 | 密钥轮换时读取旧会话的备用密钥 |
+| `QQ_PTLOGIN_HTTP_ENABLED` | 开启 | 只对 Serverless 有用：没有注入中继时，手机 QQ 扫码走纯 HTTP 的网页登录。设成 `0` 或 `false` 就关掉，只剩微信扫码 |
 
 设备身份文件不包含用户凭证。多实例部署应各自指定身份文件，避免多个实例共用同一个设备身份。
 
@@ -98,7 +99,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `@yakult-green-tea/qq-music-api/serverless` | 使用 Web 标准 Request / Response 的运行时 | `handleRequest(request, env, options)` |
 | `@yakult-green-tea/qq-music-api/mqtt` | 可以维持 WebSocket 长连接的可信宿主 | 手机 QQ 扫码的 MQTT 编解码与监听器 |
 
-手机 QQ 扫码需要持续的 MQTT over WSS 连接。Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`。Vercel Functions 部署只应提供微信通道；没有中继的 Serverless 入口也只提供微信。
+Node、Electron、Docker 的手机 QQ 扫码用 MQTT over WSS 长连接。Serverless 撑不住长连接，所以没有注入 `qqRelay` 时，手机 QQ 扫码改走纯 HTTP 的网页登录（见下面「Serverless 上的手机 QQ 扫码」），Vercel 和没绑 Durable Object 的 Cloudflare 都能直接用，不用另外配存储。QQ 音乐 App 扫码（`qqmusic`）只有 MQTT 这一套，还是要宿主提供中继：Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`；注入中继后，手机 QQ 扫码也照旧走 MQTT。
 
 Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。轮换时可以暂时保留 `QQ_SESSION_SECRET_PREVIOUS`，等旧会话失效后再移除。
 
@@ -107,6 +108,13 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 **网页版可能有几首歌拿不到链接。** Serverless（Vercel、Cloudflare 这类）是由部署平台的机房去向 QQ 要播放链接，QQ 看到的是机房的网络，不是使用者自己的网络。实际遇到过：同一个账号、同一批歌，桌面版和手机 App 都能播，网页版却有几首拿不到链接。这时回应照样是 `200`，那几首标的是 `url_unavailable`（见[获取歌曲播放链接](#获取歌曲播放链接)），不是服务出错，重试也不会变。原因还没完全确认，最可能和发出请求的网络有关，程序里修不了。想让能播的歌最多，就用 Node、Docker 或 Electron 跑在使用者自己的网络上。
 
 **网页版的搜索可能一直是空的。** 同样的原因：QQ 对机房的网络有时不报错，而是回“成功、但没有结果”，`/search` 只能照实回 `200` 加空清单，分不出是真的搜不到还是被挡了。实测过同一个 Serverless 部署，一小时前还搜得到，之后不管登不登录、搜什么都是空的；同一份程序跑在自己的网络上就正常。需要稳定的搜索，就用 Node、Docker 或 Electron。
+
+**Serverless 上的手机 QQ 扫码。** 没有中继时，手机 QQ 扫码走 QQ 互联的网页登录（和 QQ 音乐官网「QQ 登录」同一套），每次 `/login/qr/check` 只问一次二维码状态，二维码和进度都封在 `unikey` 里，不用另外的存储。和 Node 版相比有几点不同：
+- 二维码大约 120 秒失效（Node 版是 180 秒），过期后照常回 `800`，重新取码就好。
+- 手机上确认之后，那一次 `/login/qr/check` 要多跑几步换凭证，会比平常慢一些，最多 15 秒；换不完就回 `800`（`failureStage` 为 `credential-exchange`），重新扫一次即可。
+- 登录后的会话跟着 QQ 给的凭证寿命走（最长 7 天），到期后要重新扫码；这种会话目前还不支持 `POST /login/refresh` 续期。
+- 用的是 QQ 音乐网页在 QQ 互联的身份，属于兼容做法：QQ 改了网页登录流程，或者对部署平台的机房网络另眼相看时，可能会失败。要最稳定的手机 QQ 登录，就用 Node、Docker 或 Electron。
+- 不想提供这种登录时，把 `QQ_PTLOGIN_HTTP_ENABLED` 设成 `0`，`/login/channels` 就只剩 `wechat`。
 
 **每个新部署对 QQ 来说都是一台新设备。** Serverless 没有设备文件，设备身份是从 `QQ_SESSION_SECRET` 推导出来的：换一个部署、或者换了密钥，就算一台新设备。账号的登录设备已经满了的话，第一次扫码会失败（`upstreamErrorKey` 是 `auth.device-limit`，`failureHint.key` 是 `login.device-limit`；手机 QQ 扫码时要看 `primaryFailure`，见[扫码失败诊断](#扫码失败诊断)）。先在手机上移除不再使用的登录设备，再扫一次就好。所以密钥定下来以后别随便换；轮换密钥时，也要预期大家下次登录会被当成新设备。
 
@@ -539,7 +547,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 | 字段 | 怎么读 |
 | --- | --- |
-| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认只有 `wechat`，注入 QQ 中继后才有 `qq` 和 `qqmusic`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
+| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认是 `qq`（纯 HTTP 网页登录）和 `wechat`，注入 QQ 中继后是 `qq`、`wechat`、`qqmusic`（`qq` 改走中继），`QQ_PTLOGIN_HTTP_ENABLED=0` 又没有中继时只有 `wechat`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
 | `data.sessionMode` | Node 为 `stored`，serverless 为 `sealed` |
 | `data.configured` | Node 可直接使用内存会话，始终为 `true`；serverless 保持按 `QQ_SESSION_SECRET` 是否存在判断，只有旧密钥时仍为 `false` |
 | `data.features` | 按共用接口分组的方法布尔值，说明后端是否已实现相应能力。它与当前用户是否登录、上游是否接受凭证分开；需要登录的功能还要检查 `configured` 和 `/login/status` |
