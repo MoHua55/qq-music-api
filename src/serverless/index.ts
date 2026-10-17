@@ -36,6 +36,11 @@ import {
   type QqQrRelay,
   type QrLoginService,
 } from '../services/auth/qrLogin';
+import {
+  commentCountResult,
+  hotCommentsResult,
+  newCommentsResult,
+} from '../services/comments/catalog';
 import { setLegacyHttpTransport } from '../services/httpTransport';
 import {
   categoryPlaylistsResult,
@@ -327,6 +332,28 @@ const routes: Record<string, RouteHandler> = {
         limit: url.searchParams.get('limit') ?? undefined,
       }),
     ),
+
+  // 歌曲评论：公开内容，一律匿名读；没设密钥也能用。
+  '/comment/hot': async ({ url }) =>
+    fromResult(
+      await hotCommentsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/comment/new': async ({ url }) =>
+    fromResult(
+      await newCommentsResult({
+        id: url.searchParams.get('id') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/comment/count': async ({ url }) =>
+    fromResult(await commentCountResult(url.searchParams.get('id') ?? undefined)),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),

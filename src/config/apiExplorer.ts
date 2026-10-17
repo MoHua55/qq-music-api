@@ -244,6 +244,9 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getSimilarSingers', method: 'GET', routePath: '/singer/similar', category: 'Singer' },
   { name: 'getSingerSongs', method: 'GET', routePath: '/singer/songs', category: 'Singer' },
   { name: 'getSingerMvs', method: 'GET', routePath: '/singer/mvs', category: 'Singer' },
+  { name: 'getHotComments', method: 'GET', routePath: '/comment/hot', category: 'Common' },
+  { name: 'getNewComments', method: 'GET', routePath: '/comment/new', category: 'Common' },
+  { name: 'getCommentCount', method: 'GET', routePath: '/comment/count', category: 'Common' },
   {
     name: 'getSingerList',
     method: 'GET',
@@ -711,6 +714,36 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'offset', label: 'Offset', description: 'MVs to skip; 0 by default.' },
       { key: 'limit', label: 'Limit', description: 'MVs per page; 20 by default, at most 40.' },
     ],
+  },
+  getHotComments: {
+    description:
+      'Get hot comments of one song, one page at a time. Pages after the first are not fully verified. Read anonymously.',
+    queryParams: [
+      { key: 'id', label: 'Song id', description: 'Numeric song id.' },
+      { key: 'offset', label: 'Offset', description: 'Comments to skip; 0 by default.' },
+      {
+        key: 'limit',
+        label: 'Limit',
+        description: 'Comments per page; 20 by default, at most 50.',
+      },
+    ],
+  },
+  getNewComments: {
+    description:
+      'Get the newest comments of one song, one page at a time. Pages after the first are not fully verified. Read anonymously.',
+    queryParams: [
+      { key: 'id', label: 'Song id', description: 'Numeric song id.' },
+      { key: 'offset', label: 'Offset', description: 'Comments to skip; 0 by default.' },
+      {
+        key: 'limit',
+        label: 'Limit',
+        description: 'Comments per page; 20 by default, at most 50.',
+      },
+    ],
+  },
+  getCommentCount: {
+    description: 'Get how many comments one song has. Read anonymously.',
+    queryParams: [{ key: 'id', label: 'Song id', description: 'Numeric song id.' }],
   },
   getSearch: {
     description:

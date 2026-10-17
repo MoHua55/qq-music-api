@@ -76,6 +76,7 @@ const featuresFor = () => ({
     getSingerSongs: true,
     getSingerMvs: true,
   },
+  comments: { getHotComments: true, getNewComments: true, getCommentCount: true },
   mutations: {
     updatePlaylistTracks: true,
     likeSong: true,

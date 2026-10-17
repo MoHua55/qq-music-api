@@ -30,6 +30,7 @@ import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
 import cookies from './cookies';
+import { getCommentCount, getHotComments, getNewComments } from './getCommentCatalog';
 import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
@@ -184,4 +185,7 @@ export default {
   getSimilarSingers: withControllerLogging('getSimilarSingers', getSimilarSingers),
   getSingerSongs: withControllerLogging('getSingerSongs', getSingerSongs),
   getSingerMvs: withControllerLogging('getSingerMvs', getSingerMvs),
+  getHotComments: withControllerLogging('getHotComments', getHotComments),
+  getNewComments: withControllerLogging('getNewComments', getNewComments),
+  getCommentCount: withControllerLogging('getCommentCount', getCommentCount),
 };

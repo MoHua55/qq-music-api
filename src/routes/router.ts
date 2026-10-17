@@ -58,6 +58,9 @@ router.get('/singer/homepage', context.getSingerHomepage);
 router.get('/singer/similar', context.getSimilarSingers);
 router.get('/singer/songs', context.getSingerSongs);
 router.get('/singer/mvs', context.getSingerMvs);
+router.get('/comment/hot', context.getHotComments);
+router.get('/comment/new', context.getNewComments);
+router.get('/comment/count', context.getCommentCount);
 router.get('/search', context.getSearch);
 
 // radio; a login session is required

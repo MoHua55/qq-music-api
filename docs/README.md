@@ -176,6 +176,8 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /singer/list` | 否 | 歌手列表，可按地区、性别、流派、首字母筛选，可翻页 | ✓ |
 | `GET /singer/detail`、`/singer/homepage` | 否 | 歌手资料（简介、百科）、粉丝数和关注数 | ✓ |
 | `GET /singer/similar`、`/singer/songs`、`/singer/mvs` | 否 | 相似歌手、歌手的歌、歌手的 MV（后两个可翻页） | ✓ |
+| **评论** | | | |
+| `GET /comment/hot`、`/comment/new`、`/comment/count` | 否 | 一首歌的热评、最新评论（可翻页）和评论数 | ✓ |
 | **播放与曲库** | | | |
 | `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
@@ -610,6 +612,20 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 这几条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
+### 歌曲评论
+
+不用登录，Node 和 Serverless 都能用。`id` 是数字歌曲 id（和 `/song/similar` 一样），没给或不是正整数回 `400`、不请求上游。
+
+`GET /comment/hot?id=&offset=0&limit=20` 读热评，`GET /comment/new?id=&offset=0&limit=20` 读最新评论（不会混进热评）。`limit` 默认 20、最多 50；`offset` 会换算成第几页（`offset ÷ limit` 取整），第二页以后没有完整实测过。每则有 `id`、`content`、`nick`，以及可选的 `avatar`、`praiseCount`（点赞数）、`time`（秒级时间戳）、`replyCount`、`location`；`total` 是上游给的总数，`more` 表示上游说还有：
+
+```json
+{ "code": 200, "comments": [{ "id": "demo-comment-id", "content": "示例评论", "nick": "示例昵称", "praiseCount": 12, "time": 1700000000 }], "total": 40, "more": true }
+```
+
+`GET /comment/count?id=` 读这首歌一共几则评论：`{ "code": 200, "id": 4242, "count": 1234 }`。
+
+这几条都是：上游给空清单回 `422`；给了评论却一则都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
 ### 出错时的响应
 
 ```json
@@ -656,6 +672,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
+| `comments` | `getHotComments`（`/comment/hot`）、`getNewComments`（`/comment/new`）、`getCommentCount`（`/comment/count`） | — |
 | `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
 | `playbackReports` | — | `reportPlayback` |
@@ -873,7 +890,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取评论信息
 
-`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。
+`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。只在 Node 上有，打算在 3.3.4 移除，歌曲评论请改用 [`/comment/hot`、`/comment/new`](#歌曲评论)。
 
 其他参数 `cid`、`cmd`、`reqtype`、`biztype` 保留原有传递方式，默认分别为 `205360772`、`8`、`2`、`1`；具体上游含义未完整确认，不把这些参数当作通用分类保证。
 

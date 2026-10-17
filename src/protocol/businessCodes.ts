@@ -90,6 +90,12 @@ export const UPSTREAM_OPERATIONS = [
   'singer.songs',
   /** 歌手的 MV（`MvInfoProServer.GetSingerMvList`），匿名。 */
   'singer.mvs',
+  /** 歌曲热评（`CommentRead.GetHotCommentList`），匿名；非零码都还是未知。 */
+  'comment.hot',
+  /** 歌曲新评（`CommentRead.GetNewCommentList`），匿名。 */
+  'comment.new',
+  /** 歌曲评论数（`CommentCountSrv.GetCmCount`），匿名；成功时单项码是 10000，由请求放行。 */
+  'comment.count',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
   'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */
