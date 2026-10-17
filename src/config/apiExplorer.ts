@@ -247,6 +247,10 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getHotComments', method: 'GET', routePath: '/comment/hot', category: 'Common' },
   { name: 'getNewComments', method: 'GET', routePath: '/comment/new', category: 'Common' },
   { name: 'getCommentCount', method: 'GET', routePath: '/comment/count', category: 'Common' },
+  { name: 'getMvList', method: 'GET', routePath: '/mv/list', category: 'MV' },
+  { name: 'getMvDetail', method: 'GET', routePath: '/mv/detail', category: 'MV' },
+  { name: 'getMvUrl', method: 'GET', routePath: '/mv/url', category: 'MV' },
+  { name: 'getSongMvs', method: 'GET', routePath: '/song/mvs', category: 'MV' },
   {
     name: 'getSingerList',
     method: 'GET',
@@ -740,6 +744,33 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         description: 'Comments per page; 20 by default, at most 50.',
       },
     ],
+  },
+  getMvList: {
+    description:
+      'List MVs with optional area and version filters, plus the filter values to choose from. Read anonymously.',
+    queryParams: [
+      { key: 'area', label: 'Area', description: 'Area id from tags.area; 15 (all) by default.' },
+      {
+        key: 'version',
+        label: 'Version',
+        description: 'Version id from tags.version; 7 (all) by default.',
+      },
+      { key: 'offset', label: 'Offset', description: 'MVs to skip; 0 by default.' },
+      { key: 'limit', label: 'Limit', description: 'MVs per page; 20 by default, at most 40.' },
+    ],
+  },
+  getMvDetail: {
+    description: 'Get one MV with title, description, cover, counts and singers. Read anonymously.',
+    queryParams: [{ key: 'vid', label: 'MV vid', description: 'MV vid.' }],
+  },
+  getMvUrl: {
+    description:
+      'Get the MP4 files of one MV that come with links, lowest quality first. Higher qualities may need login and are left out. Read anonymously.',
+    queryParams: [{ key: 'vid', label: 'MV vid', description: 'MV vid.' }],
+  },
+  getSongMvs: {
+    description: 'Get the MVs related to one song. Read anonymously.',
+    queryParams: [{ key: 'id', label: 'Song id', description: 'Numeric song id.' }],
   },
   getCommentCount: {
     description: 'Get how many comments one song has. Read anonymously.',

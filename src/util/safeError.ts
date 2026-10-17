@@ -66,6 +66,10 @@ export const UPSTREAM_PHASES = [
   'get-hot-comments',
   'get-new-comments',
   'get-comment-count',
+  'get-mv-list',
+  'get-mv-detail',
+  'get-mv-url',
+  'get-song-mvs',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

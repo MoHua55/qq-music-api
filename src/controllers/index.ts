@@ -40,6 +40,7 @@ import getImageUrl from './getImageUrl';
 import getLyric from './getLyric';
 import getMv from './getMv';
 import getMvByTag from './getMvByTag';
+import { getMvDetail, getMvList, getMvUrl, getSongMvs } from './getMvCatalog';
 import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
 import { getRadioList, getRadioTracks } from './getRadio';
@@ -188,4 +189,8 @@ export default {
   getHotComments: withControllerLogging('getHotComments', getHotComments),
   getNewComments: withControllerLogging('getNewComments', getNewComments),
   getCommentCount: withControllerLogging('getCommentCount', getCommentCount),
+  getMvList: withControllerLogging('getMvList', getMvList),
+  getMvDetail: withControllerLogging('getMvDetail', getMvDetail),
+  getMvUrl: withControllerLogging('getMvUrl', getMvUrl),
+  getSongMvs: withControllerLogging('getSongMvs', getSongMvs),
 };

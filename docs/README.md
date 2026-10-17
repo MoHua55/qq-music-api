@@ -178,6 +178,9 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /singer/similar`、`/singer/songs`、`/singer/mvs` | 否 | 相似歌手、歌手的歌、歌手的 MV（后两个可翻页） | ✓ |
 | **评论** | | | |
 | `GET /comment/hot`、`/comment/new`、`/comment/count` | 否 | 一首歌的热评、最新评论（可翻页）和评论数 | ✓ |
+| **MV** | | | |
+| `GET /mv/list`、`/mv/detail`、`/mv/url` | 否 | MV 列表（可按地区、版本筛选，可翻页）、MV 详情、MV 播放链接 | ✓ |
+| `GET /song/mvs` | 否 | 一首歌相关的 MV | ✓ |
 | **播放与曲库** | | | |
 | `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
@@ -626,6 +629,28 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 这几条都是：上游给空清单回 `422`；给了评论却一则都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
+### MV
+
+不用登录，Node 和 Serverless 都能用。`vid` 是 MV 的 vid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
+
+`GET /mv/list?area=15&version=7&offset=0&limit=20` 读 MV 列表。`area`、`version` 不给就是「全部」（15、7），可以用的值在回包的 `tags` 里（`area`、`version` 各是一组 `{ id, name }`），读不到时是空的、MV 照样给。`limit` 默认 20、最多 40。每支 MV 有 `vid`、`title`、`singers`（`mid`、`name`），以及可选的 `id`、`cover`、`playCount`、`duration`（秒）、`publishTime`（秒级时间戳）：
+
+```json
+{ "code": 200, "mvs": [{ "vid": "demovid", "title": "示例 MV", "cover": "https://example.com/mv.jpg", "playCount": 1000, "singers": [{ "mid": "demoSingerMid", "name": "示例歌手" }] }], "tags": { "area": [{ "id": 15, "name": "全部" }], "version": [] }, "total": 500, "more": true }
+```
+
+`GET /mv/detail?vid=` 读一支 MV：`vid`、`title`、`singers`，以及可选的 `desc`、`cover`、`playCount`、`duration`、`publishTime`。
+
+`GET /mv/url?vid=` 给这支 MV 的 MP4 播放链接。`files` 只放真的有链接的档，按上游的顺序（画质由低到高）：`quality` 是上游的档位数字（目前看到 10、20、30），`urls` 是同一个文件的几个链接，`size` 是文件大小（字节，有才给）。不登录时更高的档位上游不给链接，这里也就没有；一档都没有回 `422`：
+
+```json
+{ "code": 200, "vid": "demovid", "files": [{ "quality": 10, "size": 12345678, "urls": ["https://example.com/demo.mp4"] }] }
+```
+
+`GET /song/mvs?id=` 读一首歌相关的 MV（数字歌曲 id），条目和 `/mv/list` 一样，`more` 表示上游说还有。
+
+这几条都是：上游给空清单回 `422`；给了条目却一支都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
 ### 出错时的响应
 
 ```json
@@ -672,6 +697,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
+| `mvs` | `getMvList`（`/mv/list`）、`getMvDetail`（`/mv/detail`）、`getMvUrl`（`/mv/url`）、`getSongMvs`（`/song/mvs`） | — |
 | `comments` | `getHotComments`（`/comment/hot`）、`getNewComments`（`/comment/new`）、`getCommentCount`（`/comment/count`） | — |
 | `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |
 | `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
@@ -856,15 +882,15 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取MV标签
 
-`GET /getMvByTag` 返回 MV 标签。
+`GET /getMvByTag` 返回 MV 标签。只在 Node 上有，打算在 3.3.4 移除，筛选值请改用 [`/mv/list`](#mv) 回包里的 `tags`。
 
 ### 获取MV
 
-`GET /getMv?area_id=15&version_id=7&limit=20&page=0` 返回 MV 列表，示例显示默认值。分类可从返回的标签数据中读取。
+`GET /getMv?area_id=15&version_id=7&limit=20&page=0` 返回 MV 列表，示例显示默认值。分类可从返回的标签数据中读取。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/mv/list`](#mv)。
 
 ### 获取MV播放信息
 
-`GET /getMvPlay?vid=demo-video-id` 返回 MV 播放信息；`vid` 必填。
+`GET /getMvPlay?vid=demo-video-id` 返回 MV 播放信息；`vid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/mv/detail`、`/mv/url`](#mv)。
 
 ### 获取歌手MV
 

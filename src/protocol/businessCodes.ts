@@ -96,6 +96,16 @@ export const UPSTREAM_OPERATIONS = [
   'comment.new',
   /** 歌曲评论数（`CommentCountSrv.GetCmCount`），匿名；成功时单项码是 10000，由请求放行。 */
   'comment.count',
+  /** MV 筛选值（`MvInfoProServer.GetAllocTag`），匿名；读不到不影响清单。 */
+  'mv.tags',
+  /** MV 清单（`MvInfoProServer.GetAllocMvInfo`），匿名；非零码都还是未知。 */
+  'mv.list',
+  /** MV 详情（`VideoDataServer.get_video_info_batch`），匿名。 */
+  'mv.detail',
+  /** MV 播放链接（`MvUrlProxy.GetMvUrls`），匿名；单档的码另外看，不在这里登记。 */
+  'mv.url',
+  /** 歌曲相关 MV（`MvInfoProServer.GetSongRelatedMv`），匿名。 */
+  'song.mvs',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
   'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */

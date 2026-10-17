@@ -42,6 +42,7 @@ import {
   newCommentsResult,
 } from '../services/comments/catalog';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import { mvDetailResult, mvListResult, mvUrlResult, songMvsResult } from '../services/mv/catalog';
 import {
   categoryPlaylistsResult,
   newAlbumsResult,
@@ -354,6 +355,26 @@ const routes: Record<string, RouteHandler> = {
 
   '/comment/count': async ({ url }) =>
     fromResult(await commentCountResult(url.searchParams.get('id') ?? undefined)),
+
+  // MV：公开内容，一律匿名读；没设密钥也能用。
+  '/mv/list': async ({ url }) =>
+    fromResult(
+      await mvListResult({
+        area: url.searchParams.get('area') ?? undefined,
+        version: url.searchParams.get('version') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+        limit: url.searchParams.get('limit') ?? undefined,
+      }),
+    ),
+
+  '/mv/detail': async ({ url }) =>
+    fromResult(await mvDetailResult(url.searchParams.get('vid') ?? undefined)),
+
+  '/mv/url': async ({ url }) =>
+    fromResult(await mvUrlResult(url.searchParams.get('vid') ?? undefined)),
+
+  '/song/mvs': async ({ url }) =>
+    fromResult(await songMvsResult(url.searchParams.get('id') ?? undefined)),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),

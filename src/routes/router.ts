@@ -61,6 +61,10 @@ router.get('/singer/mvs', context.getSingerMvs);
 router.get('/comment/hot', context.getHotComments);
 router.get('/comment/new', context.getNewComments);
 router.get('/comment/count', context.getCommentCount);
+router.get('/mv/list', context.getMvList);
+router.get('/mv/detail', context.getMvDetail);
+router.get('/mv/url', context.getMvUrl);
+router.get('/song/mvs', context.getSongMvs);
 router.get('/search', context.getSearch);
 
 // radio; a login session is required

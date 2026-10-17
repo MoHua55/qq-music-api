@@ -3,6 +3,7 @@
 ### 新功能
 
 - **Vercel、Cloudflare 上也能用手机 QQ 扫码登录**：以前 Serverless 没有中继时只能微信扫码。现在没有中继时，手机 QQ 扫码（`qq` 通道）改走 QQ 互联的网页登录，全程是普通的 HTTP 请求，不用长连接，也不用另外配存储。二维码大约 120 秒失效；手机上确认后，那一次 `/login/qr/check` 会慢一些（最多 15 秒）。登录后的会话跟着 QQ 给的凭证寿命走（目前大约 3 天），快到期时调 `POST /login/refresh` 就能续，最多 30 天。不想提供时设 `QQ_PTLOGIN_HTTP_ENABLED=0`。注入了中继的部署照旧走 MQTT，Node、Electron、Docker 不受影响。
+- **MV**：`GET /mv/list`（可按地区、版本筛选，带可选的筛选值）、`/mv/detail`、`/mv/url`（MP4 播放链接，只给有链接的档位）、`/song/mvs`（一首歌相关的 MV）。不用登录，Node 和 Serverless 都能用；`features` 多了 `mvs` 一组。
 - **歌曲评论**：`GET /comment/hot`、`/comment/new` 读一首歌的热评和最新评论（可翻页），`/comment/count` 读评论数。不用登录，Node 和 Serverless 都能用；`features` 多了 `comments` 一组。
 - **歌手**：`GET /singer/list`（可按地区、性别、流派、首字母筛选，带可选的筛选值）、`/singer/detail`（简介、百科）、`/singer/homepage`（粉丝数、关注数）、`/singer/similar`（相似歌手）、`/singer/songs`、`/singer/mvs`（歌手的歌和 MV，可翻页）。不用登录，Node 和 Serverless 都能用；`features` 多了 `singers` 一组。
 - **热搜和搜索建议**：`GET /search/hot` 读现在的热搜，`GET /search/suggest?keyword=` 边打字边给搜索词。不用登录，Node 和 Serverless 都能用；`features.search` 多了 `getHotSearches`、`getSearchSuggestions`。
@@ -20,7 +21,7 @@
 
 - **Serverless 的 `/login/channels` 默认多了 `qq`**：没有中继的部署以前只回 `["wechat"]`，现在回 `["qq", "wechat"]`。照 `data.channels` 显示登录方式的前端（例如 Folia）会多出手机 QQ 这一项，不用改代码；不想要就设 `QQ_PTLOGIN_HTTP_ENABLED=0`。
 - 之前把 `QQ_WECHAT_POLL_BUDGET_MS` 设成 15001–20000 的，会改用默认的 15 秒；设在 15000 以内的不受影响。
-- **打算在 3.3.4 移除的旧路由**（都只在 Node 上有，已经有新路由接手）：`/getHotkey` 改用 `/search/hot`；`/getSmartbox` 要搜索词改用 `/search/suggest`，要直接找歌曲、歌手、专辑改用 `/search`；`/getSingerList` 改用 `/singer/list`；`/getSingerDesc` 改用 `/singer/detail`；`/getSingerStarNum` 改用 `/singer/homepage`；`/getSimilarSinger` 改用 `/singer/similar`；`/getSingerMv` 改用 `/singer/mvs`。`/getComments` 的歌曲评论改用 `/comment/hot`、`/comment/new`。Folia 在用的 `/getSingerHotsong`、`/getSingerAlbum` 不动。
+- **打算在 3.3.4 移除的旧路由**（都只在 Node 上有，已经有新路由接手）：`/getHotkey` 改用 `/search/hot`；`/getSmartbox` 要搜索词改用 `/search/suggest`，要直接找歌曲、歌手、专辑改用 `/search`；`/getSingerList` 改用 `/singer/list`；`/getSingerDesc` 改用 `/singer/detail`；`/getSingerStarNum` 改用 `/singer/homepage`；`/getSimilarSinger` 改用 `/singer/similar`；`/getSingerMv` 改用 `/singer/mvs`。`/getComments` 的歌曲评论改用 `/comment/hot`、`/comment/new`；`/getMv`、`/getMvByTag` 改用 `/mv/list`；`/getMvPlay` 改用 `/mv/detail` 和 `/mv/url`。Folia 在用的 `/getSingerHotsong`、`/getSingerAlbum` 不动。
 
 ## [3.3.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.1...v3.3.2) (2026-10-17)
 
