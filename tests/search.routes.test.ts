@@ -108,7 +108,8 @@ describe.each(CATALOG_RUNTIMES)('关键字搜索（%s）', (runtime) => {
   });
 
   it.each([
-    ['song', 'item_song', 0],
+    // 匿名搜歌送 7：上游已经不认 0（匿名时一律 2001），7 匿名也搜得到（2026-10 实测）。
+    ['song', 'item_song', 7],
     ['album', 'item_album', 2],
     ['playlist', 'item_songlist', 3],
     ['singer', 'singer', 1],
