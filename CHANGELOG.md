@@ -1,4 +1,6 @@
-## 未发布
+## [3.3.3](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.2...v3.3.3) (2026-10-18)
+
+这一版让 Vercel、Cloudflare 不用中继也能手机 QQ 扫码登录，不登录也搜得到歌了，还加上排行榜、新碟、刷歌模式、相似歌曲，以及歌手、评论、MV、热搜和搜索建议、歌曲标签这一批新接口。Folia 已经在用的接口，路径、参数、字段和状态码都没变；要注意的是 Serverless 的 `/login/channels` 默认多了 `qq`，见下面「给下游的通知」。
 
 ### 新功能
 
