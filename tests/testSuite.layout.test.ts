@@ -97,6 +97,7 @@ describe('default test suite layout', () => {
       'tests/song.like.routes.test.ts',
       'tests/album.subscribe.routes.test.ts',
       'tests/search.routes.test.ts',
+      'tests/folia.login-contracts.test.ts',
     ]) {
       expect(contracts.split(' ')).toContain(file);
       expect(defaultSuiteFiles()).toContain(path.join(ROOT, file));
