@@ -171,6 +171,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /radio/list`、`/radio/tracks` | 是 | 电台分组、某个电台的歌 | ✓ |
 | **搜索** | | | |
 | `GET /search` | 可选 | 按关键字搜歌曲、专辑、歌单、歌手，可翻页；不登录搜歌常被拒 | ✓ |
+| `GET /search/hot`、`/search/suggest` | 否 | 热搜、边打字边给的搜索建议 | ✓ |
 | **播放与曲库** | | | |
 | `GET /getLyric` | 否 | 歌词（LRC），可选 `isFormat=1` 拆成时间行、`trans=1` 补翻译 | ✓ |
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
@@ -567,6 +568,22 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 真的搜不到回 `200` 加空的 `items`。上游拒绝回 `502` 并保留数字，**不会**当成搜不到；不会自动重试。第二页以后没有完整实测过。
 
+### 热搜和搜索建议
+
+`GET /search/hot` 读现在的热搜，不用登录，Node 和 Serverless 都能用。每一条有 `keyword`（拿去调 `/search` 就行），以及可选的 `title`、`description`（上游给了才有）：
+
+```json
+{ "code": 200, "hotkeys": [{ "keyword": "示例热搜", "title": "示例热搜", "description": "示例说明" }] }
+```
+
+`GET /search/suggest?keyword=<已经打的字>` 给搜索建议，同样不用登录。`keyword` 的规则和 `/search` 一样：去掉前后空白后不能是空的、最多 60 个字，不对就回 `400`。`suggestions` 只放搜索词（去掉前后空白、去重），上游同一个列表里夹的其他东西（例如 AI 助手）不给：
+
+```json
+{ "code": 200, "keyword": "示例", "suggestions": ["示例歌曲", "示例歌手"] }
+```
+
+两条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
+
 ### 出错时的响应
 
 ```json
@@ -609,7 +626,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 | `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs`、`getCloudCollection`（`/user/cloud`） | — |
 | `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums`、`getCloudTracks`（`/user/cloud`）、`getSubscriptionStatus`（`/user/subscription-status`） | `getPlaylistDetail` |
 | `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
-| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`，两个运行时都是 `true`） | — |
+| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`）、`getHotSearches`（`/search/hot`）、`getSearchSuggestions`（`/search/suggest`），两个运行时都是 `true` | — |
 | `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
 | `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
 | `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
@@ -787,11 +804,11 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取搜索热词
 
-`GET /getHotkey` 返回搜索热词。
+`GET /getHotkey` 返回搜索热词。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/search/hot`](#热搜和搜索建议)。
 
 ### 获取关键字搜索提示
 
-`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。
+`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，打算在 3.3.4 移除：要搜索词请用 [`/search/suggest`](#热搜和搜索建议)，要直接找歌曲、歌手、专辑请用 `/search`。
 
 ### 获取MV标签
 

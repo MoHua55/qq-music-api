@@ -74,6 +74,10 @@ export const UPSTREAM_OPERATIONS = [
   'recommend.toplist',
   /** 关键字搜索（桌面版 `DoSearchForQQMusicDesktop`），歌曲要登录、其他类型匿名可读；非零码都还是未知。 */
   'search',
+  /** 热搜（`HotkeyService.GetHotkeyForQQMusicMobile`），匿名；非零码都还是未知。 */
+  'search.hot',
+  /** 搜索建议（`SmartBoxCgi.GetSmartBoxResult`），匿名；非零码都还是未知。 */
+  'search.suggest',
   /** 歌词翻译补强（`GetPlayLyricInfo`，crypt 0），匿名；非零码都还是未知，失败只是不补。 */
   'lyric.translation',
   /** 电台清单（`pf.radiosvr/GetRadiolist`），要登录。 */

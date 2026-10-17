@@ -55,7 +55,7 @@ export const searchTypeOf = (raw: unknown): SearchType => {
   return type;
 };
 
-const keywordOf = (raw: unknown): string => {
+export const keywordOf = (raw: unknown): string => {
   const keyword = typeof raw === 'string' ? raw.trim() : '';
   if (!keyword || keyword.length > MAX_KEYWORD_LENGTH) throw new QqApiError('input');
   return keyword;
@@ -72,7 +72,7 @@ const countOf = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 
 /** 每次搜索带一个随机数字串；不需要密码学强度，也不能依赖 `node:*`。 */
-const searchIdOf = (): string =>
+export const searchIdOf = (): string =>
   `${Math.floor(Math.random() * 9 + 1)}${Array.from({ length: 17 }, () =>
     Math.floor(Math.random() * 10),
   ).join('')}`;

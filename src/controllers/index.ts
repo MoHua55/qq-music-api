@@ -56,6 +56,7 @@ import {
 import getRecommendPlaylists from './getRecommendPlaylists';
 import getRecommendRadar from './getRecommendRadar';
 import getSearch from './getSearch';
+import { getHotSearches, getSearchSuggestions } from './getSearchSuggest';
 import getSimilarSinger from './getSimilarSinger';
 import getSingerDesc from './getSingerDesc';
 import getSingerList from './getSingerList';
@@ -167,4 +168,6 @@ export default {
     getRecommendToplistSongs,
   ),
   getSearch: withControllerLogging('getSearch', getSearch),
+  getHotSearches: withControllerLogging('getHotSearches', getHotSearches),
+  getSearchSuggestions: withControllerLogging('getSearchSuggestions', getSearchSuggestions),
 };

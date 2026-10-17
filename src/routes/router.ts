@@ -50,6 +50,8 @@ router.get('/recommend/toplists', context.getRecommendToplists);
 router.get('/recommend/toplist', context.getRecommendToplistSongs);
 
 // keyword search; a login session is used when present
+router.get('/search/hot', context.getHotSearches);
+router.get('/search/suggest', context.getSearchSuggestions);
 router.get('/search', context.getSearch);
 
 // radio; a login session is required

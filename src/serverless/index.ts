@@ -55,6 +55,7 @@ import {
 } from '../services/recommend/recommendPlaylists';
 import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
 import { searchResult } from '../services/search/search';
+import { hotSearchesResult, searchSuggestionsResult } from '../services/search/suggest';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -272,6 +273,12 @@ const routes: Record<string, RouteHandler> = {
       env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
     return fromResult(await searchResult(query, session));
   },
+
+  // 热搜、搜索建议：公开内容，一律匿名读；没设密钥也能用。
+  '/search/hot': async () => fromResult(await hotSearchesResult()),
+
+  '/search/suggest': async ({ url }) =>
+    fromResult(await searchSuggestionsResult(url.searchParams.get('keyword') ?? undefined)),
 
   '/radio/list': async ({ service: getService, token }) =>
     fromResult(await radioListResult(await (await getService()).resolveSession(token))),

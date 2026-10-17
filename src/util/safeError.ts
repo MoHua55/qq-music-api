@@ -55,6 +55,8 @@ export const UPSTREAM_PHASES = [
   'get-toplists',
   'get-toplist',
   'search',
+  'get-hot-searches',
+  'get-search-suggestions',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

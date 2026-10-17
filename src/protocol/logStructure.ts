@@ -35,6 +35,8 @@ const STATIC_ROUTES = new Set([
   '/recommend/toplists',
   '/recommend/toplist',
   '/search',
+  '/search/hot',
+  '/search/suggest',
   '/radio/list',
   '/radio/tracks',
   '/login/qr/key',

@@ -177,6 +177,13 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
   { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
+  { name: 'getHotSearches', method: 'GET', routePath: '/search/hot', category: 'Search' },
+  {
+    name: 'getSearchSuggestions',
+    method: 'GET',
+    routePath: '/search/suggest',
+    category: 'Search',
+  },
   {
     name: 'getSongListCategories',
     method: 'GET',
@@ -633,6 +640,21 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
+  },
+  getHotSearches: {
+    description:
+      'Get the hot search keywords, each with an optional title and description. Read anonymously.',
+  },
+  getSearchSuggestions: {
+    description:
+      'Get search word suggestions for a keyword (only search words, no other items). Read anonymously.',
+    queryParams: [
+      {
+        key: 'keyword',
+        label: 'Keyword',
+        description: 'What has been typed so far, up to 60 characters.',
+      },
+    ],
   },
   getSearch: {
     description:

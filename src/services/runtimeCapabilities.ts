@@ -39,7 +39,14 @@ const featuresFor = () => ({
     getReplacement: false,
     preview: true,
   },
-  search: { searchSongs: true, searchAlbums: true, searchPlaylists: true, searchArtists: true },
+  search: {
+    searchSongs: true,
+    searchAlbums: true,
+    searchPlaylists: true,
+    searchArtists: true,
+    getHotSearches: true,
+    getSearchSuggestions: true,
+  },
   lyrics: { getLyrics: true, getChorusRanges: false },
   recommendations: {
     getPersonalFm: true,
