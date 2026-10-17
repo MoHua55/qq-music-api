@@ -882,7 +882,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取关键字搜索提示
 
-`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，打算在 3.3.4 移除：要搜索词请用 [`/search/suggest`](#热搜和搜索建议)，要直接找歌曲、歌手、专辑请用 `/search`。
+`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，以后会移除（3.3.4 先留着）：要搜索词请用 [`/search/suggest`](#热搜和搜索建议)，要直接找歌曲、歌手、专辑请用 `/search`。
 
 ### 获取MV标签
 
@@ -920,7 +920,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取评论信息
 
-`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。只在 Node 上有，打算在 3.3.4 移除，歌曲评论请改用 [`/comment/hot`、`/comment/new`](#歌曲评论)。
+`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。只在 Node 上有，以后会移除（3.3.4 先留着，专辑、歌单等其他评论还没有新路由）；歌曲评论请改用 [`/comment/hot`、`/comment/new`](#歌曲评论)。
 
 其他参数 `cid`、`cmd`、`reqtype`、`biztype` 保留原有传递方式，默认分别为 `205360772`、`8`、`2`、`1`；具体上游含义未完整确认，不把这些参数当作通用分类保证。
 

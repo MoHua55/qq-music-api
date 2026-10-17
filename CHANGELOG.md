@@ -22,7 +22,8 @@
 
 - **Serverless 的 `/login/channels` 默认多了 `qq`**：没有中继的部署以前只回 `["wechat"]`，现在回 `["qq", "wechat"]`。照 `data.channels` 显示登录方式的前端（例如 Folia）会多出手机 QQ 这一项，不用改代码；不想要就设 `QQ_PTLOGIN_HTTP_ENABLED=0`。
 - 之前把 `QQ_WECHAT_POLL_BUDGET_MS` 设成 15001–20000 的，会改用默认的 15 秒；设在 15000 以内的不受影响。
-- **打算在 3.3.4 移除的旧路由**（都只在 Node 上有，已经有新路由接手）：`/getHotkey` 改用 `/search/hot`；`/getSmartbox` 要搜索词改用 `/search/suggest`，要直接找歌曲、歌手、专辑改用 `/search`；`/getSingerList` 改用 `/singer/list`；`/getSingerDesc` 改用 `/singer/detail`；`/getSingerStarNum` 改用 `/singer/homepage`；`/getSimilarSinger` 改用 `/singer/similar`；`/getSingerMv` 改用 `/singer/mvs`。`/getComments` 的歌曲评论改用 `/comment/hot`、`/comment/new`；`/getMv`、`/getMvByTag` 改用 `/mv/list`；`/getMvPlay` 改用 `/mv/detail` 和 `/mv/url`。Folia 在用的 `/getSingerHotsong`、`/getSingerAlbum` 不动。
+- **打算在 3.3.4 移除的旧路由**（都只在 Node 上有，已经有新路由接手）：`/getHotkey` 改用 `/search/hot`；`/getSingerList` 改用 `/singer/list`；`/getSingerDesc` 改用 `/singer/detail`；`/getSingerStarNum` 改用 `/singer/homepage`；`/getSimilarSinger` 改用 `/singer/similar`；`/getSingerMv` 改用 `/singer/mvs`。`/getMv`、`/getMvByTag` 改用 `/mv/list`；`/getMvPlay` 改用 `/mv/detail` 和 `/mv/url`。Folia 在用的 `/getSingerHotsong`、`/getSingerAlbum` 不动。
+- **以后也会移除、但 3.3.4 先留着的旧路由**：`/getSmartbox`（要搜索词改用 `/search/suggest`，要直接找歌曲、歌手、专辑改用 `/search`；它一次给的「直接命中」还没有完全一样的新路由）、`/getComments`（歌曲评论改用 `/comment/hot`、`/comment/new`；专辑、歌单等其他评论还没有新路由）。
 
 ## [3.3.2](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.1...v3.3.2) (2026-10-17)
 
