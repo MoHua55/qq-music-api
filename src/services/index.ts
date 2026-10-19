@@ -6,7 +6,6 @@ import getComments from './comments/getComments';
 import getDigitalAlbumLists from './digitalAlbum/getDigitalAlbumLists';
 import downloadQQMusic from './downloadQQMusic';
 // music
-import getLyric from './music/getLyric';
 // radio
 import getRadioLists from './radio/getRadioLists';
 // getTopLists
@@ -33,7 +32,6 @@ export default {
   // DigitalAlbum
   getDigitalAlbumLists,
   // music
-  getLyric,
   // album
   getAlbumInfo,
   // comments

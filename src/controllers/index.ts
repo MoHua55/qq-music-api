@@ -8,7 +8,6 @@ import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
 import getImageUrl from './getImageUrl';
-import getLyric from './getLyric';
 import getNewDisks from './getNewDisks';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
@@ -56,7 +55,6 @@ const nodeAdapters: Partial<Record<RouteName, Controller>> = {
   qrCheck: qrCheckOperationController,
   logout: logoutOperationController,
   getMusicPlay: musicPlayOperationController,
-  getLyric,
 };
 
 const controllerOf = (route: (typeof routeManifest)[number]): Controller =>
