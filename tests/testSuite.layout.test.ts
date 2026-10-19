@@ -9,9 +9,7 @@ import path from 'node:path';
  */
 
 const ROOT = path.join(__dirname, '..');
-const LEGACY_DIR = path.join(ROOT, 'tests', 'legacy-routes');
 const ROOT_DIR_TOKEN = '<rootDir>';
-const LEGACY_PATTERN = `${ROOT_DIR_TOKEN}/tests/legacy-routes/`;
 const OFFLINE_SETUP = `${ROOT_DIR_TOKEN}/tests/helpers/offlineNetwork.cjs`;
 
 const PROMOTED_ROUTE_TESTS = [
@@ -77,10 +75,7 @@ const packageScripts = (): Record<string, string> =>
 describe('default test suite layout', () => {
   const defaultConfig = loadConfig('jest.config.js');
 
-  const defaultSuiteFiles = () =>
-    listTests(path.join(ROOT, 'tests')).filter(
-      (file) => !file.startsWith(`${LEGACY_DIR}${path.sep}`),
-    );
+  const defaultSuiteFiles = () => listTests(path.join(ROOT, 'tests'));
 
   it('runs the expanded Folia contracts offline in both commands', () => {
     const contracts = packageScripts()['test:contracts'];
@@ -128,43 +123,19 @@ describe('default test suite layout', () => {
       expect(fs.existsSync(path.join(ROOT, 'tests', name))).toBe(true);
   });
 
-  it('promotes every mocked legacy route contract into the default suite', () => {
-    const kept = fs.existsSync(LEGACY_DIR) ? listTests(LEGACY_DIR) : [];
-
-    expect(kept).toEqual([]);
+  it('keeps the mocked legacy route contracts in the default suite', () => {
     for (const name of PROMOTED_ROUTE_TESTS)
       expect(fs.existsSync(path.join(ROOT, 'tests', name))).toBe(true);
   });
 
-  it('leaves the legacy directory out of the default run without weakening it', () => {
-    expect(defaultConfig.testPathIgnorePatterns).toContain(LEGACY_PATTERN);
+  it('runs every test offline under one config and the coverage gate', () => {
+    expect(fs.readdirSync(ROOT).filter((name) => /^jest\..*config\.[cm]?js$/.test(name))).toEqual([
+      'jest.config.js',
+    ]);
     expect(defaultConfig.setupFilesAfterEnv).toContain(OFFLINE_SETUP);
     expect(defaultConfig.coverageThreshold).toEqual({
       global: { branches: 50, functions: 50, lines: 75, statements: 75 },
     });
     expect(packageScripts().test).toBe('jest');
-  });
-});
-
-describe('legacy route commands', () => {
-  it('keeps the reserved legacy command offline and allows an empty directory', () => {
-    const config = loadConfig('jest.legacy-routes.config.js');
-
-    expect(config.testMatch).toEqual([`${LEGACY_PATTERN}**/*.test.ts`]);
-    expect(config.testPathIgnorePatterns ?? []).not.toContain(LEGACY_PATTERN);
-    expect(config.setupFilesAfterEnv).toContain(OFFLINE_SETUP);
-    expect(packageScripts()['test:legacy-routes']).toBe(
-      'jest --config jest.legacy-routes.config.js --passWithNoTests',
-    );
-  });
-
-  it('reserves unguarded probes for their own explicit command', () => {
-    const config = loadConfig('jest.legacy-routes.live.config.js');
-
-    expect(config.testMatch).toEqual([`${LEGACY_PATTERN}**/*.test.ts`]);
-    expect(config.setupFilesAfterEnv ?? []).not.toContain(OFFLINE_SETUP);
-    expect(packageScripts()['probe:legacy-routes']).toBe(
-      'jest --config jest.legacy-routes.live.config.js --runInBand --passWithNoTests',
-    );
   });
 });
