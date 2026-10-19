@@ -233,6 +233,54 @@ describe('published artifact', () => {
     });
   });
 
+  // 嵌入的宿主（例如 Electron 主进程）在 require 前设好端口和设备文件路径，require 一回来就还原，
+  // 免得污染自己的环境。所以这两项必须在 require 的同步阶段读完：改成用到才读，就会读到还原后的值，
+  // 设备文件落到默认路径，账号就被当成新设备。
+  it('reads the port and device file while required, before the embedding host restores them', () => {
+    const result = runInNode(
+      `
+      import { createRequire } from 'node:module';
+      import { once } from 'node:events';
+      import fs from 'node:fs';
+      import os from 'node:os';
+      import path from 'node:path';
+      const require = createRequire(import.meta.url);
+      const deviceFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'qq-host-env-')), 'qq-device.json');
+      fs.writeFileSync(deviceFile, JSON.stringify({ version: 1, device: ${JSON.stringify(deviceFixture.device)} }));
+      process.env.PORT = '1';
+      process.env.QQ_AUTH_STATE_PATH = 'memory';
+      const previous = { PORT: process.env.PORT, QQ_AUTH_STATE_PATH: process.env.QQ_AUTH_STATE_PATH };
+      process.env.PORT = '${listenPort}';
+      process.env.QQ_AUTH_STATE_PATH = deviceFile;
+      const root = require('@yakult-green-tea/qq-music-api');
+      Object.assign(process.env, previous);
+      const server = root.server;
+      if (!server.listening) await once(server, 'listening');
+      const port = String(server.address().port);
+      const directory = path.dirname(require.resolve('@yakult-green-tea/qq-music-api/package.json'));
+      const { qrLoginService } = require(path.join(directory, 'dist/src/services/auth/qrLogin.node.js'));
+      const { logger } = require(path.join(directory, 'dist/src/util/logger.js'));
+      const events = [];
+      const info = logger.info;
+      logger.info = (event, details) => { events.push({ event, details }); return info(event, details); };
+      const device = qrLoginService.deviceStore.get();
+      const ready = events.find((entry) => entry.event === 'qq-auth.device-context.ready')?.details;
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      fs.rmSync(path.dirname(deviceFile), { recursive: true, force: true });
+      console.log(JSON.stringify({ port, androidId: device.androidId, kind: ready?.kind, source: ready?.source }));
+    `,
+      true,
+    );
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout.trim())).toEqual({
+      port: listenPort,
+      androidId: deviceFixture.device.androidId,
+      kind: 'file',
+      source: 'restored',
+    });
+  });
+
   it('keeps the packaged Electron bootstrap hook in the active call path', () => {
     const result = runInNode(`
       import { createRequire } from 'node:module';

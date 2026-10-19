@@ -9,9 +9,10 @@ module.exports = {
     '<rootDir>/node_modules/',
     '<rootDir>/.worktrees/',
     '<rootDir>/dist/',
+    '<rootDir>/.compat/',
     '<rootDir>/tests/legacy-routes/',
   ],
-  modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/'],
+  modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/', '<rootDir>/.compat/'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [

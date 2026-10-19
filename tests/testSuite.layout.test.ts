@@ -98,6 +98,17 @@ describe('default test suite layout', () => {
       'tests/album.subscribe.routes.test.ts',
       'tests/search.routes.test.ts',
       'tests/folia.login-contracts.test.ts',
+      'tests/folia.wiring-contracts.test.ts',
+      'tests/operations.music-play-preview.test.ts',
+      'tests/operations.login-channels.test.ts',
+      'tests/login.refresh.routes.test.ts',
+      'tests/user.vip.routes.test.ts',
+      'tests/recommend-new-albums.routes.test.ts',
+      'tests/recommend-toplists.routes.test.ts',
+      'tests/recommend-radar.routes.test.ts',
+      'tests/user-cloud.routes.test.ts',
+      'tests/playlist.management.routes.test.ts',
+      'tests/operations.user-playlist-detail.test.ts',
     ]) {
       expect(contracts.split(' ')).toContain(file);
       expect(defaultSuiteFiles()).toContain(path.join(ROOT, file));
