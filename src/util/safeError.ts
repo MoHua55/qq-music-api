@@ -71,6 +71,12 @@ export const UPSTREAM_PHASES = [
   'get-mv-url',
   'get-song-mvs',
   'get-song-labels',
+  'get-search-match',
+  'get-all-playlist-categories',
+  'get-sorted-category-playlists',
+  'get-song-batch',
+  'get-radio-categories',
+  'get-comment-list',
 ] as const;
 
 export type UpstreamPhase = (typeof UPSTREAM_PHASES)[number];

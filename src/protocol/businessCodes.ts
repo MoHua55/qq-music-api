@@ -80,6 +80,18 @@ export const UPSTREAM_OPERATIONS = [
   'search.hot',
   /** 搜索建议（`SmartBoxCgi.GetSmartBoxResult`），匿名；非零码都还是未知。 */
   'search.suggest',
+  /** 搜索直接命中（旧 CGI `smartbox_new.fcg`），匿名；非零码都还是未知。 */
+  'search.match',
+  /** 完整歌单分类（旧 CGI `fcg_get_diss_tag_conf.fcg`），匿名；非零码都还是未知。 */
+  'recommend.categories-all',
+  /** 按排序读分类歌单（旧 CGI `fcg_get_diss_by_tag.fcg`），匿名；非零码都还是未知。 */
+  'recommend.category-playlists-sorted',
+  /** 一次读多首歌的详情（`pf_song_detail_svr.get_song_detail_yqq`），匿名；非零码都还是未知。 */
+  'song.batch',
+  /** 匿名的电台分类（`pf.radiosvr/GetRadiolist`）；非零码都还是未知。 */
+  'radio.categories',
+  /** 歌曲以外的资源也能读的评论（旧 CGI `fcg_global_comment_h5.fcg`），匿名；非零码都还是未知。 */
+  'comment.list',
   /** 歌手清单（`SingerList.GetSingerListIndex`），匿名；非零码都还是未知。 */
   'singer.list',
   /** 歌手资料（`SingerInfoInter.GetSingerDetail`），匿名。 */
