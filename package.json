@@ -1,7 +1,7 @@
 {
   "name": "@yakult-green-tea/qq-music-api",
   "version": "3.3.3",
-  "description": "非官方、社区维护的 QQ 音乐 API 服务，基于 Rain120/qq-music-api，支持原生扫码登录并可内嵌进 Docker 或 Electron 主进程。",
+  "description": "非官方的 QQ 音乐 API，支持扫码登录、个人音乐库和播放链接，可以独立部署，也可以嵌入 Node.js、Electron 或 Serverless。",
   "main": "dist/src/app.js",
   "types": "./types/root.d.ts",
   "exports": {
@@ -61,9 +61,13 @@
     "url": "git+https://github.com/yakult-green-tea/qq-music-api.git"
   },
   "keywords": [
+    "qq-music",
+    "qqmusic",
+    "music-api",
     "QQ音乐",
-    "音乐",
-    "QQ音乐koa2"
+    "koa",
+    "serverless",
+    "electron"
   ],
   "author": "Rain120",
   "contributors": [
