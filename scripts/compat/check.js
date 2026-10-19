@@ -1,6 +1,7 @@
 // 行为比对：同一份离线假上游，分别跑「已发布的某个版本」和「当前工作树的 dist」，
 // 逐条比较全部路由在 Node 与 Serverless 上的状态码、关键响应头、响应体，以及送给上游的请求。
-// 重构时用它确认对外行为没变；预期中的差异（例如退役的路由）登记在 approved.json。
+// 重构时用它确认对外行为没变；预期中的差异（例如退役的路由）登记在 approved.json，
+// 每条可以限定 runtime，也可以用 baseline 限定只对某个基准版本成立。
 //
 // 用法：npm run build:js && npm run compat:check -- [--baseline 3.3.3] [--only /getSongInfo]
 // 不连真实 QQ；只有第一次取某个基准版本时会向 npm 下载包。
@@ -127,7 +128,9 @@ const approvalOf = (testCase) =>
   approved.find(
     (entry) =>
       (testCase.path === entry.path || testCase.path.startsWith(`${entry.path}/`)) &&
-      (!entry.runtime || entry.runtime === testCase.runtime),
+      (!entry.runtime || entry.runtime === testCase.runtime) &&
+      // 带 baseline 的登记只对那个基准版本成立，换了基准就不再放行。
+      (!entry.baseline || entry.baseline === baselineVersion),
   );
 
 const firstDifference = (a, b, at = '') => {
