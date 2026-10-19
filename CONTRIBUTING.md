@@ -1,159 +1,93 @@
-# 参与贡献 (Contributing to QQ Music API)
+# 参与贡献
 
-首先，感谢您考虑为 `qq-music-api` 贡献代码！这是一个开源项目，我们欢迎并感激所有的贡献，无论是提交 Bug、改进文档还是提交新功能。
+欢迎修复 bug、改进文档或提出功能建议。开始前先看[使用文档](./docs/README.md)和[相容与版本政策](./docs/compatibility.md)，确认改动会影响哪些调用方。范围较大的功能或重构，请先在本仓库讨论需求和方案。
 
-本指南将帮助您了解参与贡献的完整流程，以确保代码质量并保持项目的良好协作。
+## 准备开发环境
 
-## 📑 目录
+需要 Node.js 20 或更新版本、npm 和 Git。在自己的仓库副本中创建工作分支：
 
-1. [行为准则](#行为准则)
-2. [开发环境配置](#开发环境配置)
-3. [项目目录结构](#项目目录结构)
-4. [贡献流程](#贡献流程)
-5. [代码提交规范](#代码提交规范)
-6. [测试要求](#测试要求)
-7. [代码审查流程](#代码审查流程)
-
----
-
-## 行为准则
-
-在参与本项目时，请确保尊重他人、保持友善，并以建设性的方式提出意见或代码。我们致力于提供一个无骚扰的参与体验。
-
-安全漏洞、凭证暴露或登录态问题请遵循 [SECURITY.md](./SECURITY.md) 使用私密渠道报告。公开 Issue、PR、测试 fixture 与日志中不得包含真实 cookie、QR key、opaque session、`musickey`、auth-state 或 `.env` 内容。
-
-## 开发环境配置
-
-本项目基于 `Koa2` 构建，请确保您的本地环境满足以下要求：
-
-- **Node.js**: >= 20
-- **npm**
-- **Git**
-
-### 快速配置指南
-
-```bash
-# 1. 克隆项目到本地
-git clone git@github.com:yakult-green-tea/qq-music-api.git
+```sh
+git clone <你的仓库地址>
 cd qq-music-api
-
-# 2. 安装依赖
 npm ci
-
-# 3. 启动开发环境（支持热重载）
-npm run dev
+git switch -c fix/your-change
+npm start
 ```
 
-服务默认监听 `3200` 端口。您可以通过浏览器或 Postman 访问 `http://localhost:3200` 进行接口测试。
+默认服务端口是 `3200`，API Explorer 位于 `http://localhost:3200/explorer`。需要自动重载时可用 `npm run dev`；Windows 建议使用 PowerShell 跑验证，启用开发脚本时需使用支持该脚本环境变量写法的 shell。
 
----
-
-## 项目目录结构
-
-在您开始贡献代码之前，了解项目的目录结构将帮助您更快地定位需要修改的文件：
+## 代码在哪里
 
 ```text
-qq-music-api/
-├── src/                  # 核心源代码目录
-│   ├── app.ts            # Koa2 应用入口文件
-│   ├── config/           # 项目及环境变量配置
-│   ├── controllers/      # 业务控制器（处理 HTTP 请求和响应）
-│   ├── middlewares/      # 自定义 Koa 中间件
-│   ├── routes/           # 路由定义
-│   ├── services/         # 核心业务逻辑与底层接口调用
-│   └── util/             # 公共工具函数
-├── tests/                # 单元测试与集成测试目录
-├── docs/                 # 项目相关文档
-├── public/               # 静态资源文件
-├── scripts/              # 构建与辅助脚本
-├── screenshot/           # 项目截图展示
-├── coverage/             # 测试覆盖率报告
-├── logs/                 # 本地运行日志
-├── Dockerfile            # Docker 镜像构建配置
-├── package.json          # 依赖管理与 NPM 脚本
-└── tsconfig.json         # TypeScript 编译配置
+src/
+├── app.ts           # Node / Koa 启动入口
+├── config/          # 配置与 API Explorer 元数据
+├── controllers/     # Node HTTP 转接
+├── middlewares/     # Koa 中间件
+├── routes/          # 路由与共用 operation handler
+├── services/        # 登录、音乐库和其他业务逻辑
+├── protocol/        # 上游协议与错误分类
+├── transport/       # 请求、超时和重试
+├── serverless/      # Web Request / Response 入口
+└── util/            # 工具函数
+tests/               # Jest 离线测试与契约测试
+types/               # 根模块的公开类型
+public/              # 内置首页和 API Explorer
+docs/                # 使用文档、错误说明和相容政策
+scripts/             # 构建及维护脚本
 ```
 
----
+Node 与 Serverless 共用业务处理。改动共用代码时，检查两个宿主的参数处理和响应，不要默认 Koa 中间件在 Serverless 也会生效。
 
-## 贡献流程
+## 提交改动
 
-我们采用标准的 GitHub Fork & Pull Request 工作流：
+1. 从本项目当前 `main` 创建分支，每个分支集中解决一个问题。
+2. 用最小改动实现目标。修 bug 时补能复现问题的测试；功能变更同时更新文档。
+3. 跑完下方验证，检查 diff 中没有凭证、真实账号资料或无关文件。
+4. 使用 Conventional Commits 提交，例如 `docs: 更新部署说明`、`fix: 修复分页重复`。中文使用简体，说明直接写问题和结果，不添加 `Co-Authored-By`。
+5. 推送到你有写权限的仓库。命令中的 remote 必须明确指向自己的仓库，例如：
 
-1. **Fork 本仓库** 到您的个人 GitHub 账号下。
-2. **克隆您的 Fork 仓库** 到本地机器。
-3. **从 `main` 创建一个新的分支** 进行开发：
-   ```bash
-   git checkout main
-   git pull --ff-only
-   git checkout -b feat/your-feature-name
-   # 或者如果是修复 bug
-   git checkout -b fix/your-bug-fix
+   ```sh
+   git push -u <你的远程名称> fix/your-change
    ```
-4. **进行代码更改**，并在本地测试确保一切运行正常。
-5. **提交代码**（必须遵循下文的[代码提交规范](#代码提交规范)）。
-6. **推送到远程仓库**：
-   ```bash
-   git push origin feat/your-feature-name
-   ```
-7. **提交 Pull Request (PR)** 到本项目的 `main` 分支，并详细描述您所做的更改。
 
----
+6. 向 `yakult-green-tea/qq-music-api` 的 `main` 提交 Pull Request，说明问题、改动、兼容影响和验证结果。
 
-## 代码提交规范
+请保持讨论友善，围绕具体问题提出意见。涉及第三方项目的讨论，未经相关授权不要在提交信息、PR 或其他公开内容中粘贴可能触发交叉引用的 issue / PR 编号或链接。
 
-我们遵循 [Angular 提交规范](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#-git-commit-guidelines)。每次提交的信息请采用如下格式：
+## 改了对外行为要同步什么
 
-```text
-<type>(<scope>): <subject>
+- `docs/README.md`：参数、响应、宿主限制和迁移方式。
+- `CHANGELOG.md`：用户会观察到的变化与升级影响。
+- `src/config/apiExplorer.ts`：接口表单和说明。
+- `docs/errors.md`：状态码、错误字段、错误键和处理建议。
+
+涉及版本或稳定接口的变动，还要核对 `docs/compatibility.md`，并补 Node 与 Serverless 的契约测试。公开文件使用简体中文；已有英文文件保持英文。示例只用虚构数据，不把内部工作代号写入公开内容。
+
+## 测试与验证
+
+项目使用 **Jest**。默认测试会拦截外网连接，只允许本机测试连接；新增测试应模拟上游响应，并检查字段和状态语义，不能只断言状态码落在某个集合里。
+
+在仓库根目录运行：
+
+```powershell
+npm ci
+npm run lint
+npm run build
+npm test -- --runInBand
+npm run test:contracts
+npm run build:js
+npm pack --dry-run
 ```
 
-**常用的 Type 列表：**
-- `feat`: 新增功能 (Feature)
-- `fix`: 修复 Bug
-- `docs`: 文档更新 (Documentation)
-- `style`: 代码格式调整（不影响逻辑，如空格、缩进）
-- `refactor`: 代码重构（既不修复 Bug 也不新增功能）
-- `test`: 增加或修改测试用例
-- `chore`: 构建过程或辅助工具的变动
+`npm run build` 只检查 TypeScript 类型，`npm run build:js` 才生成运行产物。`npm pack` 不会重新编译，所以检查包内容前必须先构建。全套 Jest 在 Windows 上使用 PowerShell，避免 Git Bash 的 tar 行为影响产物测试。
 
-**提交示例：**
-- `feat(api): add get singer album interface`
-- `fix(cookie): resolve cookie parsing error`
-- `docs(readme): update quick start guide`
+旧路由测试已改成模拟上游并纳入默认测试，不再按“旧路由”统一排除。测试集合的约定由 `tests/testSuite.layout.test.ts` 检查；新增或移动测试时要核对这份约定。需要连接真实 QQ 服务或使用真实账号的验证应与默认测试分开，明确说明操作范围并取得授权。离线测试通过不能替代真账号或各宿主的实际验收。
 
----
+`pre-commit` 对暂存的 TypeScript 文件运行 `lint-staged` 和 Biome，可能自动调整格式或 import；`commit-msg` 检查提交规范。hooks 不能替代完整验证，请在提交后再检查一次 diff。PR 中列出实际运行的检查，未完成的项目说明原因；合并前必须通过所需 CI 检查。
 
-## 测试要求
+## 安全与发布边界
 
-本项目历史版本可能缺乏完整的单元测试覆盖。但是，对于未来的贡献，**我们强烈建议并要求为所有新功能和 Bug 修复添加对应的测试用例**。
+公开 Issue、PR、fixture、日志和截图不能包含真实 Cookie、QR key、会话 token、`musickey`、账号或设备标识、auth-state 文件、`.env` 内容、完整播放链接或含凭证的 HAR。安全漏洞和凭证暴露请按 [SECURITY.md](./SECURITY.md) 私密报告。
 
-1. **测试框架**: 推荐使用主流的 Node.js 测试工具（如 Jest 或 Mocha）。
-2. **本地验证**: 在提交 PR 前，请确保完整验证链均能稳定通过：
-   ```bash
-   npm ci
-   npm run lint
-   npm run build
-   npm test
-   npm run build:js
-   npm pack --dry-run
-   ```
-3. **本地 hooks**: `pre-commit` 只对暂存文件运行 `lint-staged`，`commit-msg` 只运行 `commitlint`。它们用于快速反馈，不替代 CI，也不在 `pre-push` 重跑完整构建或测试。
-4. **CI 质量门**: GitHub Actions CI 是仓库的权威验证，PR 合并前必须通过 lint、类型检查、测试、JavaScript 构建和 npm package 内容检查。
-5. **PR 附件**: 请在 PR 描述中说明已运行的验证。如果因为特殊原因无法完成某项检查，请在 PR 中进行说明。
-6. **上游网络测试**: 不要仅凭测试是否导入 `supertest` 判断它是否访问真实 QQ 音乐服务。任何测试分层都必须使用明确的文件约定或清单，并确保巢状目录、JavaScript suite 与 coverage threshold 不会被漏掉。
-   - `npm test` 默认拦住所有外网连接，新测试请模拟上游回应，并检查回应内容，不要只看状态码。
-   - 只检查状态码落在某个集合里的旧路由测试放在 `tests/legacy-routes/`，不进默认测试。`npm run test:legacy-routes` 在拦住外网的情况下跑它们；`npm run probe:legacy-routes` 才会真的连 QQ 音乐，需要时手动跑，不进 CI。
-   - 这份清单记在 `tests/testSuite.layout.test.ts`；移动或新增这类测试时要一起更新。
-7. **发布边界**: 一般 PR 不修改版本、不建立或移动 tag，也不发布 npm。发布步骤只由维护者依 [RELEASING.md](./RELEASING.md) 明确执行。
-
----
-
-## 代码审查流程 (Code Review)
-
-1. **提交审查**: 提交 PR 后，项目维护者或自动化工具会对其进行初步检查。
-2. **反馈与讨论**: 维护者会对代码风格、API 设计、安全性或文档提出修改建议。
-3. **修改更新**: 请根据 Review 意见在原分支上继续提交修改，PR 会自动更新。
-4. **合并标准**: 所有必需的 CI 检查通过后，代码才可合并入 `main`。项目可由单一维护者维护，不强制设置会阻止维护者自行合并的多人 approval requirement。
-
-再次感谢您对开源社区的贡献！✨
+普通 PR 不修改包版本、不创建或移动 release tag，也不发布 npm。发布由维护者按 [RELEASING.md](./RELEASING.md) 执行。

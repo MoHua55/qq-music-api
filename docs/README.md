@@ -1,15 +1,16 @@
-<h2 align="center" id="qqmusicapi">QQ Music API</h2>
+# 使用文档
 
-这是非官方、社区维护的 QQ 音乐 API，可以独立部署，也可以嵌入 Node.js 或 Electron。软件按 [MIT License](https://github.com/yakult-green-tea/qq-music-api/blob/main/LICENSE) 提供。项目来源与许可证说明见 [ATTRIBUTION.md](https://github.com/yakult-green-tea/qq-music-api/blob/main/ATTRIBUTION.md)。
+QQ Music API 是非官方项目。可以运行独立的 Node 服务，也可以嵌入 Electron、Vercel 或 Cloudflare。项目介绍见[首页](../README.md)，授权与来源见 [LICENSE](../LICENSE) 和 [ATTRIBUTION](../ATTRIBUTION.md)。
 
-先按自己的用途往下看：
+按用途查阅：
 
-- [启动服务](#启动服务)：本机、npm 包和 Docker 的运行方式。
-- [API Explorer](#api-explorer)：用表单查看参数和响应。
-- [QQ 音乐原生扫码登录](#qq-音乐原生扫码登录)：扫码流程、会话和用户资料。
-- [查询登录通道与后端能力](#查询登录通道与后端能力)：判断当前部署支持什么。
-- [猜你喜欢、电台与推荐歌单](#猜你喜欢与推荐歌单)：歌曲、电台、歌单分类、新歌和错误响应。
-- [API接口](#api接口)：原有曲库、搜索、MV 等路由。
+- **部署**：[启动服务](#启动服务)、[配置](#配置)、[运行时入口](#运行时入口)、[Serverless 接入](#serverless-接入)与[部署限制](#serverless-部署限制)。
+- **登录**：[扫码流程](#qq-音乐原生扫码登录)、[失败诊断](#扫码失败诊断)、[后端能力](#查询登录通道与后端能力)。
+- **调用接口**：[接口一览](#接口一览)、[个人音乐库与歌单](#登录后的资料与歌单)、[推荐与电台](#猜你喜欢与推荐歌单)、[搜索](#搜索)、[歌手](#歌手)、[评论](#歌曲评论)、[MV](#mv)、[曲库与保留旧接口](#api接口)。
+- **升级**：[相容与版本政策](./compatibility.md)、[已移除的路由](#已移除)与 [CHANGELOG](../CHANGELOG.md)。
+- **排查与开发**：[错误响应](#出错时的响应)、[错误对照表](./errors.md)、[开发与验证](#开发与验证)、[排查问题](#排查问题)。
+
+本文按 3.3.4 的接口范围编写。示例里的歌曲、歌单、账号标识和链接都是虚构值，只展示格式；实际调用请使用自己查询到的结果。
 
 ## 启动服务
 
@@ -18,7 +19,7 @@
 ```powershell
 git clone https://github.com/yakult-green-tea/qq-music-api.git
 Set-Location qq-music-api
-npm install
+npm ci
 npm start
 ```
 
@@ -82,6 +83,7 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | `AUTO_OPEN_EXPLORER` | `false` | 启动后自动打开 Explorer；开发命令会设为 true |
 | `QQ_AUTH_STATE_PATH` | `.auth-state/qq-device.json` | Android 设备身份文件；设为 `memory` 时只留在内存 |
 | `QQ_AUTH_SESSION_PATH` | 无，默认只存内存 | Node 的加密会话文件路径；与 `QQ_SESSION_SECRET` 一起配置 |
+| `QQ_DISABLE_UPDATE_CHECK` | `false` | 设为 `true` 时禁止启动检查，优先于启用开关 |
 | `QQ_ENABLE_UPDATE_CHECK` | `false` | 启动时检查 npm 新版本 |
 | `QQ_WECHAT_POLL_BUDGET_MS` | `15000` | Node 的微信扫码每次 `/login/qr/check` 最多等多久（毫秒，1000–15000，填错或超出范围用默认值）。调短会让网络慢时等不到扫码 |
 | `LOG_LEVEL` | `info` | Node 服务的日志级别；排查时可设为 `debug`。请求日志只留方法、路由模板、参数键名和数量、白名单数字码及耗时；不打印歌曲 ID、mediaId 内容、完整参数或播放链接 |
@@ -97,17 +99,41 @@ Explorer 是内置的接口调试页面，入口为 `http://localhost:3200/explo
 | --- | --- | --- |
 | `@yakult-green-tea/qq-music-api` | Node.js、Docker、Electron | 完整 Koa 服务，可注入登录会话仓库 |
 | `@yakult-green-tea/qq-music-api/serverless` | 使用 Web 标准 Request / Response 的运行时 | `handleRequest(request, env, options)` |
-| `@yakult-green-tea/qq-music-api/mqtt` | 可以维持 WebSocket 长连接的可信宿主 | 手机 QQ 扫码的 MQTT 编解码与监听器 |
+| `@yakult-green-tea/qq-music-api/mqtt` | 可以维持 WebSocket 长连接的可信宿主 | 手机 QQ、QQ 音乐 App 扫码的 MQTT 编解码与监听器 |
 
 Node、Electron、Docker 的手机 QQ 扫码用 MQTT over WSS 长连接。Serverless 撑不住长连接，所以没有注入 `qqRelay` 时，手机 QQ 扫码改走纯 HTTP 的网页登录（见下面「Serverless 上的手机 QQ 扫码」），Vercel 和没绑 Durable Object 的 Cloudflare 都能直接用，不用另外配存储。QQ 音乐 App 扫码（`qqmusic`）只有 MQTT 这一套，还是要宿主提供中继：Workers 可以让 Durable Object 持有连接，再向 `handleRequest` 注入 `qqRelay`；注入中继后，手机 QQ 扫码也照旧走 MQTT。
 
 Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。轮换时可以暂时保留 `QQ_SESSION_SECRET_PREVIOUS`，等旧会话失效后再移除。
 
-### 部署到 Serverless 前要知道的两件事
+### Serverless 接入
 
-**网页版可能有几首歌拿不到链接。** Serverless（Vercel、Cloudflare 这类）是由部署平台的机房去向 QQ 要播放链接，QQ 看到的是机房的网络，不是使用者自己的网络。实际遇到过：同一个账号、同一批歌，桌面版和手机 App 都能播，网页版却有几首拿不到链接。这时回应照样是 `200`，那几首标的是 `url_unavailable`（见[获取歌曲播放链接](#获取歌曲播放链接)），不是服务出错，重试也不会变。原因还没完全确认，最可能和发出请求的网络有关，程序里修不了。想让能播的歌最多，就用 Node、Docker 或 Electron 跑在使用者自己的网络上。
+宿主把 Web 标准的 Request 交给本包，并转发返回的 Response。例如 Cloudflare Workers 的最小入口：
 
-**网页版的搜索可能一直是空的。** 同样的原因：QQ 对机房的网络有时不报错，而是回“成功、但没有结果”，`/search` 只能照实回 `200` 加空清单，分不出是真的搜不到还是被挡了。实测过同一个 Serverless 部署，一小时前还搜得到，之后不管登不登录、搜什么都是空的；同一份程序跑在自己的网络上就正常。需要稳定的搜索，就用 Node、Docker 或 Electron。
+```js
+import handleRequest from '@yakult-green-tea/qq-music-api/serverless';
+
+export default {
+  fetch(request, env) {
+    return handleRequest(request, env);
+  },
+};
+```
+
+Vercel 使用对应运行时的请求入口转接到同一个函数。登录所需的 `QQ_SESSION_SECRET` 由宿主从平台密钥传入第二个参数，不能硬编码进源码。需要 MQTT 中继时，通过第三个参数 `{ qqRelay }` 注入；中继服务及其部署由宿主负责。
+
+Serverless 入口没有 Koa 的通用 CORS 和 OPTIONS 中间件。跨来源调用时，宿主需要处理允许来源、请求头和预检；不要直接把 Node 中间件配置当作 Serverless 配置。
+
+| 通道 | 扫码方式 | Node / Docker / Electron | Serverless，无中继 | Serverless，有中继 |
+| --- | --- | --- | --- | --- |
+| `qq` | 手机 QQ 扫码 | MQTT | 默认 ptlogin HTTP 网页登录，可关闭 | MQTT 中继 |
+| `wechat` | 微信扫码 | 支持 | 支持 | 支持 |
+| `qqmusic` | QQ 音乐 App 扫码 | MQTT | 不提供 | MQTT 中继 |
+
+### Serverless 部署限制
+
+**网页版可能有几首歌拿不到链接。** Serverless（Vercel、Cloudflare 这类）是由部署平台的机房去向 QQ 要播放链接，QQ 看到的是机房的网络，不是使用者自己的网络。实际遇到过：同一个账号、同一批歌，桌面版和手机 App 都能播，网页版却有几首拿不到链接。这时回应照样是 `200`，那几首标的是 `url_unavailable`（见[获取歌曲播放链接](#获取歌曲播放链接)），原因尚未完全确认，不能把空链接直接解释成会员、地区或服务故障。Node、Docker 或 Electron 可以部署在用户自己的网络上，但也不能保证所有歌曲都能取得链接。
+
+**网页版的搜索可能一直是空的。** 实测中，QQ 对机房的网络有时不报错，而是回“成功、但没有结果”，`/search` 只能照实回 `200` 加空清单，分不出是真的搜不到还是被挡了。实测过同一个 Serverless 部署，一小时前还搜得到，之后不管登不登录、搜什么都是空的；同一份程序跑在自己的网络上就正常。需要稳定的搜索，就用 Node、Docker 或 Electron。
 
 **Serverless 上的手机 QQ 扫码。** 没有中继时，手机 QQ 扫码走 QQ 互联的网页登录（和 QQ 音乐官网「QQ 登录」同一套），每次 `/login/qr/check` 只问一次二维码状态，二维码和进度都封在 `unikey` 里，不用另外的存储。和 Node 版相比有几点不同：
 - 二维码大约 120 秒失效（Node 版是 180 秒），过期后照常回 `800`，重新取码就好。
@@ -116,7 +142,7 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 - 用的是 QQ 音乐网页在 QQ 互联的身份，属于兼容做法：QQ 改了网页登录流程，或者对部署平台的机房网络另眼相看时，可能会失败。要最稳定的手机 QQ 登录，就用 Node、Docker 或 Electron。
 - 不想提供这种登录时，把 `QQ_PTLOGIN_HTTP_ENABLED` 设成 `0`，`/login/channels` 就只剩 `wechat`。
 
-**每个新部署对 QQ 来说都是一台新设备。** Serverless 没有设备文件，设备身份是从 `QQ_SESSION_SECRET` 推导出来的：换一个部署、或者换了密钥，就算一台新设备。账号的登录设备已经满了的话，第一次扫码会失败（`upstreamErrorKey` 是 `auth.device-limit`，`failureHint.key` 是 `login.device-limit`；Node、Docker 这类走 MQTT 的手机 QQ 扫码要看 `primaryFailure`，Serverless 的网页登录直接在顶层，见[扫码失败诊断](#扫码失败诊断)）。先在手机上移除不再使用的登录设备，再扫一次就好。所以密钥定下来以后别随便换；轮换密钥时，也要预期大家下次登录会被当成新设备。
+**新的设备身份会占用设备名额。** Serverless 没有设备文件，设备身份是从 `QQ_SESSION_SECRET` 推导出来的：部署使用了不同密钥，就会推导出新的设备身份。账号的登录设备已经满了的话，扫码换凭证可能返回 `20279` 并失败（`upstreamErrorKey` 是 `auth.device-limit`，`failureHint.key` 是 `login.device-limit`；Node、Docker 这类走 MQTT 的手机 QQ 扫码要看 `primaryFailure`，Serverless 的网页登录直接在顶层，见[扫码失败诊断](#扫码失败诊断)）。先在 QQ 音乐 App 的设备管理中移除不再使用的登录设备，再重新扫码。请保留好设备文件和密钥；轮换密钥也会改变推导出的设备身份。
 
 ### 嵌入 Node.js 与 Electron
 
@@ -130,15 +156,17 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 
 **主动续期 `POST /login/refresh`**：带着当前会话调用（和其他接口一样放在 `X-QQ-Session` 或 `cookie` 里），回 `{ code: 200, data: { token, rotated, expiresAt } }`。只有离到期不到 6 小时时才会真的去续，平时调用不会多打上游，可以在启动时或定时调一次。`rotated` 是 `true` 时把 `token` 存下来、之后改用它；旧 token 照原来的到期时间继续可用，所以没存到也只是下次再续。Node、Electron、Docker 这类部署会照常静默续期，`token` 不变、`rotated` 是 `false`。Serverless 从第一次扫码算起最多续到 30 天，之后要重新扫码；续期失败时照用原来的 token，同一个实例 5 分钟内不再试。会话无效回 `401`；没设 `QQ_SESSION_SECRET` 的 Serverless 回 `501`。
 
+Serverless 的登出会清除客户端 token / Cookie，但已签发的 sealed token 不会立即撤销；续期后旧 token 也按原有效期继续可用。请把 token 当作凭证保护。
+
 ## 接口一览
 
-这个 fork 新增或重写的接口都在下表。要登录的接口，带上扫码得到的会话即可（Node 用 cookie `qqmusic_session` 或 `X-QQ-Session`，Serverless 用 `X-QQ-Session`）。出错时怎么读，看[错误对照表](./errors.md)。
+下表按功能列出主要接口。保留的旧曲库接口见[曲库与保留旧接口](#api接口)，移除记录见[已移除](#已移除)。要登录的接口，带上扫码得到的会话即可（Node 用 cookie `qqmusic_session` 或 `X-QQ-Session`，Serverless 用 `X-QQ-Session`）。出错时怎么读，看[错误对照表](./errors.md)。
 
 | 接口 | 要登录 | 做什么 | Serverless |
 | --- | --- | --- | --- |
 | **登录** | | | |
 | `GET /login/channels` | 否 | 这个部署支持哪些登录通道和功能 | ✓ |
-| `GET /login/qr/key`、`/login/qr/create` | 否 | 拿二维码（`channel=qq` 手机 QQ，`channel=wechat` 微信，`channel=qqmusic` QQ 音乐 App） | ✓（手机 QQ、QQ 音乐 App 要中继） |
+| `GET /login/qr/key`、`/login/qr/create` | 否 | 拿二维码（`channel=qq` 手机 QQ，`channel=wechat` 微信，`channel=qqmusic` QQ 音乐 App） | ✓（仅 QQ 音乐 App 必须有中继） |
 | `GET /login/qr/check` | 否 | 查扫码进度，成功时拿到会话 | ✓ |
 | `GET /login/qr/cancel` | 否 | 取消这张二维码 | ✓ |
 | `GET /login/status`、`/logout` | 是 | 查登录状态、登出 | ✓ |
@@ -187,37 +215,34 @@ Serverless 的 `QQ_SESSION_SECRET` 应由部署方生成并放入平台密钥。
 | `GET /getMusicPlay/:songmid` | 可选 | 播放链接；可选 `quality`（含 `best`）、`preview=1` 试听 | ✓（要登录） |
 | `GET /getSongInfo`、`/getSongListDetail`、`/getAlbumInfo`、`/getSingerAlbum`、`/getSingerHotsong` | 否 | 歌曲、歌单、专辑、歌手资料 | ✓ |
 
-MV、排行榜等其他接口沿用上游，只在 Node 上提供，参数见下方 [API接口](#api接口)。旧的 `/getSearchByKey` 已经在 3.3.2 移除，搜索请用 `/search`。
+保留的旧接口及其宿主限制见下方[曲库与保留旧接口](#api接口)。旧的 `/getSearchByKey` 已经在 3.3.2 移除，搜索请用 `/search`。
 
-## 红心写入
+## 出错时的响应
 
-`POST /user/song/like` 收 JSON `{ song: { id, mid, type: 0 }, liked }`。
-id 必须是正的安全整数，mid 是 1–64 位字母或数字，type 必填且只能是数字 0，liked 必须是布尔值；不收额外字段。
-先读歌曲详情核对 id／mid，再读红心状态；已是目标状态也要确认后才回 `{ code: 200, liked }`。
-需要变更时仅向系统目录 201 写一次，再读回目标状态；写入和确认流程不自动重试。
-关联无法确认、写入回应不明或读回未知／不符时回安全 `502`，`retryable: false`，不要盲目重送。
-默认启用，不需要实验写入开关；没有登录会话回 `401`。
-Serverless 未配置会话密钥时仍按既有规则回 `501`。
-`features.mutations.likeSong` 为 true。
-Node 已用手机 QQ 与微信各完成一次红心、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
+```json
+{
+  "code": 429,
+  "kind": "rate-limited",
+  "errorKey": "upstream.rate-limited",
+  "message": "Too many requests",
+  "retryable": false
+}
+```
 
-## 专辑收藏写入
+| 状态码 | 什么情况 | 常见的 `errorKey` |
+| --- | --- | --- |
+| `401` | 没登录，或凭证被 QQ 拒绝 | `auth.required`、`auth.credential-invalid` |
+| `422` | 上游成功但没有数据 | `resource.not-found` |
+| `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
+| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`search.rejected`、`network.*` |
 
-`POST /user/album/subscribe` 收 JSON `{ id: albumMid, subscribed }`。
-id 是 1–64 位字母或数字组成的专辑 MID 字符串，不收数字专辑 id；subscribed 必须是布尔值，不收额外字段。
-先读收藏状态，已是目标也要确认；需要变更时只写一次，再读回，确认后才回 `{ code: 200, subscribed }`。
-写入或读回不明／不符时回安全 `502`，`retryable: false`，整个确认流程不自动重试。
-默认启用，不需要实验写入开关；没有登录会话回 `401`。
-Serverless 未配置会话密钥时仍按既有规则回 `501`。
-`features.mutations.subscribeAlbum` 为 true。
-专辑状态读取与写入优先使用凭证中的精确字符串 owner，不从不安全 number 回建账号。
-安全范围的状态参数保持数字；超范围的 19 位 owner 以十进制字符串发送，写入始终用字符串。
-初始状态未知或被拒时不会写入。
-Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
+完整的状态码、`errorKey`、QQ 数字码和播放提示对照见[错误对照表](./errors.md)。上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
+
+想知道为什么回了 `401` 或 `422`，可以用 `LOG_LEVEL=debug` 启动：会多一条 `recommend.request-diagnostic` 日志，只有接口名、状态码、`errorKey` 和上游的数字码（推荐歌单跳过条目时也会记下跳过几条）。`5xx` 和 `429` 平时就会记一条 `recommend.request-failed` 警告。`LOG_LEVEL` 目前只在 Node 部署上确认有效；serverless 部署要看平台有没有把这个环境变量交给运行时。
 
 ## QQ 音乐原生扫码登录
 
-Node 支持手机 QQ、微信和 QQ 音乐 App 扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。扫码登录相关路由都是 GET。
+Node 支持手机 QQ、微信和 QQ 音乐 App 扫码。`qq` 指手机 QQ 扫码；入口仍接受旧名 `mobile`，但统一返回 `qq`。取码、显示二维码、检查和取消使用 GET；主动续期使用 POST。
 
 `qqmusic` 是用 QQ 音乐 App 扫码：打开 App 的扫一扫，用 App 里当下登录的账号直接登录，不管这个账号绑的是 QQ 还是微信。它的二维码和手机 QQ 扫码是同一种，也走同样的长连接（Serverless 一样要中继）；差别在后端会照 App 回报的账号类型去换凭证。反过来，用 QQ 音乐 App 扫 `qq` 的二维码，如果 App 登的是微信账号会登录失败，`failureHint.key` 是 `login.wrong-scan-app`，提示改用 QQ 音乐 App 登录。
 
@@ -230,7 +255,7 @@ Node 支持手机 QQ、微信和 QQ 音乐 App 扫码。`qq` 指手机 QQ 扫码
 | 关闭登录界面 | `/login/qr/cancel?key=<unikey>` | 取消二维码会话 |
 | 登录后 | `/login/status` | 读取 `data.profile`；未登录时 `data` 为空 |
 | 定时 | `POST /login/refresh` | `rotated` 为 `true` 时改存 `data.token` |
-| 退出 | `/logout` | 清除当前会话，也删除注入仓库中的记录 |
+| 退出 | `/logout` | Node 撤销会话并删除仓库记录；Serverless 清除客户端 token / Cookie |
 
 手机 QQ 图片目前为 PNG，微信图片目前为 JPEG，不要固定写死图片类型。服务同一时间只允许一个二维码会话；新会话会接管尚未扫码的旧会话。
 
@@ -275,6 +300,58 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 建立二维码之前的失败会退避：首次返回 `502` 和失败摘要，后续请求返回 `429`、`Retry-After` 和 `lastFailure`。取消或替换未扫码的二维码不计退避，过期清理只计一次。
 
 扫码失败后要等多久才能拿新二维码：一般是固定 15 秒（手机上取消、二维码过期、网络错误、换凭证被拒等都一样），连续失败也不会越等越久；上游明确说操作太频繁（登录码 `104604` 或上游 HTTP `429`）时是 30 秒。
+
+## 查询登录通道与后端能力
+
+先调用 `GET /login/channels`，就能知道当前部署支持哪些登录通道和后端功能。这个接口不需要登录，也不访问 QQ 上游。
+
+| 字段 | 怎么读 |
+| --- | --- |
+| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认是 `qq`（纯 HTTP 网页登录）和 `wechat`，注入 QQ 中继后是 `qq`、`wechat`、`qqmusic`（`qq` 改走中继），`QQ_PTLOGIN_HTTP_ENABLED=0` 又没有中继时只有 `wechat`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
+| `data.sessionMode` | Node 为 `stored`，serverless 为 `sealed` |
+| `data.configured` | Node 可直接使用内存会话，始终为 `true`；serverless 保持按 `QQ_SESSION_SECRET` 是否存在判断，只有旧密钥时仍为 `false` |
+| `data.features` | 按共用接口分组的方法布尔值，说明后端是否已实现相应能力。它与当前用户是否登录、上游是否接受凭证分开；需要登录的功能还要检查 `configured` 和 `/login/status` |
+
+`features` 的分组与方法名：
+
+| 分组 | 已实现的方法 | 尚未实现的方法 |
+| --- | --- | --- |
+| `auth` | `getLoginStatus`、`logout`、`getQrKey`、`createQr`、`checkQr`、`cancelQr` | — |
+| `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs`、`getCloudCollection`（`/user/cloud`） | — |
+| `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums`、`getCloudTracks`（`/user/cloud`）、`getSubscriptionStatus`（`/user/subscription-status`） | `getPlaylistDetail` |
+| `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
+| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`）、`getHotSearches`（`/search/hot`）、`getSearchSuggestions`（`/search/suggest`），两个运行时都是 `true` | — |
+| `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
+| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
+| `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
+| `songs` | `getSongLabels`（`/song/labels`） | — |
+| `mvs` | `getMvList`（`/mv/list`）、`getMvDetail`（`/mv/detail`）、`getMvUrl`（`/mv/url`）、`getSongMvs`（`/song/mvs`） | — |
+| `comments` | `getHotComments`（`/comment/hot`）、`getNewComments`（`/comment/new`）、`getCommentCount`（`/comment/count`） | — |
+| `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |
+| `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
+| `playbackReports` | — | `reportPlayback` |
+
+已有的 `/getSongListDetail` 继续返回原来的歌单数据；`catalog.getPlaylistDetail: false` 指的是尚未提供单独的歌单 metadata 能力。纯前端的可用性判断与本地诊断不属于这里的后端方法声明。
+
+响应示例（只展示部分 `features`）：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "channels": ["qq", "wechat", "qqmusic"],
+    "sessionMode": "stored",
+    "configured": true,
+    "features": {
+      "library": { "getLikedSongs": true },
+      "recommendations": { "getDailySongs": true, "dislikeSong": false },
+      "mutations": { "likeSong": true, "subscribeAlbum": true }
+    }
+  }
+}
+```
+
+新增方法时会在对应分组里加布尔字段。遇到自己不认识的字段可以忽略，查询尚未声明的方法时按不支持处理。
 
 ## 登录后的资料与歌单
 
@@ -399,6 +476,32 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 - 上游一页给 2000 首，分页在服务端切，所以一般一次请求只打一次上游；要的范围跨过 2000 首时多打一次。
 - 出错时和推荐接口同一套响应（见[出错时的响应](#出错时的响应)）：没登录或上游不认这组凭证回 `401`，上游格式不对或其他失败回 `502`；Serverless 没设 `QQ_SESSION_SECRET` 时回 `501`。
 - `/login/channels` 里的 `library.getCloudCollection`、`catalog.getCloudTracks` 是 `true`，都指这条接口：有歌时把云盘当成一个集合显示（首数用 `count`），点进去用 `limit`、`offset` 翻页。
+
+### 红心写入
+
+`POST /user/song/like` 收 JSON `{ song: { id, mid, type: 0 }, liked }`。
+id 必须是正的安全整数，mid 是 1–64 位字母或数字，type 必填且只能是数字 0，liked 必须是布尔值；不收额外字段。
+先读歌曲详情核对 id／mid，再读红心状态；已是目标状态也要确认后才回 `{ code: 200, liked }`。
+需要变更时仅向系统目录 201 写一次，再读回目标状态；写入和确认流程不自动重试。
+关联无法确认、写入回应不明或读回未知／不符时回安全 `502`，`retryable: false`，不要盲目重送。
+默认启用，不需要实验写入开关；没有登录会话回 `401`。
+Serverless 未配置会话密钥时仍按既有规则回 `501`。
+`features.mutations.likeSong` 为 true。
+Node 已用手机 QQ 与微信各完成一次红心、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
+
+### 专辑收藏写入
+
+`POST /user/album/subscribe` 收 JSON `{ id: albumMid, subscribed }`。
+id 是 1–64 位字母或数字组成的专辑 MID 字符串，不收数字专辑 id；subscribed 必须是布尔值，不收额外字段。
+先读收藏状态，已是目标也要确认；需要变更时只写一次，再读回，确认后才回 `{ code: 200, subscribed }`。
+写入或读回不明／不符时回安全 `502`，`retryable: false`，整个确认流程不自动重试。
+默认启用，不需要实验写入开关；没有登录会话回 `401`。
+Serverless 未配置会话密钥时仍按既有规则回 `501`。
+`features.mutations.subscribeAlbum` 为 true。
+专辑状态读取与写入优先使用凭证中的精确字符串 owner，不从不安全 number 回建账号。
+安全范围的状态参数保持数字；超范围的 19 位 owner 以十进制字符串发送，写入始终用字符串。
+初始状态未知或被拒时不会写入。
+Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一次取消及独立读回还原；Serverless 真账号与前端界面尚未验收。
 
 <a id="猜你喜欢与推荐歌单"></a>
 
@@ -561,6 +664,8 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 这几条都是：上游成功但没有数据回 `422`，给了条目却一条都读不出来回 `502`（`upstream.invalid-response`），上游业务码不是 0 回 `502` 并保留数字。
 
+## 搜索
+
 ### 关键字搜索
 
 `GET /search?keyword=<关键字>&type=song&page=1&limit=10` 按关键字搜索，Node 和 Serverless 都能用。
@@ -594,7 +699,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 两条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
-### 歌手
+## 歌手
 
 下面几条都不用登录，Node 和 Serverless 都能用。要 `mid` 的都是歌手 mid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
 
@@ -616,7 +721,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 这几条都是：上游给空清单回 `422`；给了条目却一条都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
-### 歌曲评论
+## 歌曲评论
 
 不用登录，Node 和 Serverless 都能用。`id` 是数字歌曲 id（和 `/song/similar` 一样），没给或不是正整数回 `400`、不请求上游。
 
@@ -630,7 +735,7 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 这几条都是：上游给空清单回 `422`；给了评论却一则都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
-### MV
+## MV
 
 不用登录，Node 和 Serverless 都能用。`vid` 是 MV 的 vid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
 
@@ -654,82 +759,9 @@ key、create 的错误响应和 check 的 `800` 响应可能带以下字段。�
 
 这几条都是：上游给空清单回 `422`；给了条目却一支都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
-### 出错时的响应
+<a id="api接口"></a>
 
-```json
-{
-  "code": 429,
-  "kind": "rate-limited",
-  "errorKey": "upstream.rate-limited",
-  "message": "Too many requests",
-  "retryable": false
-}
-```
-
-| 状态码 | 什么情况 | 常见的 `errorKey` |
-| --- | --- | --- |
-| `401` | 没登录，或凭证被 QQ 拒绝 | `auth.required`、`auth.credential-invalid` |
-| `422` | 上游成功但没有数据 | `resource.not-found` |
-| `429` | 上游限流；上游给了冷却时间才带 `retryAfterMs` 和 `Retry-After` | `upstream.rate-limited` |
-| `502` | 上游失败、网络出错或回应格式不对；拿得到的上游数字码放在 `upstreamCode` | `upstream.unknown`、`upstream.http`、`upstream.invalid-response`、`recommendation.rejected`、`search.rejected`、`network.*` |
-
-完整的状态码、`errorKey`、QQ 数字码和播放提示对照见[错误对照表](./errors.md)。上面的数字和歌曲信息都是虚构示例。`message` 是固定的英文说明，不会带上游的原始内容或凭证。
-
-想知道为什么回了 `401` 或 `422`，可以用 `LOG_LEVEL=debug` 启动：会多一条 `recommend.request-diagnostic` 日志，只有接口名、状态码、`errorKey` 和上游的数字码（推荐歌单跳过条目时也会记下跳过几条）。`5xx` 和 `429` 平时就会记一条 `recommend.request-failed` 警告。`LOG_LEVEL` 目前只在 Node 部署上确认有效；serverless 部署要看平台有没有把这个环境变量交给运行时。
-
-## 查询登录通道与后端能力
-
-先调用 `GET /login/channels`，就能知道当前部署支持哪些登录通道和后端功能。这个接口不需要登录，也不访问 QQ 上游。
-
-| 字段 | 怎么读 |
-| --- | --- |
-| `data.channels` | 可用的扫码通道 id。Node 为 `qq`、`wechat`、`qqmusic`；serverless 默认是 `qq`（纯 HTTP 网页登录）和 `wechat`，注入 QQ 中继后是 `qq`、`wechat`、`qqmusic`（`qq` 改走中继），`QQ_PTLOGIN_HTTP_ENABLED=0` 又没有中继时只有 `wechat`。`qq` 是手机 QQ 扫码，`qqmusic` 是 QQ 音乐 App 扫码；新的通道排在最后，只认得 `qq`、`wechat` 的前端照旧可用 |
-| `data.sessionMode` | Node 为 `stored`，serverless 为 `sealed` |
-| `data.configured` | Node 可直接使用内存会话，始终为 `true`；serverless 保持按 `QQ_SESSION_SECRET` 是否存在判断，只有旧密钥时仍为 `false` |
-| `data.features` | 按共用接口分组的方法布尔值，说明后端是否已实现相应能力。它与当前用户是否登录、上游是否接受凭证分开；需要登录的功能还要检查 `configured` 和 `/login/status` |
-
-`features` 的分组与方法名：
-
-| 分组 | 已实现的方法 | 尚未实现的方法 |
-| --- | --- | --- |
-| `auth` | `getLoginStatus`、`logout`、`getQrKey`、`createQr`、`checkQr`、`cancelQr` | — |
-| `library` | `getUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getLikedSongs`、`getCloudCollection`（`/user/cloud`） | — |
-| `catalog` | `getPlaylistTracks`、`getAlbumDetail`、`getAlbumTracks`、`getArtistDetail`、`getArtistSongs`、`getArtistAlbums`、`getCloudTracks`（`/user/cloud`）、`getSubscriptionStatus`（`/user/subscription-status`） | `getPlaylistDetail` |
-| `playback` | `getSongDetail`、`getAudioSource`、`preview`（`/getMusicPlay` 支持 `preview=1`） | `getReplacement` |
-| `search` | `searchSongs`、`searchAlbums`、`searchPlaylists`、`searchArtists`（`/search`）、`getHotSearches`（`/search/hot`）、`getSearchSuggestions`（`/search/suggest`），两个运行时都是 `true` | — |
-| `lyrics` | `getLyrics`（`/getLyric`，两个运行时都是 `true`） | `getChorusRanges` |
-| `recommendations` | `getPersonalFm`（`/user/guess-you-like`）、`getDailySongs`（`/user/daily-songs`）、`getRecommendedCollections`（`/recommend/playlists`）、`personalFmModes`（可以选电台，见 `radio`）、`getPlaylistCategories`、`getCategoryPlaylists`、`getNewSongs`、`getNewAlbums`、`getToplists`、`getToplistSongs`、`getRadarSongs`、`getSimilarSongs`、`getRelatedPlaylists`（`/recommend/categories`、`/recommend/category-playlists`、`/recommend/new-songs`、`/recommend/new-albums`、`/recommend/toplists`、`/recommend/toplist`、`/recommend/radar`、`/song/similar`、`/song/related-playlists`） | `getHistoryEntries`、`getHistoryDates`、`getHistorySongs`、`dislikeSong` |
-| `radio` | `getRadioList`（`/radio/list`）、`getRadioTracks`（`/radio/tracks`） | — |
-| `songs` | `getSongLabels`（`/song/labels`） | — |
-| `mvs` | `getMvList`（`/mv/list`）、`getMvDetail`（`/mv/detail`）、`getMvUrl`（`/mv/url`）、`getSongMvs`（`/song/mvs`） | — |
-| `comments` | `getHotComments`（`/comment/hot`）、`getNewComments`（`/comment/new`）、`getCommentCount`（`/comment/count`） | — |
-| `singers` | `getSingerList`（`/singer/list`）、`getSingerDetail`（`/singer/detail`）、`getSingerHomepage`（`/singer/homepage`）、`getSimilarSingers`（`/singer/similar`）、`getSingerSongs`（`/singer/songs`）、`getSingerMvs`（`/singer/mvs`） | — |
-| `mutations` | `updatePlaylistTracks`、`likeSong`、`subscribePlaylist`、`subscribeAlbum` | — |
-| `playbackReports` | — | `reportPlayback` |
-
-已有的 `/getSongListDetail` 继续返回原来的歌单数据；`catalog.getPlaylistDetail: false` 指的是尚未提供单独的歌单 metadata 能力。纯前端的可用性判断与本地诊断不属于这里的后端方法声明。
-
-响应示例（只展示部分 `features`）：
-
-```json
-{
-  "code": 200,
-  "data": {
-    "channels": ["qq", "wechat", "qqmusic"],
-    "sessionMode": "stored",
-    "configured": true,
-    "features": {
-      "library": { "getLikedSongs": true },
-      "recommendations": { "getDailySongs": true, "dislikeSong": false },
-      "mutations": { "likeSong": true, "subscribeAlbum": true }
-    }
-  }
-}
-```
-
-新增方法时会在对应分组里加布尔字段。遇到自己不认识的字段可以忽略，查询尚未声明的方法时按不支持处理。
-
-## API接口
+## 曲库与保留旧接口
 
 下面是原有路由的索引，主要用于 Node 服务。Serverless 支持的范围以 `/login/channels` 为准，不能把整个 Node 路由表当成 Serverless 的功能清单。
 
@@ -780,10 +812,6 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 `GET /getDigitalAlbumLists` 返回数字专辑推荐等数据。
 
-### 获取歌手信息
-
-`GET /getSingerDesc?singermid=demo-singer-mid` 返回歌手资料；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/detail`](#歌手)。
-
 ### 获取歌手热门歌曲
 
 `GET /getSingerHotsong?singermid=demo-singer-mid&limit=5&page=0` 返回热门歌曲。`singermid` 必填，`limit` 默认 5、`page` 默认 0，保留原有分页算法。
@@ -791,18 +819,6 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 ### 获取歌手专辑
 
 `GET /getSingerAlbum?singermid=demo-singer-mid&limit=5&page=0` 返回歌手专辑。`singermid` 必填，`limit` 默认 5；`page` 默认 0，作为专辑列表的起始位置传给上游。
-
-### 获取相似歌手
-
-`GET /getSimilarSinger?singermid=demo-singer-mid` 返回相似歌手；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/similar`](#歌手)。
-
-### 获取歌手列表
-
-`GET /getSingerList` 返回歌手列表。可用 `area`、`sex`、`genre`、`index` 筛选，默认都为 `-100`；`page` 默认 1。具体筛选值以返回数据为准。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/list`](#歌手)。
-
-### 获取歌手被关注数量信息
-
-`GET /getSingerStarNum?singermid=demo-singer-mid` 返回关注数量；`singermid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/homepage`](#歌手) 的 `fansNum`。
 
 ### 获取歌曲相关信息
 
@@ -876,29 +892,9 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 想要翻译就带 `trans=1`：旧接口给的翻译是空的时，会再去另一个歌词接口要一次翻译，要到就放进 `trans`（同样是 base64 的 LRC）。外文歌比较常要得到，中文歌多半本来就没有翻译，这时会白打一次请求、`trans` 仍是空字符串。补的那次只试一次，失败也不影响歌词本身，照常回 `200`。不带 `trans=1` 时和以前完全一样，只打一次上游。
 
-### 获取搜索热词
-
-`GET /getHotkey` 返回搜索热词。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/search/hot`](#热搜和搜索建议)。
-
 ### 获取关键字搜索提示
 
 `GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，以后会移除（3.3.4 先留着）：要搜索词请用 [`/search/suggest`](#热搜和搜索建议)，要直接找歌曲、歌手、专辑请用 `/search`。
-
-### 获取MV标签
-
-`GET /getMvByTag` 返回 MV 标签。只在 Node 上有，打算在 3.3.4 移除，筛选值请改用 [`/mv/list`](#mv) 回包里的 `tags`。
-
-### 获取MV
-
-`GET /getMv?area_id=15&version_id=7&limit=20&page=0` 返回 MV 列表，示例显示默认值。分类可从返回的标签数据中读取。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/mv/list`](#mv)。
-
-### 获取MV播放信息
-
-`GET /getMvPlay?vid=demo-video-id` 返回 MV 播放信息；`vid` 必填。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/mv/detail`、`/mv/url`](#mv)。
-
-### 获取歌手MV
-
-`GET /getSingerMv?singermid=demo-singer-mid&num=5&order=time` 返回歌手 MV。`singermid` 必填，`num` 默认 5；数量 query 参数是 `num`。`order=time` 会启用对应的时间排序请求。只在 Node 上有，打算在 3.3.4 移除，请改用 [`/singer/mvs`](#歌手)。
 
 ### 获取新碟信息
 
@@ -940,7 +936,9 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 `GET /downloadQQMusic` 返回 QQ 音乐产品下载地址。
 
-## 新特性
+<a id="新特性"></a>
+
+## 旧 Web Cookie 接口
 
 这一节保留旧的 Web Cookie 接口入口。新应用优先使用扫码会话，不需要手动复制 QQ 原始 Cookie。
 
@@ -962,13 +960,41 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 Web 宿主没有全局 `Buffer` 时，扫码和二进制协议使用标准 Web API 的字节实现；Node 保留原 Buffer。serverless 核心无需 npm 包或 Node 运行时模块。Cloudflare 的构建需按宿主设置编译时的日志环境变量；未配置会话密钥的登录路由仍回 `501`。
 
+## 已移除
+
+以下 9 条旧路由已在 3.3.4 移除，3.3.3 已提前预告。请改用右侧接口；新接口的参数、响应和分页方式可能不同，按对应章节调整调用，不能只替换路径。
+
+<a id="获取搜索热词"></a>
+<a id="获取歌手列表"></a>
+<a id="获取歌手信息"></a>
+<a id="获取歌手被关注数量信息"></a>
+<a id="获取相似歌手"></a>
+<a id="获取歌手mv"></a>
+<a id="获取mv"></a>
+<a id="获取mv标签"></a>
+<a id="获取mv播放信息"></a>
+
+| 已移除路由 | 改用 | 迁移要点 |
+| --- | --- | --- |
+| `/getHotkey` | [`/search/hot`](#热搜和搜索建议) | 读取 `hotkeys[].keyword` |
+| `/getSingerList` | [`/singer/list`](#歌手) | 用 `offset` / `limit` 分页，筛选值从 `tags` 读取 |
+| `/getSingerDesc` | [`/singer/detail`](#歌手) | 歌手参数改为 `mid` |
+| `/getSingerStarNum` | [`/singer/homepage`](#歌手) | 歌手参数改为 `mid`，粉丝数为 `fansNum` |
+| `/getSimilarSinger` | [`/singer/similar`](#歌手) | 歌手参数改为 `mid` |
+| `/getSingerMv` | [`/singer/mvs`](#歌手) | 歌手参数改为 `mid`，使用 `offset` / `limit` |
+| `/getMv` | [`/mv/list`](#mv) | 筛选参数为 `area` / `version`，使用 `offset` / `limit` |
+| `/getMvByTag` | [`/mv/list`](#mv) | 从响应的 `tags` 读取筛选值 |
+| `/getMvPlay` | [`/mv/detail`、`/mv/url`](#mv) | 分别读取详情与播放链接，参数仍为 `vid` |
+
+替代接口在 Node 和 Serverless 都有提供，错误处理方式见[出错时的响应](#出错时的响应)。其他旧路由本阶段保持原样，后续迁移安排另行公布。
+
 ## 当前架构
 
 - `src/app.ts` 负责启动 Koa、挂载路由和 Explorer。
 - `src/controllers/` 处理 HTTP 参数与响应，`src/services/` 访问 QQ 数据。
 - `src/protocol/` 保存协议描述与错误分类，`src/transport/` 提供传输组件。
 - `src/serverless/` 提供 Web 标准入口；各部署支持的功能由能力接口声明。
-- `src/config/apiExplorer.ts` 是 Explorer 的接口清单和参数来源。
+- API Explorer 通过 `/explorer/metadata` 提供接口清单和参数说明。
 - `tests/` 覆盖服务、HTTP 契约、Explorer 和发布产物。
 
 ## API结构图
@@ -990,13 +1016,10 @@ Web 宿主没有全局 `Buffer` 时，扫码和二进制协议使用标准 Web A
 | `npm run lint` | 检查源码 |
 | `npm test` | 全套 Jest 离线测试，只允许本机测试连接 |
 | `npm run test:contracts` | Folia、Serverless 和发布产物契约测试 |
-| `npm run test:legacy-routes` | 预留的旧路由测试入口；当前集合为空，正常结束 |
-| `npm run probe:legacy-routes` | 允许真实上游的探测入口；当前集合为空，新增探测后需手动运行 |
 | `npm run build:js` | 生成 CommonJS、ESM、类型与运行时资源 |
 | `npm run start:dist` | 运行编译产物 |
-| `npm run docs` | 在本机预览 Docsify 文档 |
 
-全套 Jest 在 Windows 上使用 PowerShell。离线测试通过表示本地契约通过，不能替代真账号或各宿主的实际验收。发布流程见 [RELEASING.md](https://github.com/yakult-green-tea/qq-music-api/blob/main/RELEASING.md)，贡献方式见 [CONTRIBUTING.md](https://github.com/yakult-green-tea/qq-music-api/blob/main/CONTRIBUTING.md)。
+文档直接在 GitHub 或 Markdown 阅读器中查看，不需要 Docsify 或 GitHub Pages。全套 Jest 在 Windows 上使用 PowerShell。离线测试通过表示本地契约通过，不能替代真账号或各宿主的实际验收。发布流程见 [RELEASING.md](../RELEASING.md)，贡献方式见 [CONTRIBUTING.md](../CONTRIBUTING.md)。
 
 ## 排查问题
 
