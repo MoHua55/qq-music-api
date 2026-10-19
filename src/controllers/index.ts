@@ -35,13 +35,9 @@ import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
 import getGuessYouLike from './getGuessYouLike';
-import getHotKey from './getHotkey';
 import getImageUrl from './getImageUrl';
 import getLyric from './getLyric';
-import getMv from './getMv';
-import getMvByTag from './getMvByTag';
 import { getMvDetail, getMvList, getMvUrl, getSongMvs } from './getMvCatalog';
-import getMvPlay from './getMvPlay';
 import getNewDisks from './getNewDisks';
 import { getRadioList, getRadioTracks } from './getRadio';
 import getRadioLists from './getRadioLists';
@@ -59,7 +55,6 @@ import getRecommendPlaylists from './getRecommendPlaylists';
 import getRecommendRadar from './getRecommendRadar';
 import getSearch from './getSearch';
 import { getHotSearches, getSearchSuggestions } from './getSearchSuggest';
-import getSimilarSinger from './getSimilarSinger';
 import {
   getSimilarSingers,
   getSingerDetail,
@@ -68,10 +63,6 @@ import {
   getSingerSongs,
   listSingers,
 } from './getSingerCatalog';
-import getSingerDesc from './getSingerDesc';
-import getSingerList from './getSingerList';
-import getSingerMv from './getSingerMv';
-import getSingerStarNum from './getSingerStarNum';
 import getSmartbox from './getSmartbox';
 import getSongLabels from './getSongLabels';
 import getSongListCategories from './getSongListCategories';
@@ -108,7 +99,6 @@ export default {
     'subscriptionStatus',
     operationController(subscriptionStatus),
   ),
-  getHotKey: withControllerLogging('getHotKey', getHotKey),
   getSmartbox: withControllerLogging('getSmartbox', getSmartbox),
   getSongListCategories: withControllerLogging('getSongListCategories', getSongListCategories),
   getSongLists: withControllerLogging('getSongLists', getSongLists),
@@ -120,18 +110,11 @@ export default {
     operationController(getSongListDetail),
   ),
   getNewDisks: withControllerLogging('getNewDisks', getNewDisks),
-  getMvByTag: withControllerLogging('getMvByTag', getMvByTag),
-  getMv: withControllerLogging('getMv', getMv),
-  getSingerList: withControllerLogging('getSingerList', getSingerList),
-  getSimilarSinger: withControllerLogging('getSimilarSinger', getSimilarSinger),
   getSingerAlbum: withControllerLogging('getSingerAlbum', operationController(getSingerAlbum)),
   getSingerHotsong: withControllerLogging(
     'getSingerHotsong',
     operationController(getSingerHotsong),
   ),
-  getSingerMv: withControllerLogging('getSingerMv', getSingerMv),
-  getSingerDesc: withControllerLogging('getSingerDesc', getSingerDesc),
-  getSingerStarNum: withControllerLogging('getSingerStarNum', getSingerStarNum),
   getRadioLists: withControllerLogging('getRadioLists', getRadioLists),
   getDigitalAlbumLists: withControllerLogging('getDigitalAlbumLists', getDigitalAlbumLists),
   getLyric: withControllerLogging('getLyric', getLyric),
@@ -139,7 +122,6 @@ export default {
   getAlbumInfo: withControllerLogging('getAlbumInfo', operationController(getAlbumInfo)),
   getComments: withControllerLogging('getComments', getComments),
   getRecommend: withControllerLogging('getRecommend', getRecommend),
-  getMvPlay: withControllerLogging('getMvPlay', getMvPlay),
   getTopLists: withControllerLogging('getTopLists', getTopLists),
   getRanks: withControllerLogging('getRanks', getRanks),
   getTicketInfo: withControllerLogging('getTicketInfo', getTicketInfo),

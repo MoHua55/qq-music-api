@@ -75,8 +75,6 @@ router.get('/radio/tracks', context.getRadioTracks);
 // downloadQQMusic
 router.get('/downloadQQMusic', context.getDownloadQQMusic);
 
-router.get('/getHotkey', context.getHotKey);
-
 // search smartbox
 router.get('/getSmartbox/:key?', context.getSmartbox);
 
@@ -98,35 +96,11 @@ router.get('/getSongListDetail/:disstid?', context.getSongListDetail);
 // newDisk
 router.get('/getNewDisks/:page?/:limit?', context.getNewDisks);
 
-// getMvByTag
-router.get('/getMvByTag', context.getMvByTag);
-
-// MV
-// area_id=15&version_id=7
-router.get('/getMv/:area_id?/:version_id?/:limit?/:page?', context.getMv);
-
-// getSingerList
-router.get('/getSingerList/:area?/:sex?/:genre?/:index?/:page?', context.getSingerList);
-
-// getSimilarSinger
-// singermid=0025NhlN2yWrP4
-router.get('/getSimilarSinger/:singermid?', context.getSimilarSinger);
-
 // getSingerAlbum
 // singermid=0025NhlN2yWrP4
 router.get('/getSingerAlbum/:singermid?/:limit?/:page?', context.getSingerAlbum);
 
 router.get('/getSingerHotsong/:singermid?/:limit?/:page?', context.getSingerHotsong);
-
-/**
- * @description: getSingerMv
- * @param order: time(fan upload) || listen(singer all)
- */
-router.get('/getSingerMv/:singermid?/:limit?/:order?', context.getSingerMv);
-
-router.get('/getSingerDesc/:singermid?', context.getSingerDesc);
-
-router.get('/getSingerStarNum/:singermid?', context.getSingerStarNum);
 
 // radio
 router.get('/getRadioLists', context.getRadioLists);
@@ -153,9 +127,6 @@ router.get(
 
 // recommend
 router.get('/getRecommend', context.getRecommend);
-
-// mv play
-router.get('/getMvPlay/:vid?', context.getMvPlay);
 
 // rankList: getTopLists
 router.get('/getTopLists', context.getTopLists);

@@ -1,1 +1,61 @@
-[]
+[
+  {
+    "path": "/getHotkey",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSingerList",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSingerDesc",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSingerStarNum",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSimilarSinger",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSingerMv",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getMv",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getMvByTag",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getMvPlay",
+    "since": "3.3.4",
+    "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getTopLists",
+    "runtime": "node",
+    "baseline": "3.3.3",
+    "since": "3.3.4",
+    "reason": "3.3.3 的 /getSingerList 会改写共用的 commonParams，比对时排在它后面的请求会夹带它的 data；那条路由移除后就不再夹带"
+  },
+  {
+    "path": "/getRanks",
+    "runtime": "node",
+    "baseline": "3.3.3",
+    "since": "3.3.4",
+    "reason": "3.3.3 的 /getSingerList 会改写共用的 commonParams，比对时排在它后面的请求会夹带它的 data；那条路由移除后就不再夹带"
+  }
+]

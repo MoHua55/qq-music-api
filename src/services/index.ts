@@ -8,7 +8,6 @@ import downloadQQMusic from './downloadQQMusic';
 // music
 import getLyric from './music/getLyric';
 // MV
-import getMvByTag from './mv/getMvByTag';
 // radio
 import getRadioLists from './radio/getRadioLists';
 // getTopLists
@@ -19,14 +18,9 @@ import { getRadioList, getRadioTracks } from './recommend/getRadio';
 import getRecommendPlaylists from './recommend/getRecommendPlaylists';
 import { getRelatedPlaylists, getSimilarSongs } from './recommend/getSongRelations';
 // search
-import getHotKey from './search/getHotKey';
 import getSearch from './search/getSearch';
 import getSmartbox from './search/getSmartbox';
 // singer
-import getSimilarSinger from './singers/getSimilarSinger';
-import getSingerDesc from './singers/getSingerDesc';
-import getSingerMv from './singers/getSingerMv';
-import getSingerStarNum from './singers/getSingerStarNum';
 import getAuthenticatedSongListDetail from './songLists/getAuthenticatedSongListDetail';
 import songListCategories from './songLists/songListCategories';
 import songListDetail from './songLists/songListDetail';
@@ -42,7 +36,6 @@ import getUserPlaylist from './user/getUserPlaylist';
 export default {
   downloadQQMusic,
   // search
-  getHotKey,
   getSmartbox,
   // song lists
   songLists,
@@ -50,12 +43,7 @@ export default {
   songListDetail,
   getAuthenticatedSongListDetail,
   // MV
-  getMvByTag,
   // singer
-  getSimilarSinger,
-  getSingerMv,
-  getSingerDesc,
-  getSingerStarNum,
   // radio
   getRadioLists,
   // DigitalAlbum

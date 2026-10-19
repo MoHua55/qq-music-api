@@ -174,7 +174,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
   { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
   { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
-  { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
   { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
   { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
   { name: 'getHotSearches', method: 'GET', routePath: '/search/hot', category: 'Search' },
@@ -226,13 +225,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     routePath: '/getNewDisks/:page?/:limit?',
     category: 'Album',
   },
-  { name: 'getMvByTag', method: 'GET', routePath: '/getMvByTag', category: 'MV' },
-  {
-    name: 'getMv',
-    method: 'GET',
-    routePath: '/getMv/:area_id?/:version_id?/:limit?/:page?',
-    category: 'MV',
-  },
   { name: 'listSingers', method: 'GET', routePath: '/singer/list', category: 'Singer' },
   { name: 'getSingerDetail', method: 'GET', routePath: '/singer/detail', category: 'Singer' },
   {
@@ -253,18 +245,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
   { name: 'getSongMvs', method: 'GET', routePath: '/song/mvs', category: 'MV' },
   { name: 'getSongLabels', method: 'GET', routePath: '/song/labels', category: 'Song' },
   {
-    name: 'getSingerList',
-    method: 'GET',
-    routePath: '/getSingerList/:area?/:sex?/:genre?/:index?/:page?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSimilarSinger',
-    method: 'GET',
-    routePath: '/getSimilarSinger/:singermid?',
-    category: 'Singer',
-  },
-  {
     name: 'getSingerAlbum',
     method: 'GET',
     routePath: '/getSingerAlbum/:singermid?/:limit?/:page?',
@@ -274,24 +254,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     name: 'getSingerHotsong',
     method: 'GET',
     routePath: '/getSingerHotsong/:singermid?/:limit?/:page?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerMv',
-    method: 'GET',
-    routePath: '/getSingerMv/:singermid?/:limit?/:order?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerDesc',
-    method: 'GET',
-    routePath: '/getSingerDesc/:singermid?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerStarNum',
-    method: 'GET',
-    routePath: '/getSingerStarNum/:singermid?',
     category: 'Singer',
   },
   { name: 'getRadioLists', method: 'GET', routePath: '/getRadioLists', category: 'Radio' },
@@ -327,7 +289,6 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
     category: 'Common',
   },
   { name: 'getRecommend', method: 'GET', routePath: '/getRecommend', category: 'Recommend' },
-  { name: 'getMvPlay', method: 'GET', routePath: '/getMvPlay/:vid?', category: 'MV' },
   { name: 'getTopLists', method: 'GET', routePath: '/getTopLists', category: 'Rank' },
   {
     name: 'getRanks',
@@ -653,10 +614,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getDownloadQQMusic: {
     description: 'Get download URL information for QQ Music.',
   },
-  getHotkey: {
-    id: 'get-hotkey',
-    description: 'Get current hot search keywords.',
-  },
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
   },
@@ -824,9 +781,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Get song list detail by disstid. With a login session, also reads the QQ Music algorithmic playlists the anonymous CGI rejects with code 10.',
   },
-  getMv: {
-    description: 'Get MV list by area and version.',
-  },
   getSingerAlbum: {
     description: 'Get album list for a singer.',
   },
@@ -879,9 +833,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getComments: {
     description: 'Get comment list by content and pagination identifiers.',
-  },
-  getMvPlay: {
-    description: 'Get MV playable stream URLs by video ID.',
   },
 };
 
