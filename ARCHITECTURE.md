@@ -13,14 +13,14 @@
 | `src/routes/manifest.ts` | 记录路由名称、方法、路径、handler、密钥要求及 Explorer 分类 |
 | `src/routes/operations/` | 共用 handler：读取参数、调用业务、交出响应结果 |
 | `src/services/` | 登录、会话、曲库、推荐、播放和写入等业务处理 |
-| `src/protocol/` | 上游请求封装、响应校验、业务码登记、错误分类和播放提示规则 |
-| `src/transport/` | 共用 HTTP 传输接口、fetch 实现、超时和限流 |
+| `src/protocol/` | 上游请求封装、响应校验、业务码登记、错误分类、播放提示规则，以及 HTTP 传输接口、超时和限流 |
+| `src/transport/` | 按协议层定义的传输接口提供 fetch 实现 |
 | `src/config/apiExplorer.ts`、`public/explorer/` | Explorer 元数据及调试页面 |
 | `tests/`、`scripts/compat/` | 离线案例、接口与产物契约检查、版本行为比对 |
 
 handler 依赖 `OperationRequest`，不用知道 Koa `Context` 或 Web `Request` 的细节。结果统一为 `{ status, headers, body }`，两种转接器分别写入 `ctx` 或生成 `Response`。业务解析和上游调用放在服务中，便于用同一份模拟响应测试。
 
-HTTP 实现目前有三条路径：共用 musicu 客户端使用 `src/transport/`；认证服务使用注入的 `AuthHttpClient`；旧曲库服务通过 `src/services/httpTransport.ts` 的注册槽取得传输。后两者在 Node 注入 axios 实现，在 Serverless 注入 fetch 实现。它们的超时、重试和重定向规则需要分别检查，不能把共用传输的规则当成全部接口的规则。
+HTTP 实现目前有三条路径：共用 musicu 客户端使用 `src/protocol/http.ts` 定义的传输接口，fetch 实现在 `src/transport/`；认证服务使用注入的 `AuthHttpClient`；旧曲库服务通过 `src/services/httpTransport.ts` 的注册槽取得传输。后两者在 Node 注入 axios 实现，在 Serverless 注入 fetch 实现。它们的超时、重试和重定向规则需要分别检查，不能把共用传输的规则当成全部接口的规则。
 
 ## 请求怎么走
 

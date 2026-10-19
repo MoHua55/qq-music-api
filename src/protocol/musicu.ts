@@ -1,13 +1,7 @@
-import {
-  checkAbort,
-  type HttpTransport,
-  HttpTransportError,
-  sleep,
-  withDeadline,
-} from '../transport/http';
-import { defaultTokenBucket, type TokenBucket } from '../transport/tokenBucket';
 import type { UpstreamOperation } from './businessCodes';
 import { normalizeQqFailure, QqApiError } from './errors';
+import { checkAbort, type HttpTransport, HttpTransportError, sleep, withDeadline } from './http';
+import { defaultTokenBucket, type TokenBucket } from './tokenBucket';
 
 export interface MusicuDescriptor<T = unknown> {
   module: string;

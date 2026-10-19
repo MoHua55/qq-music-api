@@ -1,4 +1,4 @@
-import { QqApiError } from '../protocol/errors';
+import { QqApiError } from './errors';
 
 export interface HttpRequest {
   url: string;

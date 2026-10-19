@@ -1,4 +1,4 @@
-import { QqApiError } from '../protocol/errors';
+import { QqApiError } from './errors';
 import { checkAbort, sleep } from './http';
 
 export interface TokenBucket {

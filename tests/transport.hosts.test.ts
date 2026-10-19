@@ -1,8 +1,8 @@
 import http from 'node:http';
+import { type HttpRequest, sleep } from '../src/protocol/http';
 import { createMusicuClient, type MusicuDescriptor } from '../src/protocol/musicu';
+import { createTokenBucket } from '../src/protocol/tokenBucket';
 import { createFetchTransport, type FetchExecutor, type FetchInit } from '../src/transport/fetch';
-import { type HttpRequest, sleep } from '../src/transport/http';
-import { createTokenBucket } from '../src/transport/tokenBucket';
 
 const request: MusicuDescriptor = {
   module: 'fixture.catalog',

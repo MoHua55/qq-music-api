@@ -1,8 +1,8 @@
 import path from 'node:path';
+import { type HttpRequest, type HttpTransport, HttpTransportError } from '../src/protocol/http';
 import { createMusicuClient, type MusicuDescriptor } from '../src/protocol/musicu';
+import { createTokenBucket } from '../src/protocol/tokenBucket';
 import { createFetchTransport } from '../src/transport/fetch';
-import { type HttpRequest, type HttpTransport, HttpTransportError } from '../src/transport/http';
-import { createTokenBucket } from '../src/transport/tokenBucket';
 import { inspectRuntimeClosure } from './helpers/runtimeClosure';
 
 const descriptor = (overrides: Partial<MusicuDescriptor> = {}): MusicuDescriptor => ({

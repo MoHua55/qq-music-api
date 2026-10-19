@@ -1,7 +1,7 @@
 import { QqApiError } from '../src/protocol/errors';
+import type { HttpRequest } from '../src/protocol/http';
 import { createMusicuClient } from '../src/protocol/musicu';
-import type { HttpRequest } from '../src/transport/http';
-import { createTokenBucket } from '../src/transport/tokenBucket';
+import { createTokenBucket } from '../src/protocol/tokenBucket';
 import {
   PLAYBACK_OBSERVATIONS,
   PLAYLIST_WRITE_OBSERVATION,
