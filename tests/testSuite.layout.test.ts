@@ -37,6 +37,55 @@ const FOLIA_ROUTE_TESTS = [
   'getSongInfo.test.ts',
 ];
 
+/**
+ * Folia 会调用的路由（folia-major `26c57f9b` 的 qqTransport.ts，41 条），每条对应 test:contracts 里
+ * 守着它回包形状的测试。Folia 加了新路由，就在这里加一行，并把测试放进 test:contracts。
+ * 值是 [测试文件, 文件里要出现的路径写法]；路径是拼出来的才另写。
+ */
+const FOLIA_ROUTE_CONTRACTS: Record<string, [string, string?]> = {
+  '/getAlbumInfo': ['tests/folia.http-contracts.test.ts'],
+  '/getMusicPlay': ['tests/operations.music-play-retry.test.ts'],
+  '/getSingerAlbum': ['tests/getSingerAlbum.test.ts'],
+  '/getSingerHotsong': ['tests/getSingerHotsong.test.ts'],
+  '/getSongInfo': ['tests/folia.http-contracts.test.ts'],
+  '/getSongListDetail': ['tests/folia.http-contracts.test.ts'],
+  '/login/channels': ['tests/operations.login-channels.test.ts'],
+  '/login/qr/cancel': ['tests/folia.http-contracts.test.ts'],
+  '/login/qr/check': ['tests/folia.login-contracts.test.ts'],
+  '/login/qr/create': ['tests/folia.login-contracts.test.ts'],
+  '/login/qr/key': ['tests/folia.login-contracts.test.ts'],
+  '/login/refresh': ['tests/login.refresh.routes.test.ts'],
+  '/login/status': ['tests/folia.http-contracts.test.ts'],
+  '/logout': ['tests/folia.http-contracts.test.ts'],
+  '/radio/list': ['tests/radio.routes.test.ts'],
+  '/radio/tracks': ['tests/radio.routes.test.ts'],
+  '/recommend/categories': ['tests/recommend-catalog.routes.test.ts'],
+  '/recommend/category-playlists': ['tests/recommend-catalog.routes.test.ts'],
+  '/recommend/new-albums': ['tests/recommend-new-albums.routes.test.ts'],
+  '/recommend/new-songs': ['tests/recommend-catalog.routes.test.ts'],
+  '/recommend/playlists': ['tests/folia.http-contracts.test.ts'],
+  '/recommend/radar': ['tests/recommend-radar.routes.test.ts'],
+  '/recommend/toplist': ['tests/recommend-toplists.routes.test.ts'],
+  '/recommend/toplists': ['tests/recommend-toplists.routes.test.ts'],
+  '/search': ['tests/search.routes.test.ts'],
+  '/song/similar': ['tests/song-relations.routes.test.ts'],
+  '/user/album/subscribe': ['tests/album.subscribe.routes.test.ts'],
+  '/user/albums': ['tests/folia.http-contracts.test.ts'],
+  '/user/cloud': ['tests/user-cloud.routes.test.ts'],
+  '/user/daily-songs': ['tests/daily-songs.routes.test.ts'],
+  '/user/detail': ['tests/folia.http-contracts.test.ts'],
+  '/user/guess-you-like': ['tests/recommend.routes.test.ts'],
+  '/user/liked-songs': ['tests/folia.http-contracts.test.ts'],
+  '/user/playlist': ['tests/folia.http-contracts.test.ts'],
+  '/user/playlist-detail': ['tests/folia.http-contracts.test.ts'],
+  '/user/playlist/create': ['tests/playlist.management.routes.test.ts', '/user/playlist/${'],
+  '/user/playlist/subscribe': ['tests/subscriptions.routes.test.ts'],
+  '/user/playlist/tracks': ['tests/playlist.track-writes.routes.test.ts'],
+  '/user/song/like': ['tests/song.like.routes.test.ts'],
+  '/user/subscription-status': ['tests/subscriptions.routes.test.ts'],
+  '/user/vip': ['tests/user.vip.routes.test.ts'],
+};
+
 const STATUS_SET_ONLY = /expect\(\s*\[[\d\s,]+\]\s*\)\.toContain\(\s*\w+\.status\s*\)/;
 
 const listTests = (dir: string): string[] =>
@@ -99,6 +148,19 @@ describe('default test suite layout', () => {
     ]) {
       expect(contracts.split(' ')).toContain(file);
       expect(defaultSuiteFiles()).toContain(path.join(ROOT, file));
+    }
+  });
+
+  it('Folia 用到的每条路由都有 test:contracts 里的测试守着', () => {
+    const contracts = packageScripts()['test:contracts'].split(' ');
+    expect(Object.keys(FOLIA_ROUTE_CONTRACTS)).toHaveLength(41);
+    for (const [route, [file, needle = route]] of Object.entries(FOLIA_ROUTE_CONTRACTS)) {
+      expect({ route, inContracts: contracts.includes(file) }).toEqual({
+        route,
+        inContracts: true,
+      });
+      const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
+      expect({ route, mentioned: text.includes(needle) }).toEqual({ route, mentioned: true });
     }
   });
 
