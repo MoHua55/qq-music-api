@@ -193,6 +193,7 @@ describe.each(CATALOG_RUNTIMES)('/user/cloud（%s）', (runtime) => {
     expect(rpcCalls()).toHaveLength(1);
   });
 
+  // 要造 1500 首合成歌曲，机器忙时会超过 Jest 默认的 5 秒，这里单独放宽。
   it('默认一次给 200 首，最多 1000 首', async () => {
     upstream.state.rpcReplies = { GetMatchAudio: page(generated(0, 1500)) };
     const byDefault = await call();
@@ -201,7 +202,7 @@ describe.each(CATALOG_RUNTIMES)('/user/cloud（%s）', (runtime) => {
     const capped = await call('?limit=5000');
     expect((capped.body as { data: unknown[] }).data).toHaveLength(1000);
     expect(capped.body).toMatchObject({ count: 1500, hasMore: true });
-  });
+  }, 20000);
 
   it('要的范围跨过 2000 首时接着读下一页', async () => {
     upstream.state.rpcReplyQueues = {
