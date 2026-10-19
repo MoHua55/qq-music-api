@@ -3,6 +3,7 @@ import { inspect } from 'node:util';
 import type { Context } from 'koa';
 import request from 'supertest';
 import app from '../src/app';
+import { createAxiosLegacyTransport } from '../src/node/request';
 import { handleRequest } from '../src/serverless';
 import { QqDeviceBootstrapError, QqProtocolError } from '../src/services/auth/qrLogin';
 import {
@@ -17,7 +18,6 @@ import {
   summarizeRequestContext,
   withControllerLogging,
 } from '../src/util/observability';
-import { createAxiosLegacyTransport } from '../src/util/request';
 
 // Every value below is a decoy: none of them may appear in an HTTP response or in a log line.
 const DECOYS = {

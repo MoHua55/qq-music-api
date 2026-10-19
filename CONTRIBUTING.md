@@ -24,12 +24,13 @@ src/
 ├── config/          # 配置与 API Explorer 元数据
 ├── controllers/     # Node HTTP 转接
 ├── middlewares/     # Koa 中间件
+├── node/            # 只有 Node 用的：Koa 路由表、axios 版旧曲库传输、启动用的小工具
 ├── routes/          # 路由与共用 operation handler
 ├── services/        # 登录、音乐库和其他业务逻辑
-├── protocol/        # 上游协议与错误分类
-├── transport/       # 请求、超时和重试
+├── protocol/        # 上游协议、错误分类，以及 HTTP 传输接口、超时和限流
+├── transport/       # fetch 传输与登录用的 Cookie jar
 ├── serverless/      # Web Request / Response 入口
-└── util/            # 工具函数
+└── util/            # 两边共用的工具：日志、错误摘要等
 tests/               # Jest 离线测试与契约测试
 types/               # 根模块的公开类型
 public/              # 内置首页和 API Explorer

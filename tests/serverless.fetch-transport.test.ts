@@ -198,7 +198,7 @@ describe('createFetchLegacyTransport', () => {
   it('should default an omitted target to c.y.qq.com, matching the Node transport', async () => {
     // H1 §8.4: `y_common` (despite its name) never passes a 4th argument — its own headers
     // already point at `c.y.qq.com` — and relies entirely on this default, exactly like
-    // `request()` in `util/request.ts` does. This transport used to default to `y` instead,
+    // `request()` in `node/request.ts` does. This transport used to default to `y` instead,
     // which silently sent every `y_common` call (e.g. `/getSongListDetail/:disstid`) to the
     // wrong host and 404'd on a real Cloudflare deployment.
     responses.push(respond('{}'));

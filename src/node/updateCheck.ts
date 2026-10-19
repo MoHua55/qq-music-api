@@ -1,4 +1,4 @@
-import { loggerState } from './logger';
+import { loggerState } from '../util/logger';
 
 export const UPDATE_CHECK_ENV = 'QQ_DISABLE_UPDATE_CHECK';
 export const UPDATE_CHECK_OPT_IN_ENV = 'QQ_ENABLE_UPDATE_CHECK';

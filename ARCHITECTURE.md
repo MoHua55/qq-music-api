@@ -8,7 +8,7 @@
 
 | 位置 | 负责什么 |
 | --- | --- |
-| `src/app.ts`、`src/controllers/` | 组装 Node 服务、安装中间件，把 Koa 请求转成 handler 输入 |
+| `src/app.ts`、`src/controllers/`、`src/node/` | 组装 Node 服务、安装中间件、注册 Koa 路由表，把 Koa 请求转成 handler 输入；axios 版旧曲库传输也在 `src/node/` |
 | `src/serverless/` | 组装 Web 请求入口，提供 fetch 传输、sealed 会话和二维码状态转接 |
 | `src/routes/manifest.ts` | 记录路由名称、方法、路径、handler、密钥要求及 Explorer 分类 |
 | `src/routes/operations/` | 共用 handler：读取参数、调用业务、交出响应结果 |
@@ -41,7 +41,7 @@ flowchart TD
 
 `src/app.ts` 在启动时选择旧曲库传输和会话持久化方式，安装正文解析、配置 Cookie、Explorer、静态资源、请求日志、CORS 和响应耗时中间件，然后挂载路由和 `allowedMethods()`。
 
-`src/routes/router.ts` 按 manifest 的方法与路径注册 Koa 路由。`src/controllers/index.ts` 为共用路由生成 `operationController(handler)`，外层加 `withControllerLogging`。转接器读取参数、会话 token 和正文，`service()` 提供 Node 登录服务单例，handler 返回后再写回状态、响应头和正文。
+`src/node/router.ts` 按 manifest 的方法与路径注册 Koa 路由。`src/controllers/index.ts` 为共用路由生成 `operationController(handler)`，外层加 `withControllerLogging`。转接器读取参数、会话 token 和正文，`service()` 提供 Node 登录服务单例，handler 返回后再写回状态、响应头和正文。
 
 少数路由需要 Node 专用转接：`qrCheck` 在登录成功时设置 Cookie，`logout` 清除 Cookie，`getMusicPlay` 补上匿名播放所需的 Node 配置。这些转接在 `nodeAdapters` 中指定。标为 `nodeOnly` 的旧路由则从 `nodeOnlyControllers` 取得原 controller。
 

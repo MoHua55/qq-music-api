@@ -1,5 +1,5 @@
 import { apiExplorerMetadata } from '../src/config/apiExplorer';
-import router from '../src/routes/router';
+import router from '../src/node/router';
 
 const getRouteEntries = (): Array<{ method: string; path: string }> =>
   (router.stack as Array<{ methods: string[]; path: string }>).flatMap((layer) =>

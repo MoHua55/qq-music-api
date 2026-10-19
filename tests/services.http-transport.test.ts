@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { createAxiosLegacyTransport } from '../src/node/request';
 import {
   clearLegacyHttpTransport,
   getLegacyHttpTransport,
@@ -9,7 +10,6 @@ import {
 } from '../src/services/httpTransport';
 import u_common from '../src/services/u_common';
 import y_common from '../src/services/y_common';
-import { createAxiosLegacyTransport } from '../src/util/request';
 
 interface RecordedCall {
   url: string;
@@ -128,7 +128,7 @@ describe('legacy transport axios and prototype isolation', () => {
       sharedAxios.defaults.headers.post['Content-Type'] = 'application/host-test';
       const pristine = JSON.stringify(sharedAxios.defaults);
 
-      const { createAxiosLegacyTransport: create } = await import('../src/util/request');
+      const { createAxiosLegacyTransport: create } = await import('../src/node/request');
       const { setLegacyHttpTransport: register } = await import('../src/services/httpTransport');
       register(create());
 
@@ -144,7 +144,7 @@ describe('legacy transport axios and prototype isolation', () => {
         return { setTheme: () => undefined };
       });
 
-      await import('../src/util/request');
+      await import('../src/node/request');
 
       // `colors` patches `String.prototype`; only the Koa entry point may pull it in.
       expect(colorsLoaded).toBe(false);

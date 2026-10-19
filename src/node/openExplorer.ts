@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { API_EXPLORER_ROUTE_PATH } from '../config/apiExplorer';
-import { logger, loggerState } from './logger';
+import { logger, loggerState } from '../util/logger';
 
 export const AUTO_OPEN_EXPLORER_ENV = 'AUTO_OPEN_EXPLORER';
 

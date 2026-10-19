@@ -13,16 +13,16 @@ import {
   apiExplorerMetadata,
 } from './config/apiExplorer';
 import cors from './middlewares/koa-cors';
-import router from './routes/router';
+import cookie from './node/cookie';
+import { autoOpenExplorer } from './node/openExplorer';
+import { createAxiosLegacyTransport } from './node/request';
+import router from './node/router';
+import { shouldCheckLatestVersion } from './node/updateCheck';
 import { configureAuthSessionPersistence } from './services/auth/fileAuthSessionRepository';
 import { setLegacyHttpTransport } from './services/httpTransport';
-import cookie from './util/cookie';
 import { logger, loggerState } from './util/logger';
 import { sanitizeRequestUrl } from './util/observability';
-import { autoOpenExplorer } from './util/openExplorer';
-import { createAxiosLegacyTransport } from './util/request';
-import { shouldCheckLatestVersion } from './util/updateCheck';
-import './util/colors';
+import './node/colors';
 import pkg from '../package.json';
 import { serverConfig, userInfo } from './config';
 

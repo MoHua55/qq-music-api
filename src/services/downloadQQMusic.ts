@@ -1,7 +1,7 @@
 import { AxiosRequestConfig } from 'axios';
 import { requestConfig } from '../config';
+import request from '../node/request';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../util/observability';
-import request from '../util/request';
 import { toLegacyErrorBody } from '../util/safeError';
 
 interface DownloadQQMusicParams {

@@ -2,8 +2,8 @@ import axios, { AxiosRequestConfig, AxiosResponse, Method, ResponseType } from '
 import { apiConfig, requestConfig } from '../config';
 import { legacyRequestStructureOf, upstreamRouteOf } from '../protocol/logStructure';
 import type { LegacyHttpTransport } from '../services/httpTransport';
-import { logger } from './logger';
-import { summarizeValue } from './observability';
+import { logger } from '../util/logger';
+import { summarizeValue } from '../util/observability';
 
 // Keep the legacy QQ request defaults on a package-private client. This module is also
 // loaded when the npm package is embedded in a larger Electron or Node process, where the

@@ -1,6 +1,6 @@
 const mockRequest = jest.fn();
 
-jest.mock('../src/util/request', () => ({
+jest.mock('../src/node/request', () => ({
   __esModule: true,
   default: mockRequest,
 }));

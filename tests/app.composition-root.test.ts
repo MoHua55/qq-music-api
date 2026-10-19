@@ -1,6 +1,6 @@
 import type Koa from 'koa';
 import app, { configureAuthSessionRepository, server } from '../src/app';
-import router from '../src/routes/router';
+import router from '../src/node/router';
 import { getLegacyHttpTransport } from '../src/services/httpTransport';
 
 // Executable form of the `src/app.ts` boundary: the file may perform composition-root dependency
