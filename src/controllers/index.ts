@@ -12,6 +12,22 @@ import { loginChannels } from '../routes/operations/loginChannels';
 import { loginRefresh } from '../routes/operations/loginRefresh';
 import { loginStatus } from '../routes/operations/loginStatus';
 import {
+  getCommentCount,
+  getHotComments,
+  getMvDetail,
+  getMvList,
+  getMvUrl,
+  getNewComments,
+  getSimilarSingers,
+  getSingerDetail,
+  getSingerHomepage,
+  getSingerMvs,
+  getSingerSongs,
+  getSongLabels,
+  getSongMvs,
+  listSingers,
+} from '../routes/operations/mediaCatalog';
+import {
   playlistCreate,
   playlistDelete,
   playlistRename,
@@ -20,6 +36,28 @@ import { playlistTracks } from '../routes/operations/playlistTracks';
 import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import {
+  getGuessYouLike,
+  getRadioList,
+  getRadioTracks,
+  getRecommendPlaylists,
+  getRecommendRadar,
+  getRelatedPlaylists,
+  getSimilarSongs,
+} from '../routes/operations/recommendations';
+import {
+  getCategoryPlaylists,
+  getNewAlbums,
+  getNewSongs,
+  getPlaylistCategories,
+  getRecommendToplistSongs,
+  getRecommendToplists,
+} from '../routes/operations/recommendCatalog';
+import {
+  getHotSearches,
+  getSearch,
+  getSearchSuggestions,
+} from '../routes/operations/searchCatalog';
 import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userCloud } from '../routes/operations/userCloud';
@@ -30,44 +68,18 @@ import { withControllerLogging } from '../util/observability';
 import batchGetSongInfo from './batchGetSongInfo';
 import batchGetSongLists from './batchGetSongLists';
 import cookies from './cookies';
-import { getCommentCount, getHotComments, getNewComments } from './getCommentCatalog';
 import getComments from './getComments';
 import getDigitalAlbumLists from './getDigitalAlbumLists';
 import getDownloadQQMusic from './getDownloadQQMusic';
-import getGuessYouLike from './getGuessYouLike';
 import getImageUrl from './getImageUrl';
 import getLyric from './getLyric';
-import { getMvDetail, getMvList, getMvUrl, getSongMvs } from './getMvCatalog';
 import getNewDisks from './getNewDisks';
-import { getRadioList, getRadioTracks } from './getRadio';
 import getRadioLists from './getRadioLists';
 import getRanks from './getRanks';
 import getRecommend from './getRecommend';
-import {
-  getCategoryPlaylists,
-  getNewAlbums,
-  getNewSongs,
-  getPlaylistCategories,
-  getRecommendToplistSongs,
-  getRecommendToplists,
-} from './getRecommendCatalog';
-import getRecommendPlaylists from './getRecommendPlaylists';
-import getRecommendRadar from './getRecommendRadar';
-import getSearch from './getSearch';
-import { getHotSearches, getSearchSuggestions } from './getSearchSuggest';
-import {
-  getSimilarSingers,
-  getSingerDetail,
-  getSingerHomepage,
-  getSingerMvs,
-  getSingerSongs,
-  listSingers,
-} from './getSingerCatalog';
 import getSmartbox from './getSmartbox';
-import getSongLabels from './getSongLabels';
 import getSongListCategories from './getSongListCategories';
 import getSongLists from './getSongLists';
-import { getRelatedPlaylists, getSimilarSongs } from './getSongRelations';
 import getTicketInfo from './getTicketInfo';
 import getTopLists from './getTopLists';
 import logoutOperationController from './logoutOperation';
@@ -144,37 +156,64 @@ export default {
     operationController(getOwnedPlaylistSongs),
   ),
   getUserPlaylist: withControllerLogging('getUserPlaylist', operationController(getUserPlaylist)),
-  getGuessYouLike: withControllerLogging('getGuessYouLike', getGuessYouLike),
-  getRecommendPlaylists: withControllerLogging('getRecommendPlaylists', getRecommendPlaylists),
-  getRecommendRadar: withControllerLogging('getRecommendRadar', getRecommendRadar),
-  getSimilarSongs: withControllerLogging('getSimilarSongs', getSimilarSongs),
-  getRelatedPlaylists: withControllerLogging('getRelatedPlaylists', getRelatedPlaylists),
-  getRadioList: withControllerLogging('getRadioList', getRadioList),
-  getRadioTracks: withControllerLogging('getRadioTracks', getRadioTracks),
-  getPlaylistCategories: withControllerLogging('getPlaylistCategories', getPlaylistCategories),
-  getCategoryPlaylists: withControllerLogging('getCategoryPlaylists', getCategoryPlaylists),
-  getNewSongs: withControllerLogging('getNewSongs', getNewSongs),
-  getNewAlbums: withControllerLogging('getNewAlbums', getNewAlbums),
-  getRecommendToplists: withControllerLogging('getRecommendToplists', getRecommendToplists),
+  getGuessYouLike: withControllerLogging('getGuessYouLike', operationController(getGuessYouLike)),
+  getRecommendPlaylists: withControllerLogging(
+    'getRecommendPlaylists',
+    operationController(getRecommendPlaylists),
+  ),
+  getRecommendRadar: withControllerLogging(
+    'getRecommendRadar',
+    operationController(getRecommendRadar),
+  ),
+  getSimilarSongs: withControllerLogging('getSimilarSongs', operationController(getSimilarSongs)),
+  getRelatedPlaylists: withControllerLogging(
+    'getRelatedPlaylists',
+    operationController(getRelatedPlaylists),
+  ),
+  getRadioList: withControllerLogging('getRadioList', operationController(getRadioList)),
+  getRadioTracks: withControllerLogging('getRadioTracks', operationController(getRadioTracks)),
+  getPlaylistCategories: withControllerLogging(
+    'getPlaylistCategories',
+    operationController(getPlaylistCategories),
+  ),
+  getCategoryPlaylists: withControllerLogging(
+    'getCategoryPlaylists',
+    operationController(getCategoryPlaylists),
+  ),
+  getNewSongs: withControllerLogging('getNewSongs', operationController(getNewSongs)),
+  getNewAlbums: withControllerLogging('getNewAlbums', operationController(getNewAlbums)),
+  getRecommendToplists: withControllerLogging(
+    'getRecommendToplists',
+    operationController(getRecommendToplists),
+  ),
   getRecommendToplistSongs: withControllerLogging(
     'getRecommendToplistSongs',
-    getRecommendToplistSongs,
+    operationController(getRecommendToplistSongs),
   ),
-  getSearch: withControllerLogging('getSearch', getSearch),
-  getHotSearches: withControllerLogging('getHotSearches', getHotSearches),
-  getSearchSuggestions: withControllerLogging('getSearchSuggestions', getSearchSuggestions),
-  listSingers: withControllerLogging('listSingers', listSingers),
-  getSingerDetail: withControllerLogging('getSingerDetail', getSingerDetail),
-  getSingerHomepage: withControllerLogging('getSingerHomepage', getSingerHomepage),
-  getSimilarSingers: withControllerLogging('getSimilarSingers', getSimilarSingers),
-  getSingerSongs: withControllerLogging('getSingerSongs', getSingerSongs),
-  getSingerMvs: withControllerLogging('getSingerMvs', getSingerMvs),
-  getHotComments: withControllerLogging('getHotComments', getHotComments),
-  getNewComments: withControllerLogging('getNewComments', getNewComments),
-  getCommentCount: withControllerLogging('getCommentCount', getCommentCount),
-  getMvList: withControllerLogging('getMvList', getMvList),
-  getMvDetail: withControllerLogging('getMvDetail', getMvDetail),
-  getMvUrl: withControllerLogging('getMvUrl', getMvUrl),
-  getSongMvs: withControllerLogging('getSongMvs', getSongMvs),
-  getSongLabels: withControllerLogging('getSongLabels', getSongLabels),
+  getSearch: withControllerLogging('getSearch', operationController(getSearch)),
+  getHotSearches: withControllerLogging('getHotSearches', operationController(getHotSearches)),
+  getSearchSuggestions: withControllerLogging(
+    'getSearchSuggestions',
+    operationController(getSearchSuggestions),
+  ),
+  listSingers: withControllerLogging('listSingers', operationController(listSingers)),
+  getSingerDetail: withControllerLogging('getSingerDetail', operationController(getSingerDetail)),
+  getSingerHomepage: withControllerLogging(
+    'getSingerHomepage',
+    operationController(getSingerHomepage),
+  ),
+  getSimilarSingers: withControllerLogging(
+    'getSimilarSingers',
+    operationController(getSimilarSingers),
+  ),
+  getSingerSongs: withControllerLogging('getSingerSongs', operationController(getSingerSongs)),
+  getSingerMvs: withControllerLogging('getSingerMvs', operationController(getSingerMvs)),
+  getHotComments: withControllerLogging('getHotComments', operationController(getHotComments)),
+  getNewComments: withControllerLogging('getNewComments', operationController(getNewComments)),
+  getCommentCount: withControllerLogging('getCommentCount', operationController(getCommentCount)),
+  getMvList: withControllerLogging('getMvList', operationController(getMvList)),
+  getMvDetail: withControllerLogging('getMvDetail', operationController(getMvDetail)),
+  getMvUrl: withControllerLogging('getMvUrl', operationController(getMvUrl)),
+  getSongMvs: withControllerLogging('getSongMvs', operationController(getSongMvs)),
+  getSongLabels: withControllerLogging('getSongLabels', operationController(getSongLabels)),
 };

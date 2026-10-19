@@ -15,6 +15,22 @@ import { loginRefresh } from '../routes/operations/loginRefresh';
 import { loginStatus } from '../routes/operations/loginStatus';
 import { logout } from '../routes/operations/logout';
 import {
+  getCommentCount,
+  getHotComments,
+  getMvDetail,
+  getMvList,
+  getMvUrl,
+  getNewComments,
+  getSimilarSingers,
+  getSingerDetail,
+  getSingerHomepage,
+  getSingerMvs,
+  getSingerSongs,
+  getSongLabels,
+  getSongMvs,
+  listSingers,
+} from '../routes/operations/mediaCatalog';
+import {
   playlistCreate,
   playlistDelete,
   playlistRename,
@@ -24,6 +40,28 @@ import { qrCancel } from '../routes/operations/qrCancel';
 import { qrCheck } from '../routes/operations/qrCheck';
 import { qrCreate } from '../routes/operations/qrCreate';
 import { qrKey } from '../routes/operations/qrKey';
+import {
+  getGuessYouLike,
+  getRadioList,
+  getRadioTracks,
+  getRecommendPlaylists,
+  getRecommendRadar,
+  getRelatedPlaylists,
+  getSimilarSongs,
+} from '../routes/operations/recommendations';
+import {
+  getCategoryPlaylists,
+  getNewAlbums,
+  getNewSongs,
+  getPlaylistCategories,
+  getRecommendToplistSongs,
+  getRecommendToplists,
+} from '../routes/operations/recommendCatalog';
+import {
+  getHotSearches,
+  getSearch,
+  getSearchSuggestions,
+} from '../routes/operations/searchCatalog';
 import { songLike } from '../routes/operations/songLike';
 import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
 import { userCloud } from '../routes/operations/userCloud';
@@ -36,41 +74,7 @@ import {
   type QqQrRelay,
   type QrLoginService,
 } from '../services/auth/qrLogin';
-import {
-  commentCountResult,
-  hotCommentsResult,
-  newCommentsResult,
-} from '../services/comments/catalog';
 import { setLegacyHttpTransport } from '../services/httpTransport';
-import { mvDetailResult, mvListResult, mvUrlResult, songMvsResult } from '../services/mv/catalog';
-import {
-  categoryPlaylistsResult,
-  newAlbumsResult,
-  newSongsResult,
-  playlistCategoriesResult,
-  toplistSongsResult,
-  toplistsResult,
-} from '../services/recommend/catalog';
-import { guessYouLikeResult } from '../services/recommend/guessYouLike';
-import type { NewRouteResult } from '../services/recommend/newRouteResult';
-import { radarPageOf, radarResult } from '../services/recommend/radar';
-import { radioListResult, radioTracksResult } from '../services/recommend/radio';
-import {
-  recommendPlaylistsLimitOf,
-  recommendPlaylistsResult,
-} from '../services/recommend/recommendPlaylists';
-import { songLabelsResult } from '../services/recommend/songLabels';
-import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
-import { searchResult } from '../services/search/search';
-import { hotSearchesResult, searchSuggestionsResult } from '../services/search/suggest';
-import {
-  similarSingersResult,
-  singerDetailResult,
-  singerHomepageResult,
-  singerListResult,
-  singerMvsResult,
-  singerSongsResult,
-} from '../services/singers/catalog';
 import { deriveAndroidDevice } from './derivedDevice';
 import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
@@ -172,10 +176,6 @@ interface RouteContext {
 
 type RouteHandler = (context: RouteContext) => Promise<Response>;
 
-/** 新路由的结果已经带好状态码与 header，这里只负责写成 Response。 */
-const fromResult = (result: NewRouteResult): Response =>
-  json(result.body, result.status, result.headers);
-
 const routes: Record<string, RouteHandler> = {
   '/login/qr/key': operationRoute(qrKey),
   '/login/qr/create': operationRoute(qrCreate),
@@ -201,196 +201,36 @@ const routes: Record<string, RouteHandler> = {
   '/user/album/subscribe': operationRoute(albumSubscribe),
   '/user/subscription-status': operationRoute(subscriptionStatus),
 
-  '/user/guess-you-like': async ({ service: getService, token }) =>
-    fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
-
-  // 有会话就带凭证，没有就匿名。没设密钥时解不开任何会话，也不建服务，直接匿名读。
-  '/recommend/playlists': async ({ url, env, service: getService, token }) => {
-    const session =
-      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
-    return fromResult(
-      await recommendPlaylistsResult(
-        session,
-        recommendPlaylistsLimitOf(url.searchParams.get('limit')),
-      ),
-    );
-  },
-
-  // 相似歌曲、包含这首歌的歌单：要登录，匿名时上游只给空清单。
-  '/song/similar': async ({ url, service: getService, token }) =>
-    fromResult(
-      await similarSongsResult(
-        await (await getService()).resolveSession(token),
-        url.searchParams.get('id') ?? undefined,
-      ),
-    ),
-
-  '/song/related-playlists': async ({ url, service: getService, token }) =>
-    fromResult(
-      await relatedPlaylistsResult(
-        await (await getService()).resolveSession(token),
-        url.searchParams.get('id') ?? undefined,
-      ),
-    ),
-
-  // 刷歌模式：和推荐歌单一样，有会话就带凭证，没有就匿名。
-  '/recommend/radar': async ({ url, env, service: getService, token }) => {
-    const session =
-      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
-    return fromResult(await radarResult(session, radarPageOf(url.searchParams.get('page'))));
-  },
-
-  // 公开内容，一律匿名读；没设密钥也能用。
-  '/recommend/categories': async () => fromResult(await playlistCategoriesResult()),
-
-  '/recommend/category-playlists': async ({ url }) =>
-    fromResult(
-      await categoryPlaylistsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        page: url.searchParams.get('page') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/recommend/new-songs': async ({ url }) =>
-    fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
-
-  '/recommend/new-albums': async ({ url }) =>
-    fromResult(
-      await newAlbumsResult({
-        area: url.searchParams.get('area') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/recommend/toplists': async () => fromResult(await toplistsResult()),
-
-  '/recommend/toplist': async ({ url }) =>
-    fromResult(
-      await toplistSongsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        period: url.searchParams.get('period') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  // 有会话就带凭证，没有就匿名搜。没设密钥时解不开任何会话，也不建服务，直接匿名搜。
-  '/search': async ({ url, env, service: getService, token }) => {
-    const query = {
-      keyword: url.searchParams.get('keyword') ?? undefined,
-      type: url.searchParams.get('type') ?? undefined,
-      page: url.searchParams.get('page') ?? undefined,
-      limit: url.searchParams.get('limit') ?? undefined,
-    };
-    const session =
-      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
-    return fromResult(await searchResult(query, session));
-  },
-
-  // 热搜、搜索建议：公开内容，一律匿名读；没设密钥也能用。
-  '/search/hot': async () => fromResult(await hotSearchesResult()),
-
-  '/search/suggest': async ({ url }) =>
-    fromResult(await searchSuggestionsResult(url.searchParams.get('keyword') ?? undefined)),
-
-  // 歌手：公开内容，一律匿名读；没设密钥也能用。
-  '/singer/list': async ({ url }) =>
-    fromResult(
-      await singerListResult({
-        area: url.searchParams.get('area') ?? undefined,
-        sex: url.searchParams.get('sex') ?? undefined,
-        genre: url.searchParams.get('genre') ?? undefined,
-        index: url.searchParams.get('index') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/singer/detail': async ({ url }) =>
-    fromResult(await singerDetailResult(url.searchParams.get('mid') ?? undefined)),
-
-  '/singer/homepage': async ({ url }) =>
-    fromResult(await singerHomepageResult(url.searchParams.get('mid') ?? undefined)),
-
-  '/singer/similar': async ({ url }) =>
-    fromResult(await similarSingersResult(url.searchParams.get('mid') ?? undefined)),
-
-  '/singer/songs': async ({ url }) =>
-    fromResult(
-      await singerSongsResult({
-        mid: url.searchParams.get('mid') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/singer/mvs': async ({ url }) =>
-    fromResult(
-      await singerMvsResult({
-        mid: url.searchParams.get('mid') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  // 歌曲评论：公开内容，一律匿名读；没设密钥也能用。
-  '/comment/hot': async ({ url }) =>
-    fromResult(
-      await hotCommentsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/comment/new': async ({ url }) =>
-    fromResult(
-      await newCommentsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/comment/count': async ({ url }) =>
-    fromResult(await commentCountResult(url.searchParams.get('id') ?? undefined)),
-
-  // MV：公开内容，一律匿名读；没设密钥也能用。
-  '/mv/list': async ({ url }) =>
-    fromResult(
-      await mvListResult({
-        area: url.searchParams.get('area') ?? undefined,
-        version: url.searchParams.get('version') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/mv/detail': async ({ url }) =>
-    fromResult(await mvDetailResult(url.searchParams.get('vid') ?? undefined)),
-
-  '/mv/url': async ({ url }) =>
-    fromResult(await mvUrlResult(url.searchParams.get('vid') ?? undefined)),
-
-  '/song/mvs': async ({ url }) =>
-    fromResult(await songMvsResult(url.searchParams.get('id') ?? undefined)),
-
-  // 歌曲标签：公开内容，一律匿名读；没设密钥也能用。
-  '/song/labels': async ({ url }) =>
-    fromResult(await songLabelsResult(url.searchParams.get('id') ?? undefined)),
-
-  '/radio/list': async ({ service: getService, token }) =>
-    fromResult(await radioListResult(await (await getService()).resolveSession(token))),
-
-  '/radio/tracks': async ({ url, service: getService, token }) =>
-    fromResult(
-      await radioTracksResult(
-        await (await getService()).resolveSession(token),
-        url.searchParams.get('id'),
-      ),
-    ),
+  '/user/guess-you-like': operationRoute(getGuessYouLike),
+  '/recommend/playlists': operationRoute(getRecommendPlaylists),
+  '/song/similar': operationRoute(getSimilarSongs),
+  '/song/related-playlists': operationRoute(getRelatedPlaylists),
+  '/recommend/radar': operationRoute(getRecommendRadar),
+  '/recommend/categories': operationRoute(getPlaylistCategories),
+  '/recommend/category-playlists': operationRoute(getCategoryPlaylists),
+  '/recommend/new-songs': operationRoute(getNewSongs),
+  '/recommend/new-albums': operationRoute(getNewAlbums),
+  '/recommend/toplists': operationRoute(getRecommendToplists),
+  '/recommend/toplist': operationRoute(getRecommendToplistSongs),
+  '/search': operationRoute(getSearch),
+  '/search/hot': operationRoute(getHotSearches),
+  '/search/suggest': operationRoute(getSearchSuggestions),
+  '/singer/list': operationRoute(listSingers),
+  '/singer/detail': operationRoute(getSingerDetail),
+  '/singer/homepage': operationRoute(getSingerHomepage),
+  '/singer/similar': operationRoute(getSimilarSingers),
+  '/singer/songs': operationRoute(getSingerSongs),
+  '/singer/mvs': operationRoute(getSingerMvs),
+  '/comment/hot': operationRoute(getHotComments),
+  '/comment/new': operationRoute(getNewComments),
+  '/comment/count': operationRoute(getCommentCount),
+  '/mv/list': operationRoute(getMvList),
+  '/mv/detail': operationRoute(getMvDetail),
+  '/mv/url': operationRoute(getMvUrl),
+  '/song/mvs': operationRoute(getSongMvs),
+  '/song/labels': operationRoute(getSongLabels),
+  '/radio/list': operationRoute(getRadioList),
+  '/radio/tracks': operationRoute(getRadioTracks),
 
   '/user/playlist': operationRoute(getUserPlaylist),
 
