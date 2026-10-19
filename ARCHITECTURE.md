@@ -14,7 +14,7 @@
 | `src/routes/operations/` | 共用 handler：读取参数、调用业务、交出响应结果 |
 | `src/services/` | 登录、会话、曲库、推荐、播放和写入等业务处理 |
 | `src/protocol/` | 上游请求封装、响应校验、业务码登记、错误分类、播放提示规则，以及 HTTP 传输接口、超时和限流 |
-| `src/transport/` | 按协议层定义的传输接口提供 fetch 实现 |
+| `src/transport/` | 按协议层定义的传输接口提供 fetch 实现，以及两种 HTTP 客户端共用的 Cookie jar 和转址规则 |
 | `src/config/apiExplorer.ts`、`public/explorer/` | Explorer 元数据及调试页面 |
 | `tests/`、`scripts/compat/` | 离线案例、接口与产物契约检查、版本行为比对 |
 

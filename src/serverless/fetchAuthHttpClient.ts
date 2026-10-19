@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AuthHttpClient } from '../services/auth/httpClient';
 import {
   cookieHeader,
   JSON_CONTENT_TYPE,
@@ -9,12 +10,11 @@ import {
   redirectedMethod,
   seedCookieJar,
   updateCookieJar,
-} from '../services/auth/cookieJar';
-import type { AuthHttpClient } from '../services/auth/httpClient';
+} from '../transport/cookieJar';
 
 /**
- * `AuthHttpClient` over `fetch`. The jar and the redirect rules come from `../services/auth/
- * cookieJar`, so the login protocol behaves identically here and on Node — this file only
+ * `AuthHttpClient` over `fetch`. The jar and the redirect rules come from `../transport/cookieJar`,
+ * so the login protocol behaves identically here and on Node — this file only
  * translates between the axios-shaped config the auth services already speak and a `Request`.
  *
  * 🔴 Redirects are followed by hand (`redirect: 'manual'`) for the same reason the axios client

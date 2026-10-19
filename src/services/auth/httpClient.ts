@@ -8,9 +8,9 @@ import {
   REDIRECT_STATUSES,
   redirectedMethod,
   updateCookieJar,
-} from './cookieJar';
+} from '../../transport/cookieJar';
 
-// The jar, the redirect rules and their constants moved to `./cookieJar` unchanged, so the
+// The jar, the redirect rules and their constants moved to `transport/cookieJar.ts` unchanged, so the
 // serverless fetch client can share them without importing axios. Behaviour here is untouched.
 
 export interface AuthHttpClient {
