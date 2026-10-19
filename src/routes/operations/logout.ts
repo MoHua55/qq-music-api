@@ -1,4 +1,4 @@
-import { AUTH_COOKIE_NAME } from '../../serverless/response';
+import { AUTH_COOKIE_NAME } from '../sessionToken';
 import type { OperationHandler } from './types';
 
 // src/routes/operations/logout.ts

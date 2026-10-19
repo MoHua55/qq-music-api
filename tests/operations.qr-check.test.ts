@@ -3,7 +3,8 @@ import Koa from 'koa';
 import Router from 'koa-router';
 import request from 'supertest';
 import qrCheckOperationController from '../src/controllers/qrCheckOperation';
-import { qrCheck, qrCookieTokenOf } from '../src/routes/operations/qrCheck';
+import { qrCheck } from '../src/routes/operations/qrCheck';
+import { tokenFromCookieString } from '../src/routes/sessionToken';
 import { CATALOG_RUNTIMES } from './helpers/catalogRoutes';
 import { createParityRunner } from './helpers/operationParity';
 import { useQrUpstream } from './helpers/qrRoutes';
@@ -65,7 +66,7 @@ it.each([
   ['qqmusic_session=fixture=a=b; other=value', 'fixture=a=b'],
   ['other=value; qqmusic_session=first; qqmusic_session=second', 'first'],
 ] as const)('保留 Cookie token 解析 %s', (cookie, expected) => {
-  expect(qrCookieTokenOf(cookie)).toBe(expected);
+  expect(tokenFromCookieString(cookie)).toBe(expected);
 });
 
 describe.each(CATALOG_RUNTIMES)('/login/qr/check 共用处理与真实宿主契约（%s）', (runtime) => {

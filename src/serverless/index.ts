@@ -1,5 +1,6 @@
 import { serverlessPathOf, sharedRoutes } from '../routes/manifest';
 import { loginChannels } from '../routes/operations/loginChannels';
+import { AUTH_HEADER_NAME, tokenFromCookieString } from '../routes/sessionToken';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import {
   createQrLoginService,
@@ -12,7 +13,7 @@ import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import { createFetchLegacyTransport } from './fetchLegacyTransport';
 import { operationRoute } from './operationRoute';
 import { CHECK_BUDGET_MS, capabilitiesFor, secretsOf } from './qrRuntime';
-import { AUTH_COOKIE_NAME, failureResponse, json } from './response';
+import { failureResponse, json } from './response';
 import { createRouter } from './router';
 import { createSealedSessionResolver } from './sealedResolver';
 
@@ -64,18 +65,7 @@ export interface ServerlessOptions {
   qqRelay?: QqQrRelay;
 }
 
-const AUTH_HEADER_NAME = 'x-qq-session';
 /** A single invocation may observe a pull channel this long before it has to answer. */
-
-const tokenFromCookieString = (cookie: string): string | undefined => {
-  for (const entry of cookie.split(';')) {
-    const separator = entry.indexOf('=');
-    if (separator <= 0) continue;
-    if (entry.slice(0, separator).trim() === AUTH_COOKIE_NAME)
-      return entry.slice(separator + 1).trim() || undefined;
-  }
-  return undefined;
-};
 
 /** Header > query > cookie, the same order the Koa controller applies (§5.3 #2). */
 const authTokenOf = (request: Request, url: URL): string | undefined => {
