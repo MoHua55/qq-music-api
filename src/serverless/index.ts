@@ -1,73 +1,5 @@
-import { albumSubscribe } from '../routes/operations/albumSubscribe';
-import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
-import { getLyricOperation } from '../routes/operations/getLyric';
-import { getMusicPlay } from '../routes/operations/getMusicPlay';
-import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
-import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
-import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
-import { getSongInfo } from '../routes/operations/getSongInfo';
-import { getSongListDetail } from '../routes/operations/getSongListDetail';
-import { getUserAlbums } from '../routes/operations/getUserAlbums';
-import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
-import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
+import { serverlessPathOf, sharedRoutes } from '../routes/manifest';
 import { loginChannels } from '../routes/operations/loginChannels';
-import { loginRefresh } from '../routes/operations/loginRefresh';
-import { loginStatus } from '../routes/operations/loginStatus';
-import { logout } from '../routes/operations/logout';
-import {
-  getCommentCount,
-  getHotComments,
-  getMvDetail,
-  getMvList,
-  getMvUrl,
-  getNewComments,
-  getSimilarSingers,
-  getSingerDetail,
-  getSingerHomepage,
-  getSingerMvs,
-  getSingerSongs,
-  getSongLabels,
-  getSongMvs,
-  listSingers,
-} from '../routes/operations/mediaCatalog';
-import {
-  playlistCreate,
-  playlistDelete,
-  playlistRename,
-} from '../routes/operations/playlistManagement';
-import { playlistTracks } from '../routes/operations/playlistTracks';
-import { qrCancel } from '../routes/operations/qrCancel';
-import { qrCheck } from '../routes/operations/qrCheck';
-import { qrCreate } from '../routes/operations/qrCreate';
-import { qrKey } from '../routes/operations/qrKey';
-import {
-  getGuessYouLike,
-  getRadioList,
-  getRadioTracks,
-  getRecommendPlaylists,
-  getRecommendRadar,
-  getRelatedPlaylists,
-  getSimilarSongs,
-} from '../routes/operations/recommendations';
-import {
-  getCategoryPlaylists,
-  getNewAlbums,
-  getNewSongs,
-  getPlaylistCategories,
-  getRecommendToplistSongs,
-  getRecommendToplists,
-} from '../routes/operations/recommendCatalog';
-import {
-  getHotSearches,
-  getSearch,
-  getSearchSuggestions,
-} from '../routes/operations/searchCatalog';
-import { songLike } from '../routes/operations/songLike';
-import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
-import { userCloud } from '../routes/operations/userCloud';
-import { userDailySongs } from '../routes/operations/userDailySongs';
-import { userDetail } from '../routes/operations/userDetail';
-import { userVip } from '../routes/operations/userVip';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import {
   createQrLoginService,
@@ -176,123 +108,21 @@ interface RouteContext {
 
 type RouteHandler = (context: RouteContext) => Promise<Response>;
 
-const routes: Record<string, RouteHandler> = {
-  '/login/qr/key': operationRoute(qrKey),
-  '/login/qr/create': operationRoute(qrCreate),
-  '/login/qr/check': operationRoute(qrCheck),
-  '/login/qr/cancel': operationRoute(qrCancel),
-
-  // ---- Session ----------------------------------------------------------------------------
-  '/login/status': operationRoute(loginStatus),
-
-  '/logout': operationRoute(logout),
-  '/login/refresh': operationRoute(loginRefresh),
-
-  '/user/detail': operationRoute(userDetail),
-  '/user/vip': operationRoute(userVip),
-  '/user/daily-songs': operationRoute(userDailySongs),
-  '/user/cloud': operationRoute(userCloud),
-  '/user/playlist/tracks': operationRoute(playlistTracks),
-  '/user/playlist/create': operationRoute(playlistCreate),
-  '/user/playlist/rename': operationRoute(playlistRename),
-  '/user/playlist/delete': operationRoute(playlistDelete),
-  '/user/playlist/subscribe': operationRoute(playlistSubscribe),
-  '/user/song/like': operationRoute(songLike),
-  '/user/album/subscribe': operationRoute(albumSubscribe),
-  '/user/subscription-status': operationRoute(subscriptionStatus),
-
-  '/user/guess-you-like': operationRoute(getGuessYouLike),
-  '/recommend/playlists': operationRoute(getRecommendPlaylists),
-  '/song/similar': operationRoute(getSimilarSongs),
-  '/song/related-playlists': operationRoute(getRelatedPlaylists),
-  '/recommend/radar': operationRoute(getRecommendRadar),
-  '/recommend/categories': operationRoute(getPlaylistCategories),
-  '/recommend/category-playlists': operationRoute(getCategoryPlaylists),
-  '/recommend/new-songs': operationRoute(getNewSongs),
-  '/recommend/new-albums': operationRoute(getNewAlbums),
-  '/recommend/toplists': operationRoute(getRecommendToplists),
-  '/recommend/toplist': operationRoute(getRecommendToplistSongs),
-  '/search': operationRoute(getSearch),
-  '/search/hot': operationRoute(getHotSearches),
-  '/search/suggest': operationRoute(getSearchSuggestions),
-  '/singer/list': operationRoute(listSingers),
-  '/singer/detail': operationRoute(getSingerDetail),
-  '/singer/homepage': operationRoute(getSingerHomepage),
-  '/singer/similar': operationRoute(getSimilarSingers),
-  '/singer/songs': operationRoute(getSingerSongs),
-  '/singer/mvs': operationRoute(getSingerMvs),
-  '/comment/hot': operationRoute(getHotComments),
-  '/comment/new': operationRoute(getNewComments),
-  '/comment/count': operationRoute(getCommentCount),
-  '/mv/list': operationRoute(getMvList),
-  '/mv/detail': operationRoute(getMvDetail),
-  '/mv/url': operationRoute(getMvUrl),
-  '/song/mvs': operationRoute(getSongMvs),
-  '/song/labels': operationRoute(getSongLabels),
-  '/radio/list': operationRoute(getRadioList),
-  '/radio/tracks': operationRoute(getRadioTracks),
-
-  '/user/playlist': operationRoute(getUserPlaylist),
-
-  '/user/albums': operationRoute(getUserAlbums),
-
-  '/user/liked-songs': operationRoute(getUserLikedSongs),
-
-  // A playlist the user owns, read with their credential. It must stay in this section: the
-  // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
-  '/user/playlist-detail': operationRoute(getOwnedPlaylistSongs),
-
-  '/getMusicPlay/:songmid?': operationRoute(getMusicPlay),
-  // ---- Catalog (no credential) ------------------------------------------------------------
-  // Anonymous by default, so it stays usable without a secret. Only when the anonymous CGI cannot
-  // read the playlist at all (`code: 10`, QQ's own algorithmic playlists) does a session get used,
-  // and only on a deployment that can open one; any failure there keeps the anonymous answer.
-  '/getSongListDetail/:disstid': operationRoute(getSongListDetail),
-  '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
-  '/getLyric': operationRoute(getLyricOperation),
-
-  '/getAlbumInfo': operationRoute(getAlbumInfo),
-
-  '/getSingerAlbum': operationRoute(getSingerAlbum),
-
-  '/getSingerHotsong': operationRoute(getSingerHotsong),
-};
+// 路由表由 manifest 生成。/login/channels 在入口最前面单独处理（不注册旧曲库传输、不接异常），
+// 不进这张表。
+const routes: Record<string, RouteHandler> = Object.fromEntries(
+  sharedRoutes
+    .filter((route) => route.name !== 'loginChannels')
+    .map((route) => [serverlessPathOf(route), operationRoute(route.handler)]),
+);
 
 const NO_SECRET =
   'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.';
 
 /** The routes that need a session secret to mean anything. Catalog routes work without one. */
-const LOGIN_ROUTES = new Set([
-  '/login/qr/key',
-  '/login/qr/create',
-  '/login/qr/check',
-  '/login/qr/cancel',
-  '/login/status',
-  '/login/refresh',
-  '/logout',
-  '/user/detail',
-  '/user/vip',
-  '/user/playlist/tracks',
-  '/user/playlist/create',
-  '/user/playlist/rename',
-  '/user/playlist/delete',
-  '/user/playlist/subscribe',
-  '/user/song/like',
-  '/user/album/subscribe',
-  '/user/subscription-status',
-  '/user/playlist',
-  '/user/albums',
-  '/user/liked-songs',
-  '/user/playlist-detail',
-  '/user/guess-you-like',
-  '/user/daily-songs',
-  '/song/similar',
-  '/song/related-playlists',
-  '/user/cloud',
-  '/radio/list',
-  '/radio/tracks',
-  '/getMusicPlay/:songmid?',
-]);
+const LOGIN_ROUTES = new Set(
+  sharedRoutes.filter((route) => route.needsSecret).map((route) => serverlessPathOf(route)),
+);
 
 const match = createRouter(routes);
 
