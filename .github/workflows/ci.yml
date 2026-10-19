@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Check dependency directions
+        run: npm run check:deps
+
       - name: Type-check
         run: npm run build
 

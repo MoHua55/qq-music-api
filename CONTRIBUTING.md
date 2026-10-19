@@ -104,6 +104,7 @@ Node 与 Serverless 共用业务处理。改动共用代码时，检查两个宿
 ```powershell
 npm ci
 npm run lint
+npm run check:deps
 npm run build
 npm test -- --runInBand
 npm run test:contracts
@@ -112,7 +113,7 @@ npm run compat:check -- --baseline 3.3.3
 npm pack --dry-run
 ```
 
-`npm run build` 只检查 TypeScript 类型，`npm run build:js` 才生成运行产物。`npm pack` 不会重新编译，所以检查包内容前必须先构建。全套 Jest 在 Windows 上使用 PowerShell，避免 Git Bash 的 tar 行为影响产物测试。
+`npm run check:deps` 检查分层的依赖方向，以及两边共用的代码有没有引入 npm 包或 `node:*`，规则写在 `.dependency-cruiser.cjs`。`npm run build` 只检查 TypeScript 类型，`npm run build:js` 才生成运行产物。`npm pack` 不会重新编译，所以检查包内容前必须先构建。全套 Jest 在 Windows 上使用 PowerShell，避免 Git Bash 的 tar 行为影响产物测试。
 
 `compat:check` 用同一份离线样本比较已发布版本与当前 `dist`，检查状态、关键响应头、正文和上游请求。上面的 `3.3.3` 是明确指定的基准；维护后续版本时按需要调整。第一次使用该版本会从 npm 下载基准包，案例执行不访问真实 QQ 服务。工具不会测试扫码状态流程，也不能代替路由的专门测试或真账号验收，细节见[行为比对工具](./ARCHITECTURE.md#行为比对工具)。
 
