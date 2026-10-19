@@ -82,6 +82,7 @@ Node 使用 `stored` 会话，默认保存在内存，可配置加密持久化�
 - [使用文档](./docs/README.md)：部署配置、登录流程、接口参数和响应示例。
 - [错误对照表](./docs/errors.md)：HTTP 状态、`kind`、`errorKey`、上游数字码和重试规则。
 - [相容与版本政策](./docs/compatibility.md)：稳定接口、保留路径、版本规则、退役流程与升级方式。
+- [架构说明](./ARCHITECTURE.md)：代码分层、两种宿主的请求流程、路由清单、打包规则与行为比对工具。
 - [变更记录](./CHANGELOG.md)、[npm 包](https://www.npmjs.com/package/@yakult-green-tea/qq-music-api)和 [GitHub Releases](https://github.com/yakult-green-tea/qq-music-api/releases)：查看改动并获取发布版本。
 
 当前版本系列为 `3.3.x`；`3.3.4` 移除 9 条已预告的旧路由，升级前请查看[相容政策](./docs/compatibility.md)和[替代路由](./docs/README.md#已移除)。
