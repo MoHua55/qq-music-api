@@ -1,4 +1,6 @@
 import { albumSubscribe } from './operations/albumSubscribe';
+import { allPlaylistCategories } from './operations/allPlaylistCategories';
+import { commentList } from './operations/commentList';
 import { getAlbumInfo } from './operations/getAlbumInfo';
 import { getLyricOperation } from './operations/getLyric';
 import { getMusicPlay } from './operations/getMusicPlay';
@@ -36,6 +38,7 @@ import { qrCancel } from './operations/qrCancel';
 import { qrCheck } from './operations/qrCheck';
 import { qrCreate } from './operations/qrCreate';
 import { qrKey } from './operations/qrKey';
+import { radioCategories } from './operations/radioCategories';
 import {
   getGuessYouLike,
   getRadioList,
@@ -54,7 +57,10 @@ import {
   getRecommendToplists,
 } from './operations/recommendCatalog';
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
+import { searchMatch } from './operations/searchMatch';
+import { songBatch } from './operations/songBatch';
 import { songLike } from './operations/songLike';
+import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
 import type { OperationHandler } from './operations/types';
 import { userCloud } from './operations/userCloud';
@@ -96,6 +102,42 @@ export interface NodeOnlyRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'searchMatch',
+    method: 'GET',
+    path: '/search/match',
+    category: 'Search',
+    handler: searchMatch,
+  },
+  {
+    name: 'allPlaylistCategories',
+    method: 'GET',
+    path: '/recommend/categories/all',
+    category: 'Recommend',
+    handler: allPlaylistCategories,
+  },
+  {
+    name: 'sortedCategoryPlaylists',
+    method: 'GET',
+    path: '/recommend/category-playlists/sorted',
+    category: 'Recommend',
+    handler: sortedCategoryPlaylists,
+  },
+  { name: 'songBatch', method: 'POST', path: '/song/batch', category: 'Music', handler: songBatch },
+  {
+    name: 'radioCategories',
+    method: 'GET',
+    path: '/radio/categories',
+    category: 'Radio',
+    handler: radioCategories,
+  },
+  {
+    name: 'commentList',
+    method: 'GET',
+    path: '/comment/list',
+    category: 'Comment',
+    handler: commentList,
+  },
   { name: 'getCookie', method: 'GET', path: '/user/getCookie', category: 'User', nodeOnly: true },
   { name: 'setCookie', method: 'GET', path: '/user/setCookie', category: 'User', nodeOnly: true },
 

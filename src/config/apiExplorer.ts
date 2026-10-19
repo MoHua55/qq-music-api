@@ -86,6 +86,54 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = routeManifest.map(
 );
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  searchMatch: {
+    description: '读取歌曲、歌手、专辑和 MV 的直接命中，不需要登录。',
+    queryParams: [
+      {
+        key: 'keyword',
+        label: '关键词',
+        required: true,
+        description: '去掉头尾空格后为 1–60 个字符。',
+      },
+    ],
+  },
+  allPlaylistCategories: {
+    description: '读取完整歌单分类字典，包含可用标记和排序选项；与热门分类分开。',
+    queryParams: [],
+  },
+  sortedCategoryPlaylists: {
+    description: '按分类、排序与偏移量读取歌单；使用旧 CGI 数据源，不与其他分类歌单的分页混用。',
+    queryParams: [
+      { key: 'id', label: '分类编号', defaultValue: 10000000 },
+      { key: 'offset', label: '起始位置', defaultValue: 0 },
+      { key: 'limit', label: '数量（1–60）', defaultValue: 20 },
+      { key: 'sortId', label: '上游排序编号', defaultValue: 5 },
+    ],
+  },
+  radioCategories: {
+    description: '匿名读取电台分类；不提供个人最近记录，也不改变登录后电台接口。',
+    queryParams: [],
+  },
+  commentList: {
+    description:
+      '匿名读取资源评论与回复；数字协议参数不推断资源类型。续页必须带上一次的 nextCursor。',
+    queryParams: [
+      { key: 'id', label: '资源编号', required: true },
+      { key: 'page', label: '页号（从 0 开始）', defaultValue: 0 },
+      { key: 'limit', label: '数量（1–50）', defaultValue: 25 },
+      { key: 'cursor', label: '上一页 nextCursor' },
+      { key: 'biztype', label: '上游业务类型', defaultValue: 1 },
+      { key: 'cid', label: '上游接口编号', defaultValue: 205360772 },
+      { key: 'cmd', label: '上游命令', defaultValue: 8 },
+      { key: 'reqtype', label: '上游请求类型', defaultValue: 2 },
+    ],
+  },
+  songBatch: {
+    description:
+      '一次匿名请求读取 1–20 首歌曲详情；保留输入顺序和重复项，失败按项返回，不自动重试。',
+    bodyExample: { songs: [{ mid: 'FixtureSongA1', id: 90001 }, { mid: 'FixtureSongB2' }] },
+    bodyDescription: 'songs 必填，1–20 项；mid 为字母或数字，id 可省略。',
+  },
   playlistRename: {
     description:
       'Rename your own ordinary playlist. The editor read preserves description, tag identifiers, exact cover URL including its query and visibility (only 1 or 2). Non-empty secondary covers remain unsupported until preservation is verified. One write, followed by a matching read; uncertain outcomes must not be retried blindly.',

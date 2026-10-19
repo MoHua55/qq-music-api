@@ -1026,3 +1026,24 @@ Web 宿主没有全局 `Buffer` 时，扫码和二进制协议使用标准 Web A
 先确认部署实际加载的包版本、入口和配置，再看脱敏后的状态码与诊断字段。重启本身不能证明某个上游错误已经修复。
 
 一般日志不记录原始上游 body、二维码标识、Cookie、token、设备识别值、账号 id 或完整播放链接。反馈时只提供复现步骤、运行环境和脱敏摘要，敏感 HAR 留在本地。
+
+## 匿名读取的补充接口
+
+以下接口不需要登录，也不需要 `QQ_SESSION_SECRET`，Node 和 Serverless 使用同一份处理。附带会话也不会发送给上游。这六个接口每次只尝试一次上游请求；没有数据回 `422`，参数错误回 `400`，上游拒绝、连接失败或数据结构损坏回 `502`，明确限流回 `429`。错误包含 `code`、`kind`、`errorKey`、`message`、`retryable` 和可选的安全数字码，不用 `404` 表示空数据。
+
+| 接口 | 参数 | 成功响应 |
+| --- | --- | --- |
+| `GET /search/match` | `keyword` 必填，去掉头尾空格后 1–60 个字符 | `{ code:200, keyword, data }`；`data` 按 `song`、`singer`、`album`、`mv` 分组，每组有 `itemlist` 和可选的数量、名称、顺序、类型；条目保留已确认的公开标量字段。它返回实体命中，`/search/suggest` 返回搜索词 |
+| `GET /recommend/categories/all` | 无 | `{ code:200, groups:[{ name, usable?, categories:[{ id, name, usable?, sorts?:[{ id,name }] }] }] }`；这是完整的旧 CGI 分类字典，`/recommend/categories` 仍是热门分类，不虚构分组编号 |
+| `GET /recommend/category-playlists/sorted` | `id=10000000`、`offset=0`、`limit=20`（1–60）、`sortId=5` | `{ code:200, playlists, total?, more }`；歌单字段为 `tid`、`title`、`desc`、`picurl`、可选 `play_cnt`、`creator`。`sortId` 按上游数字传递，不为未确认的数字命名 |
+| `POST /song/batch` | JSON `{ songs:[{ mid, id? }] }`，1–20 首；mid 为 1–64 个字母或数字，id 是可选的正整数 | `{ code:200, results:[{ index, code:200, song, info } 或 { index, code, kind, errorKey, ... }], partial }`；`song` 是上游歌曲详情中的 `track_info`，`info` 是其他详情，保留输入顺序与重复项 |
+| `GET /radio/categories` | 无 | `{ code:200, groups:[{ id,title,radios:[{ id,title,picurl,listenNum? }] }] }`；取匿名 musicu 分类，保留空分组。不提供账号的最近记录；`/radio/list` 和 `/radio/tracks` 仍要求登录 |
+| `GET /comment/list` | `id` 必填；`page=0`、`limit=25`（1–50）、`cursor`；数字协议参数 `biztype=1`、`cid=205360772`、`cmd=8`、`reqtype=2` | `{ code:200, data:{ comment?, hot_comment?, ...公开标量标记 }, nextCursor? }`；评论组有 `commentlist`、可选 `commenttotal`；条目保留已确认的内容、昵称、头像、时间、点赞与回复字段，不交出账号标识。数字参数不承诺通用的资源类型映射 |
+
+新接口的数值参数严格验证，不接受小数、负数、空字符串或夹字母；省略时才使用默认值。同名 query 参数取第一个值。`/comment/list` 的 `page>0` 必须带上一页的 `nextCursor`（最多 256 个字符）；只有普通评论的末条能提供这个游标，热评不能替代续页游标。没有足够证据时不推算“还有下一页”。评论类型码和跨页是否重复没有完整受控验证，不把一次有数据当成类型语义已确认。
+
+排序歌单的 `offset` 是起始位置，数量为 `limit`，与旧 `/batchGetSongLists` 的起止下标不同。这个 CGI 数据源与 `/recommend/category-playlists` 的 musicu 数据源不能混用页号、总数或续读位置；没有可信总数就省略 `total`，`more` 为 `false`。新接口不借用旧服务的配置 Cookie 或全局 HTTP 注册槽。
+
+歌曲批次在一次 HTTP 中发送每首歌曲各自的 RPC；20 个子请求已经匿名取样通过，但取样只包含两首歌的重复项，不代表验证过所有歌曲。整批参数先验证；只要有成功项就回 `200`，逐项给出失败，`partial` 表示存在失败。全为空回 `422`，全失败优先回报第一个非空结果错误；全局网关或传输失败直接回整体错误，不用 `null` 表示失败，也不改成多次请求重试。
+
+`GET /recommend/toplist` 还会从同一次回包中交出可选 `ranks:[{ songId, rank, rankType?, rankValue? }]` 与 `history:{ year,subPeriod }`。排名用歌曲编号关联，不能按 `songs` 的下标配对。往期目录保持上游条目的原始形状；当前两个匿名样本的目录都是空数组，不保证非空往期目录可用。可选数据缺失或损坏时省略，原来的 `songs`、`toplist`、`total`、`more` 与错误处理不变，不增加上游请求。

@@ -338,3 +338,10 @@
 
 
 
+## 未发布
+
+### 新功能
+
+- 新增六个匿名接口：`/search/match`（实体直接命中）、`/recommend/categories/all`（完整歌单分类）、`/recommend/category-playlists/sorted`（保留排序的分类歌单）、`POST /song/batch`（批量歌曲详情）、`/radio/categories`（匿名电台分类）、`/comment/list`（资源评论和回复）。Node 和 Serverless 都能用，不需要会话密钥。
+- `/recommend/toplist` 在同一次上游读取中补充可选 `ranks`（歌曲编号、排名、变化类型和值）与 `history`（上游的往期目录）；原有歌曲、分页和错误不变。当前实测的两个榜都没有往期条目，不保证每个榜都有历史目录。
+

@@ -342,11 +342,33 @@ export const toplistSongsResult = async (
     const info = toChartInfo(data.data);
     if (!info) throw new QqApiError('invalid-response');
     const count = countOf(info.total);
+    // 可选元数据读不到时不改变原有的歌曲、分页与错误结果，也不增加上游请求。
+    const ranks = Array.isArray(data.data.song)
+      ? data.data.song.flatMap((entry: unknown) => {
+          const item = dictionaryOf(entry);
+          const songId = positiveIdOf(item.songId);
+          const rank = positiveIdOf(item.rank);
+          if (songId === undefined || rank === undefined) return [];
+          const rankType = countOf(item.rankType);
+          return [
+            {
+              songId,
+              rank,
+              ...(rankType === undefined ? {} : { rankType }),
+              ...(typeof item.rankValue === 'string' ? { rankValue: item.rankValue } : {}),
+            },
+          ];
+        })
+      : undefined;
+    const history = dictionaryOf(data.data.history);
+    const hasHistory = Array.isArray(history.year) && Array.isArray(history.subPeriod);
     return okResult({
       toplist: info,
       songs,
       ...(count === undefined ? {} : { total: count }),
       more: count !== undefined && offset + songs.length < count,
+      ...(ranks === undefined || !ranks.length ? {} : { ranks }),
+      ...(hasHistory ? { history: { year: history.year, subPeriod: history.subPeriod } } : {}),
     });
   } catch (error) {
     return failureResult('get-toplist', error);
