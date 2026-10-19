@@ -28,3 +28,6 @@ test-results/
 .gate-probe/
 .vercel/
 .wrangler/
+
+# 行为比对（scripts/compat）下载的基准包与结果，不进仓库
+.compat/
