@@ -100,6 +100,10 @@ describe.each(['node', 'serverless'] as const)('匿名迁移路由 %s', (runtime
     });
   });
   afterEach(() => jest.restoreAllMocks());
+  it('GET 接口拒绝 POST 且不请求上游', async () => {
+    expect((await call(PATH, {})).status).toBe(405);
+    expect(seen).toHaveLength(0);
+  });
 
   it('忽略会话且不需要密钥，成功只请求一次', async () => {
     const res = await call(PATH, BODY);
