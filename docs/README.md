@@ -853,9 +853,9 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 
 替代接口可能使用不同参数、分页方式和错误响应结构，升级时需要同时检查调用逻辑。
 
-### 3.3.5 计划移除
+### 3.3.5 已移除
 
-以下 9 条旧接口已有替代方案：
+以下 9 条接口已移除，改用对应的替代接口：
 
 | 旧接口 | 替代接口 |
 | --- | --- |
@@ -869,7 +869,7 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 | `/getTopLists` | `/recommend/toplists` |
 | `/getRanks` | `/recommend/toplist` |
 
-另外 8 条没有直接替代接口，计划一并移除：
+另外 8 条没有替代接口，已直接移除：
 
 - `/user/getCookie`
 - `/user/setCookie`
@@ -880,9 +880,7 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 - `/getDigitalAlbumLists`
 - `/batchGetSongLists`
 
-**这些接口在 3.3.4 中仍保留，3.3.5 为计划退役版本。**
-
-请不要将计划退役误认为已经移除。
+这 17 条在 `3.3.4` 预告过。Node 现在对它们回 `404`，Serverless 照旧回 `501`。
 
 保留的主要曲库与 Folia 所需接口不属于上述退役清单。
 

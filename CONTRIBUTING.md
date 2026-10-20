@@ -66,7 +66,7 @@ Node 与 Serverless 共用业务处理。改动共用代码时，检查两个宿
 5. **同步公开文档。** 在 `docs/README.md` 写调用方式与响应，在 `CHANGELOG.md` 写用户能观察到的变化。改变错误或稳定接口时，也更新下方清单中的错误说明和相容政策。
 6. **跑验证。** 使用后面的完整验证命令，其中 `compat:check` 必须在 `build:js` 之后运行，它比较的是编译产物。
 
-普通共用路由会自动进入 Koa、Serverless 和 Explorer，不需要在各入口再注册一次。需要操作 Koa Cookie 等宿主 API 时，参考 `src/controllers/index.ts` 的 `nodeAdapters`；现有 `nodeOnly` 项用于保留 Node 旧路由，不是新增跨宿主功能的模板。
+普通共用路由会自动进入 Koa、Serverless 和 Explorer，不需要在各入口再注册一次。需要操作 Koa Cookie 等宿主 API 时，参考 `src/controllers/index.ts` 的 `nodeAdapters`。
 
 写入路由还要在 handler 检查 POST 方法、验证 JSON 正文，并在上游请求中设置 `readOnly: false`。写入只发送一次，读回确认后才报告成功；结果不明时不能自动重送。handler 及其依赖会进入 Serverless 打包范围，不要引入 Koa、axios、`node:*` 或 `qrLogin.node`，详细规则见[Serverless 打包边界](./ARCHITECTURE.md#serverless-打包边界)。
 

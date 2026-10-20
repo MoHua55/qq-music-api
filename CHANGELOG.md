@@ -1,3 +1,25 @@
+## 未发布
+
+### 移除
+
+以下 17 条只在 Node 上有的旧路由已移除，上一版已提前预告。Node 现在回 `404`，Serverless 照旧回 `501`。有替代接口的请按[使用文档](./docs/README.md#335-已移除)调整参数和响应解析，不能只替换路径：
+
+| 已移除路由 | 替代接口 |
+| --- | --- |
+| `/getSmartbox` | `/search/match`、`/search/suggest` |
+| `/getSongListCategories` | `/recommend/categories/all` |
+| `/getSongLists` | `/recommend/category-playlists/sorted` |
+| `/batchGetSongInfo` | `POST /song/batch` |
+| `/getRadioLists` | `/radio/categories` |
+| `/getComments` | `/comment/list` |
+| `/getNewDisks` | `/recommend/new-albums` |
+| `/getTopLists` | `/recommend/toplists` |
+| `/getRanks` | `/recommend/toplist` |
+
+下面 8 条没有替代接口，直接移除：`/user/getCookie`、`/user/setCookie`、`/downloadQQMusic`、`/getImageUrl`、`/getRecommend`、`/getTicketInfo`、`/getDigitalAlbumLists`、`/batchGetSongLists`。
+
+保留的接口不受影响，Folia 这类使用保留接口的下游不用修改接入代码。
+
 ## [3.3.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.3...v3.3.4) (2026-10-21)
 
 这一版补上六条匿名读取接口和排行榜的可选字段，MV 播放链接也能带会话读，同时移除九条已经预告的旧路由。其余已有接口的调用方式和行为保持不变，Folia 这类使用保留接口的下游不用修改接入代码。
