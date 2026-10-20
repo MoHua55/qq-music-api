@@ -11,7 +11,6 @@ import {
 import { okResult } from '../recommend/newRouteResult';
 
 const COMMENT_FIELDS = [
-  'rootcommentid',
   'commentid',
   'rootcommentcontent',
   'nick',
@@ -59,13 +58,15 @@ const REPLY_FIELDS = [
   'songtype',
 ] as const;
 
+// 上游偶尔有一条评论不带 rootcommentid（真账号见过一般评论的最后一条缺这个字段）。
+// 这条照样交出、只是不带它；续页游标只认真的有 rootcommentid 的末条，不拿别的字段顶替。
 const commentOf = (raw: unknown) => {
   const item = objectOf(raw);
-  if (typeof item.rootcommentid !== 'string' || !item.rootcommentid)
-    throw new QqApiError('invalid-response');
+  const root =
+    typeof item.rootcommentid === 'string' && item.rootcommentid ? item.rootcommentid : undefined;
   const middle = item.middlecommentcontent;
   return {
-    rootcommentid: item.rootcommentid,
+    ...(root === undefined ? {} : { rootcommentid: root }),
     ...fieldsOf(item, COMMENT_FIELDS),
     ...(middle === undefined
       ? {}
@@ -143,7 +144,7 @@ export const commentListResult = (query: {
         ...(countOf(group.commenttotal) === undefined ? {} : { commenttotal: group.commenttotal }),
       };
       if (key === 'comment' && entries.length)
-        nextCursor = entries[entries.length - 1].rootcommentid as string;
+        nextCursor = entries[entries.length - 1].rootcommentid;
     }
     if (source.comment === undefined && source.hot_comment === undefined)
       throw new QqApiError('invalid-response');
