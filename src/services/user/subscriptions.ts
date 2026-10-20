@@ -1,8 +1,8 @@
 import type { UpstreamOperation } from '../../protocol/businessCodes';
 import { QqApiError } from '../../protocol/errors';
+import { isDictionary } from '../../util/values';
 import { credentialMusicId } from '../auth/androidDevice';
 import type { AuthSession } from '../auth/qrLogin';
-import { isDictionary } from '../auth/values';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
 import { albumOwnerOf } from './albumOwner';

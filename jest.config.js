@@ -4,14 +4,13 @@ module.exports = {
   setupFiles: ['<rootDir>/tests/setup.ts'],
   // The default suite may use its local HTTP hosts, but never a real upstream endpoint.
   setupFilesAfterEnv: ['<rootDir>/tests/helpers/offlineNetwork.cjs'],
-  // Keep the reserved legacy probe directory outside the default offline contracts.
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.worktrees/',
     '<rootDir>/dist/',
-    '<rootDir>/tests/legacy-routes/',
+    '<rootDir>/.compat/',
   ],
-  modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/'],
+  modulePathIgnorePatterns: ['<rootDir>/.worktrees/', '<rootDir>/dist/', '<rootDir>/.compat/'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [

@@ -244,6 +244,38 @@ describe.each(['node', 'serverless'] as const)('toplist routes: %s', (runtime) =
   });
 
   describe('/recommend/toplist', () => {
+    it('可选排名按歌曲编号交出，不按歌曲数组下标配对', async () => {
+      replies.GetDetail = {
+        data: {
+          ...DETAIL,
+          data: chart(26, {
+            song: [{ songId: 302, rank: 3, rankType: 1, rankValue: '2' }],
+            history: { year: [], subPeriod: [] },
+          }),
+        },
+      };
+      const result = await call('/recommend/toplist?id=26');
+      expect(result.body.songs).toEqual(SONGS);
+      expect(result.body.ranks).toEqual([{ songId: 302, rank: 3, rankType: 1, rankValue: '2' }]);
+      expect(result.body.history).toEqual({ year: [], subPeriod: [] });
+      expect(recorded).toHaveLength(1);
+    });
+
+    it('缺少或损坏可选元数据不改变原有成功结果', async () => {
+      replies.GetDetail = { data: { ...DETAIL, data: chart(26, { song: {}, history: null }) } };
+      const result = await call('/recommend/toplist?id=26');
+      expect(result.status).toBe(200);
+      expect(result.body.songs).toEqual(SONGS);
+      expect(result.body.ranks).toBeUndefined();
+      expect(result.body.history).toBeUndefined();
+    });
+
+    it('往期条目按上游形状保留，非空条目只有离线覆盖', async () => {
+      const history = { year: [2025, 2026], subPeriod: [{ period: '2026_41', name: '测试期别' }] };
+      replies.GetDetail = { data: { ...DETAIL, data: chart(26, { history }) } };
+      expect((await call('/recommend/toplist?id=26')).body.history).toEqual(history);
+    });
+
     it('returns the chart, its songs unchanged and whether more follow; latest period by default', async () => {
       const result = await call('/recommend/toplist?id=26');
 
@@ -254,6 +286,8 @@ describe.each(['node', 'serverless'] as const)('toplist routes: %s', (runtime) =
         songs: SONGS,
         total: 100,
         more: true,
+        ranks: [1, 2].map((rank) => ({ songId: 900 + rank, rank, rankType: 1, rankValue: '' })),
+        history: { year: [], subPeriod: [] },
       });
       expect(recorded[0].rpcs).toEqual([
         {

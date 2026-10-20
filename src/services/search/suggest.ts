@@ -1,6 +1,6 @@
 import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
-import { type Dictionary, dictionaryOf, isDictionary } from '../auth/values';
+import { type Dictionary, dictionaryOf, isDictionary } from '../../util/values';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
 import { keywordOf, searchIdOf } from './search';

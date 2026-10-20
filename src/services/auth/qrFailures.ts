@@ -4,6 +4,7 @@ import {
   exposedUpstreamErrorKeyOf,
   isExposedUpstreamErrorKey,
 } from '../../protocol/upstreamErrorKeys';
+import { dictionaryOf } from '../../util/values';
 import { QqDeviceBootstrapError, QqProtocolError } from './musicuProtocol';
 import { PtloginError } from './ptlogin';
 import {
@@ -14,7 +15,6 @@ import {
   type QrPrimaryFailure,
   type QrState,
 } from './qrTypes';
-import { dictionaryOf } from './values';
 import { WechatQrError } from './wechatLogin';
 
 // src/services/auth/qrFailures.ts

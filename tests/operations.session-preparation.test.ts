@@ -37,7 +37,6 @@ jest.mock('../src/services/auth/qrLogin.node', () => ({
 
 import type { OperationHandler } from '../src/routes/operations/types';
 import { handleRequest } from '../src/serverless';
-import { createFetchLegacyTransport } from '../src/serverless/fetchLegacyTransport';
 import { failureResponse } from '../src/serverless/response';
 import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
 import { createMemoryDeviceContextRepository } from '../src/services/auth/deviceContext';
@@ -47,6 +46,7 @@ import {
   createQrLoginService,
 } from '../src/services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../src/services/httpTransport';
+import { createFetchLegacyTransport } from '../src/transport/fetchLegacyTransport';
 import { logger } from '../src/util/logger';
 import deviceFixture from './fixtures/contracts/device-v1.json';
 import { CATALOG_RUNTIMES, type CatalogRuntimeName } from './helpers/catalogRoutes';

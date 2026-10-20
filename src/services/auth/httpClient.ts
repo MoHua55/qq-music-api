@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
 import {
   cookieHeader,
   JSON_CONTENT_TYPE,
@@ -8,23 +8,24 @@ import {
   REDIRECT_STATUSES,
   redirectedMethod,
   updateCookieJar,
-} from './cookieJar';
+} from '../../transport/cookieJar';
+import type {
+  AuthHttpClient,
+  HttpClientResponse,
+  HttpRequestConfig,
+} from '../../transport/httpClientTypes';
 
-// The jar, the redirect rules and their constants moved to `./cookieJar` unchanged, so the
+// The jar, the redirect rules and their constants moved to `transport/cookieJar.ts` unchanged, so the
 // serverless fetch client can share them without importing axios. Behaviour here is untouched.
 
-export interface AuthHttpClient {
-  getCookieHeader(): string;
-  request<T>(config: AxiosRequestConfig): Promise<AxiosResponse<T>>;
-  post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>>;
-}
+export type { AuthHttpClient } from '../../transport/httpClientTypes';
 
 export const createAuthHttpClient = (
   transport: AxiosInstance = axios.create({ timeout: 25000, maxRedirects: 0 }),
 ): AuthHttpClient => {
   const jar = new Map<string, string>();
 
-  const request = async <T>(initial: AxiosRequestConfig): Promise<AxiosResponse<T>> => {
+  const request = async <T>(initial: HttpRequestConfig): Promise<HttpClientResponse<T>> => {
     let config = { ...initial };
     for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
       const cookies = cookieHeader(jar);
@@ -41,7 +42,7 @@ export const createAuthHttpClient = (
       // the shared axios singleton before this client is created, so JSON semantics are pinned
       // per request instead of depending on host import order.
       const response = await transport.request<T>({
-        ...config,
+        ...(config as AxiosRequestConfig),
         headers: {
           ...(config.data === undefined ? {} : { 'Content-Type': JSON_CONTENT_TYPE }),
           ...configuredHeaders,
@@ -75,7 +76,7 @@ export const createAuthHttpClient = (
   return {
     getCookieHeader: () => cookieHeader(jar),
     request,
-    post: <T>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
+    post: <T>(url: string, data?: unknown, config: HttpRequestConfig = {}) =>
       request<T>({ ...config, url, data, method: 'POST' }),
   };
 };

@@ -16,3 +16,4 @@ dist
 dist-esm
 tests
 *.tgz
+.compat

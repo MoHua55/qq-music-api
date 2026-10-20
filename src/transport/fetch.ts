@@ -1,6 +1,6 @@
 import { QqApiError } from '../protocol/errors';
-import { cookieHeader, mergeCookieHeaders, updateCookieJar } from '../services/auth/cookieJar';
-import { checkAbort, type HttpTransport, HttpTransportError } from './http';
+import { checkAbort, type HttpTransport, HttpTransportError } from '../protocol/http';
+import { cookieHeader, mergeCookieHeaders, updateCookieJar } from './cookieJar';
 
 export interface FetchResponse {
   status: number;

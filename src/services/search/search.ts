@@ -1,8 +1,8 @@
 import { QqApiError } from '../../protocol/errors';
 import { createMusicuClient, type MusicuDescriptor } from '../../protocol/musicu';
 import { createFetchTransport } from '../../transport/fetch';
+import { type Dictionary, isDictionary } from '../../util/values';
 import type { AuthSession } from '../auth/qrLogin';
-import { type Dictionary, isDictionary } from '../auth/values';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
 

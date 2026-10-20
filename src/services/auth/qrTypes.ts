@@ -1,3 +1,4 @@
+import { type Dictionary } from '../../util/values';
 import type { UserPlaylistOptions } from '../user/userPlaylistResponse';
 import { type AndroidDevice } from './androidDevice';
 import {
@@ -7,7 +8,6 @@ import {
 import { type DeviceContextRepository } from './deviceContextStore';
 import type { AuthHttpClient } from './httpClient';
 import { type StreamUrlProbe } from './streamCdnSelector';
-import { type Dictionary } from './values';
 
 // src/services/auth/qrTypes.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。

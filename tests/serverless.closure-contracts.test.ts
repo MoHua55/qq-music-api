@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { inspectRuntimeClosure } from './helpers/runtimeClosure';
 
+const HOST_DEFINED_ENV = ['NODE_ENV', 'JEST_WORKER_ID', 'LOG_LEVEL'];
+
 describe('serverless runtime dependency contracts', () => {
   it.each([
     'index.ts',
@@ -11,6 +13,28 @@ describe('serverless runtime dependency contracts', () => {
     const closure = inspectRuntimeClosure(path.join(__dirname, '../src/serverless', entry));
     expect(closure.files).toContain(path.resolve(__dirname, '../src/services/auth/qrLogin.ts'));
     expect(closure.forbidden).toEqual([]);
+  });
+
+  // 下游的 Cloudflare 部署只在编译期替换这三个环境变量，其余的 `process.env.*` 会在 Worker
+  // 初始化模块时因为没有 `process` 而崩掉；它的部署检查还要求闭包里确实用到 Buffer
+  // （宿主因此在入口装全局 Buffer）。两条都照下游检查的写法：读源码文字，不靠打包器。
+  it('only reads environment variables the Cloudflare host defines, and still calls Buffer', () => {
+    const files = new Set(
+      ['index.ts', 'mqtt.ts'].flatMap(
+        (entry) => inspectRuntimeClosure(path.join(__dirname, '../src/serverless', entry)).files,
+      ),
+    );
+    const variables = new Set<string>();
+    let callsBuffer = false;
+    for (const file of files) {
+      const source = fs.readFileSync(file, 'utf8');
+      for (const [, name] of source.matchAll(/\bprocess\.env\.([A-Z0-9_]+)/g)) variables.add(name);
+      if (/\bBuffer\s*(?:\.|\()/.test(source)) callsBuffer = true;
+    }
+
+    expect(variables.size).toBeGreaterThan(0);
+    expect([...variables].filter((name) => !HOST_DEFINED_ENV.includes(name))).toEqual([]);
+    expect(callsBuffer).toBe(true);
   });
 
   it.each([

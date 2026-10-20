@@ -1,19 +1,21 @@
 import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
-import { type Dictionary, dictionaryOf, isDictionary, stringOf } from '../auth/values';
+import { type Dictionary, dictionaryOf, isDictionary, stringOf } from '../../util/values';
+import type { AuthSession } from '../auth/qrLogin';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
 
 // src/services/mv/catalog.ts
 //
-// `/mv/list`、`/mv/detail`、`/mv/url`、`/song/mvs`：公开内容，一律匿名读，带了会话也不用。Node 与 serverless 共用。
+// `/mv/list`、`/mv/detail`、`/song/mvs`：公开内容，一律匿名读，带了会话也不用；`/mv/url` 有会话就带凭证读，
+// 没有照旧匿名。Node 与 serverless 共用。
 // 实测（2026-10，匿名网页 comm）：
 // - 清单 `MvInfoProServer.GetAllocMvInfo { area, version, order, start, size }`（`list[]`、`total`），
 //   筛选值 `GetAllocTag {}`（`area[]`、`version[]`，`{ id, name }`），两支放在同一次请求里。
 // - 详情 `VideoDataServer.get_video_info_batch { vidlist, required }`，回包以 vid 为键。
 // - 播放链接 `MvUrlProxy.GetMvUrls { vids, request_type: 10003, guid }`，以 vid 为键，`mp4[]`／`hls[]` 每档
 //   有 `filetype`、`code`、`url[]`、`freeflow_url[]`、`fileSize`；匿名时只有 mp4 的几档 `code 0` 有链接，
-//   更高的几档是 1000、hls 全是 2050，这里只交出有链接的 mp4。
+//   更高的几档是 1000、hls 全是 2050；带凭证读时 mp4 各档都可能有链接。这里只交出有链接的 mp4。
 // - 歌曲相关 MV `MvInfoProServer.GetSongRelatedMv { songid（字符串）, songtype: 1, lastmvid: 0 }`
 //   → `list[]`、`hasmore`（数字）。
 
@@ -247,14 +249,18 @@ const linksOf = (file: Dictionary): string[] => [
   ),
 ];
 
-/** 只交出 `code 0` 而且真的有 http 链接的 mp4；一档都没有回 422。 */
+/**
+ * 只交出 `code 0` 而且真的有 http 链接的 mp4；一档都没有回 422。有会话就带凭证读，
+ * 上游不认凭证时照旧是 502，不清会话（这支没有验证过 1000 的意思）。
+ */
 export const mvUrlResult = async (
   rawVid: unknown,
+  session: AuthSession | null = null,
   options: SessionMusicuOptions = {},
 ): Promise<NewRouteResult> => {
   try {
     const vid = vidOf(rawVid);
-    const data = await anonymous(options).execute(
+    const data = await createSessionMusicuClient(session, options).execute(
       descriptor(
         'music.stream.MvUrlProxy',
         'GetMvUrls',

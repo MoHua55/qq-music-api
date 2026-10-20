@@ -1,4 +1,3 @@
-import { IsEqual } from '../../src/types/core/base';
 import {
   BaseServiceParams,
   BaseServiceResponse,
@@ -7,7 +6,7 @@ import {
   TypedBodyContext,
   TypedQueryContext,
 } from '../../src/types/core/request';
-import { assertType } from './assert-type';
+import { assertType, type IsEqual } from './assert-type';
 
 // ==========================================
 // Service 层参数接口测试

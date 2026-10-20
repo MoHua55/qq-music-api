@@ -1,5 +1,5 @@
 import { QqApiError } from '../../protocol/errors';
-import { type Dictionary, dictionaryOf, isDictionary } from '../auth/values';
+import { type Dictionary, dictionaryOf, isDictionary } from '../../util/values';
 import { failureResult, type NewRouteResult, okResult } from './newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionMusicu';
 

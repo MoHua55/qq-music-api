@@ -48,7 +48,7 @@ describe('QQ auth HTTP client global default isolation', () => {
       await beforeLegacyImport.post(echo.url, { app: 0, os: 1 });
 
       // Importing any legacy service pulls this in, exactly like src/app.ts does at boot.
-      await import('../src/util/request');
+      await import('../src/node/request');
 
       const afterLegacyImport = createAuthHttpClient();
       await afterLegacyImport.post(echo.url, { app: 0, os: 1 });

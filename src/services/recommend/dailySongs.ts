@@ -1,7 +1,7 @@
 import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
+import { isDictionary } from '../../util/values';
 import type { AuthSession } from '../auth/qrLogin';
-import { isDictionary } from '../auth/values';
 import { failureResult, type NewRouteResult, okResult } from './newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionMusicu';
 

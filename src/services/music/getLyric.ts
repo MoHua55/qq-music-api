@@ -1,3 +1,4 @@
+import type { HttpClientResponse } from '../../transport/httpClientTypes';
 import { BaseServiceParams, BaseServiceResponse } from '../../types/core/request';
 import lyricParse from '../../util/lyricParse';
 import {
@@ -51,7 +52,7 @@ export default ({
     method,
     options: opts,
   })
-    .then(async (res: import('axios').AxiosResponse<any>) => {
+    .then(async (res: HttpClientResponse<any>) => {
       const lyricString = res.data?.lyric && decodeBase64Utf8(res.data.lyric);
       const lyric = isFormat ? lyricParse.lyricParse(lyricString || '') : lyricString;
       const response = {

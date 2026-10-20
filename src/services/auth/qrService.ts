@@ -1,6 +1,7 @@
 import { AuthCredentialRejectedError } from '../../util/authError';
 import { logger } from '../../util/logger';
 import { RequestRejectedError } from '../../util/requestError';
+import { type Dictionary, dictionaryOf, identifierOf, stringOf } from '../../util/values';
 import type { UserPlaylistOptions } from '../user/userPlaylistResponse';
 import {
   type AuthenticatedSongListDetailOptions,
@@ -78,7 +79,6 @@ import {
   unavailableListen,
 } from './sessionState';
 import { createStreamUrlProbe, StreamCdnSelector } from './streamCdnSelector';
-import { type Dictionary, dictionaryOf, identifierOf, stringOf } from './values';
 import {
   MAX_CONSECUTIVE_POLL_ERRORS,
   WECHAT_DEFAULT_POLL_BUDGET_MS,

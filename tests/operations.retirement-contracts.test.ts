@@ -22,10 +22,6 @@ it('serverless 只保留共用路由，移除旧路由文件', () => {
   expect(fs.existsSync(path.join(__dirname, '../src/serverless/legacyRoutes.ts'))).toBe(false);
 });
 
-it('Node 登录文件只保留真实使用的认证提取和 Cookie 常量', () => {
-  expect(Object.keys(loginHelpers).sort()).toEqual([
-    'AUTH_COOKIE_NAME',
-    'AUTH_HEADER_NAME',
-    'getAuthToken',
-  ]);
+it('Node 登录文件只保留认证提取，Cookie 和标头的名字统一放在 routes/sessionToken', () => {
+  expect(Object.keys(loginHelpers).sort()).toEqual(['getAuthToken']);
 });

@@ -1,5 +1,5 @@
-import { AxiosRequestConfig } from 'axios';
 import { Context } from 'koa';
+import type { HttpRequestConfig } from '../../transport/httpClientTypes';
 
 type QueryLikeValue = string | string[] | undefined;
 export type TypedQuery<T extends object> = {
@@ -28,9 +28,9 @@ export interface BaseServiceParams {
    */
   method?: string;
   /**
-   * 传递给 axios 的额外请求配置
+   * 额外的请求配置（Node 由 axios 发出，serverless 由 fetch 发出）
    */
-  options?: AxiosRequestConfig;
+  options?: HttpRequestConfig;
   /**
    * URL 查询参数或 body 数据
    */

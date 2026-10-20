@@ -1,6 +1,6 @@
 import type { Context } from 'koa';
 import { logout } from '../routes/operations/logout';
-import { AUTH_COOKIE_NAME } from './login';
+import { AUTH_COOKIE_NAME } from '../routes/sessionToken';
 import { operationController } from './operation';
 
 // src/controllers/logoutOperation.ts

@@ -32,6 +32,46 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Check dependency directions
+        run: npm run check:deps
+
+      - name: Type-check
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Build JavaScript package
+        run: npm run build:js
+
+      - name: Verify npm package contents
+        run: npm pack --dry-run
+
+  # 和 verify 一样的步骤，用 Folia 的 Electron 与 Docker 实际在用的 Node 24 再跑一次。
+  # verify 的名字是 main 保护规则要求的检查，不改。
+  verify-node24:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check dependency directions
+        run: npm run check:deps
+
       - name: Type-check
         run: npm run build
 

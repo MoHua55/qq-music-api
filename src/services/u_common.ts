@@ -1,5 +1,5 @@
-import { AxiosRequestConfig } from 'axios';
 import { legacyRequestStructureOf } from '../protocol/logStructure';
+import type { HttpRequestConfig } from '../transport/httpClientTypes';
 import { BaseUCommonParams } from '../types/core/request';
 import { logger } from '../util/logger';
 import { getLegacyHttpTransport } from './httpTransport';
@@ -10,7 +10,7 @@ export default ({ options = {}, method = 'get' }: BaseUCommonParams) => {
   // dependency graph (M0 0.2).
   const transport = getLegacyHttpTransport();
   const { baseURL, commonParams, referer } = transport.defaults;
-  const opts: AxiosRequestConfig = Object.assign({}, options, commonParams, {
+  const opts: HttpRequestConfig = Object.assign({}, options, commonParams, {
     headers: {
       referer: referer.u,
       host: 'u.y.qq.com',

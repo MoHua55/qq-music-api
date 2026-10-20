@@ -1,12 +1,12 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpClientResponse, HttpRequestConfig } from '../../transport/httpClientTypes';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
-interface GetDigitalAlbumListsParams {
+export interface GetDigitalAlbumListsParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 const upstream = '/v8/fcg-bin/musicmall.fcg';
@@ -26,7 +26,7 @@ export default ({ method = 'get', params = {}, option = {} }: GetDigitalAlbumLis
     method,
     options,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       const response = res.data;
       logServiceSuccess('getDigitalAlbumLists', upstream, response, {
         cmd: data.cmd,

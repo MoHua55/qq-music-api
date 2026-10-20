@@ -31,7 +31,7 @@ import {
   autoOpenExplorer,
   getExplorerUrl,
   shouldAutoOpenExplorer,
-} from '../src/util/openExplorer';
+} from '../src/node/openExplorer';
 
 describe('openExplorer util', () => {
   const originalAutoOpenEnv = process.env[AUTO_OPEN_EXPLORER_ENV];

@@ -54,7 +54,7 @@ const MEMBERSHIP_DETAIL = {
 
 it('文档与 Explorer 说明原因没确认时会再取一次', () => {
   const readme = readFileSync(resolve(__dirname, '../docs/README.md'), 'utf8');
-  expect(readme).toContain('再取一次');
+  expect(readme).toContain('重新取链一次');
   const explorer = readFileSync(resolve(__dirname, '../src/config/apiExplorer.ts'), 'utf8');
   expect(explorer).toContain('retries once');
 });

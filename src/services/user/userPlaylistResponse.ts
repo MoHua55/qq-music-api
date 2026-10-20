@@ -1,9 +1,9 @@
-import { type Dictionary, numberOf } from '../auth/values';
+import { type Dictionary, numberOf } from '../../util/values';
 
 // src/services/user/userPlaylistResponse.ts
 //
 // `/user/playlist` 的参数解析与回应组装。Node 控制器与 serverless 共用同一份，
-// 只依赖 `auth/values`，保持运行时中立。
+// 只依赖 `util/values`，保持运行时中立。
 
 export interface UserPlaylistOptions {
   /** 从收藏歌单的这个位置接着读；不给就是第一轮（自建＋收藏）。 */

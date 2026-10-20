@@ -1,3 +1,71 @@
+## [3.3.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.3...v3.3.4) (2026-10-21)
+
+这一版补上六条匿名读取接口和排行榜的可选字段，MV 播放链接也能带会话读，同时移除九条已经预告的旧路由。其余已有接口的调用方式和行为保持不变，Folia 这类使用保留接口的下游不用修改接入代码。
+
+### 新功能
+
+下面六条接口在 Node 和 Serverless 都有提供，不需要登录或会话密钥，带上会话也不会用它访问上游：
+
+- **搜索直接命中**：`GET /search/match?keyword=` 返回歌曲、歌手、专辑、MV 分组中的匹配条目。要搜索词建议仍用 `/search/suggest`。
+- **完整歌单分类**：`GET /recommend/categories/all` 读取旧 CGI 的分类字典，保留分组、可用标记和上游给出的排序选项；原来的 `/recommend/categories` 继续提供热门分类。
+- **带排序的分类歌单**：`GET /recommend/category-playlists/sorted` 接受 `id`、`offset`、`limit` 和 `sortId`。它与 `/recommend/category-playlists` 使用不同数据源，分页位置和总数不能混用。
+- **批量歌曲详情**：`POST /song/batch` 一次查询 1–20 首，保留输入顺序和重复项。部分成功时逐项返回结果并标记 `partial`；全空或全失败时返回整体错误，不自动重试。
+- **匿名电台分类**：`GET /radio/categories` 列出电台分组，保留空分组，不提供账号的最近记录。`/radio/list` 和 `/radio/tracks` 仍要求登录。
+- **资源评论与回复**：`GET /comment/list` 读取评论和回复，下一页要带上一页给的 `nextCursor`；普通评论的末条没有 `rootcommentid` 时不给 `nextCursor`，个别评论缺这个字段也照样交出。资源类型的数字参数还没有完整验证。实测一次读同一个资源的两页，普通评论没有重复，热评只在第一页出现；这只是一个样本，不能当作全部类型和分页都已确认。
+
+`GET /recommend/toplist` 还会从同一次上游响应中补上可选的 `ranks` 和 `history`。`ranks` 按歌曲编号给出排名及上游提供的变化类型和值；`history` 保留往期目录。**实测的两个榜都没有往期条目**，不保证每个榜都有可用的往期目录。缺少或损坏的可选数据会省略，原来的歌曲、分页和错误处理不变，也不增加上游请求。
+
+`GET /mv/url` 带了会话就用它读，登录后可能拿到更多档位的 MP4；没带、解不开会话，或 Serverless 没配置 `QQ_SESSION_SECRET` 时照旧匿名读。回包格式不变，仍然只给有链接的 MP4。
+
+### 移除
+
+以下九条旧路由已移除，上一版已提前预告。请按[使用文档](./docs/README.md#334-已移除)调整参数和响应解析，不能只替换路径：
+
+| 已移除路由 | 替代接口 |
+| --- | --- |
+| `/getHotkey` | `/search/hot` |
+| `/getSingerList` | `/singer/list` |
+| `/getSingerDesc` | `/singer/detail` |
+| `/getSingerStarNum` | `/singer/homepage` |
+| `/getSimilarSinger` | `/singer/similar` |
+| `/getSingerMv` | `/singer/mvs` |
+| `/getMv` | `/mv/list` |
+| `/getMvByTag` | `/mv/list` |
+| `/getMvPlay` | `/mv/detail` 和 `/mv/url` |
+
+### 改进
+
+路由注册统一由清单生成，Node 专用代码和共用业务的职责也重新整理，并补上依赖边界检查。除本页列出的新增接口、可选字段、MV 播放链接的会话和旧路由移除外，已有接口行为不变，Folia 这类下游不用为内部整理改代码。
+
+### 给下游的通知
+
+**计划在 3.3.5 移除以下 17 条 Node 旧路由，3.3.4 仍保留。** 请在升级前迁移；替代接口的参数、响应、分页方式可能不同，不承诺与旧接口逐字段相同。
+
+| 计划移除的旧路由 | 改用 |
+| --- | --- |
+| `/getSmartbox` | `/search/match`、`/search/suggest` |
+| `/getSongListCategories` | `/recommend/categories/all` |
+| `/getSongLists` | `/recommend/category-playlists/sorted` |
+| `/batchGetSongInfo` | `POST /song/batch` |
+| `/getRadioLists` | `/radio/categories` |
+| `/getComments` | `/comment/list` |
+| `/getNewDisks` | `/recommend/new-albums` |
+| `/getTopLists` | `/recommend/toplists` |
+| `/getRanks` | `/recommend/toplist` |
+
+以下 8 条没有替代接口，将直接移除：
+
+- `/user/getCookie`
+- `/user/setCookie`
+- `/downloadQQMusic`
+- `/getImageUrl`
+- `/getRecommend`
+- `/getTicketInfo`
+- `/getDigitalAlbumLists`
+- `/batchGetSongLists`
+
+这些变动不包括 Folia 正在使用的保留接口。精确锁版的应用仍需更新依赖和锁文件；Electron 要重新打包，Docker 要重建镜像，Vercel 和 Cloudflare 要重新部署，详见[相容与版本政策](./docs/compatibility.md)。
+
 ## [3.3.3](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.2...v3.3.3) (2026-10-18)
 
 这一版让 Vercel、Cloudflare 不用中继也能手机 QQ 扫码登录，不登录也搜得到歌了，还加上排行榜、新碟、刷歌模式、相似歌曲，以及歌手、评论、MV、热搜和搜索建议、歌曲标签这一批新接口。Folia 已经在用的接口，路径、参数、字段和状态码都没变；要注意的是 Serverless 的 `/login/channels` 默认多了 `qq`，见下面「给下游的通知」。
@@ -195,7 +263,7 @@
 
 - 当 Android `UrlGetVkey` 未返回 CDN 地址时，优先探测可用的高速节点，并在失败时动态调度其他节点，改善高码率音频播放卡顿。
 
-## [3.1.0](https://github.com/yakult-green-tea/qq-music-api/compare/v3.0.0...v3.1.0) (2026-08-25)
+## 3.1.0 (2026-08-25)
 
 ### 新功能
 
@@ -211,7 +279,7 @@
 
 - 补充 Node.js、Vercel Functions 与 Cloudflare Durable Object 的导出入口、能力边界和安全责任说明。
 
-## [3.0.0](https://github.com/yakult-green-tea/qq-music-api/compare/v2.3.0...v3.0.0) (2026-08-18)
+## 3.0.0 (2026-08-18)
 
 ### 新功能
 
@@ -335,6 +403,3 @@
 * rebuild router and axios ([0b737df](https://github.com/Rain120/qq-music-api/commit/0b737df8971a560119af2bcae199a1ea5549859c))
 * rebuild router for lost ([2165b6a](https://github.com/Rain120/qq-music-api/commit/2165b6a8b5527bb2b68592b17e28846fce1e856f))
 * rebuild routers ([1278008](https://github.com/Rain120/qq-music-api/commit/1278008d57bd8fb4bced800c3de6c6f16f0aee8f))
-
-
-

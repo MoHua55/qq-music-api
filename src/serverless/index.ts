@@ -1,82 +1,19 @@
-import { albumSubscribe } from '../routes/operations/albumSubscribe';
-import { getAlbumInfo } from '../routes/operations/getAlbumInfo';
-import { getLyricOperation } from '../routes/operations/getLyric';
-import { getMusicPlay } from '../routes/operations/getMusicPlay';
-import { getOwnedPlaylistSongs } from '../routes/operations/getOwnedPlaylistSongs';
-import { getSingerAlbum } from '../routes/operations/getSingerAlbum';
-import { getSingerHotsong } from '../routes/operations/getSingerHotsong';
-import { getSongInfo } from '../routes/operations/getSongInfo';
-import { getSongListDetail } from '../routes/operations/getSongListDetail';
-import { getUserAlbums } from '../routes/operations/getUserAlbums';
-import { getUserLikedSongs } from '../routes/operations/getUserLikedSongs';
-import { getUserPlaylist } from '../routes/operations/getUserPlaylist';
+import { serverlessPathOf, sharedRoutes } from '../routes/manifest';
 import { loginChannels } from '../routes/operations/loginChannels';
-import { loginRefresh } from '../routes/operations/loginRefresh';
-import { loginStatus } from '../routes/operations/loginStatus';
-import { logout } from '../routes/operations/logout';
-import {
-  playlistCreate,
-  playlistDelete,
-  playlistRename,
-} from '../routes/operations/playlistManagement';
-import { playlistTracks } from '../routes/operations/playlistTracks';
-import { qrCancel } from '../routes/operations/qrCancel';
-import { qrCheck } from '../routes/operations/qrCheck';
-import { qrCreate } from '../routes/operations/qrCreate';
-import { qrKey } from '../routes/operations/qrKey';
-import { songLike } from '../routes/operations/songLike';
-import { playlistSubscribe, subscriptionStatus } from '../routes/operations/subscriptions';
-import { userCloud } from '../routes/operations/userCloud';
-import { userDailySongs } from '../routes/operations/userDailySongs';
-import { userDetail } from '../routes/operations/userDetail';
-import { userVip } from '../routes/operations/userVip';
+import { AUTH_HEADER_NAME, tokenFromCookieString } from '../routes/sessionToken';
 import { createMemoryDeviceContextRepository } from '../services/auth/deviceContextStore';
 import {
   createQrLoginService,
   type QqQrRelay,
   type QrLoginService,
 } from '../services/auth/qrLogin';
-import {
-  commentCountResult,
-  hotCommentsResult,
-  newCommentsResult,
-} from '../services/comments/catalog';
 import { setLegacyHttpTransport } from '../services/httpTransport';
-import { mvDetailResult, mvListResult, mvUrlResult, songMvsResult } from '../services/mv/catalog';
-import {
-  categoryPlaylistsResult,
-  newAlbumsResult,
-  newSongsResult,
-  playlistCategoriesResult,
-  toplistSongsResult,
-  toplistsResult,
-} from '../services/recommend/catalog';
-import { guessYouLikeResult } from '../services/recommend/guessYouLike';
-import type { NewRouteResult } from '../services/recommend/newRouteResult';
-import { radarPageOf, radarResult } from '../services/recommend/radar';
-import { radioListResult, radioTracksResult } from '../services/recommend/radio';
-import {
-  recommendPlaylistsLimitOf,
-  recommendPlaylistsResult,
-} from '../services/recommend/recommendPlaylists';
-import { songLabelsResult } from '../services/recommend/songLabels';
-import { relatedPlaylistsResult, similarSongsResult } from '../services/recommend/songRelations';
-import { searchResult } from '../services/search/search';
-import { hotSearchesResult, searchSuggestionsResult } from '../services/search/suggest';
-import {
-  similarSingersResult,
-  singerDetailResult,
-  singerHomepageResult,
-  singerListResult,
-  singerMvsResult,
-  singerSongsResult,
-} from '../services/singers/catalog';
+import { createFetchAuthHttpClient } from '../transport/fetchAuthHttpClient';
+import { createFetchLegacyTransport } from '../transport/fetchLegacyTransport';
 import { deriveAndroidDevice } from './derivedDevice';
-import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
-import { createFetchLegacyTransport } from './fetchLegacyTransport';
 import { operationRoute } from './operationRoute';
 import { CHECK_BUDGET_MS, capabilitiesFor, secretsOf } from './qrRuntime';
-import { AUTH_COOKIE_NAME, failureResponse, json } from './response';
+import { failureResponse, json } from './response';
 import { createRouter } from './router';
 import { createSealedSessionResolver } from './sealedResolver';
 
@@ -128,18 +65,7 @@ export interface ServerlessOptions {
   qqRelay?: QqQrRelay;
 }
 
-const AUTH_HEADER_NAME = 'x-qq-session';
 /** A single invocation may observe a pull channel this long before it has to answer. */
-
-const tokenFromCookieString = (cookie: string): string | undefined => {
-  for (const entry of cookie.split(';')) {
-    const separator = entry.indexOf('=');
-    if (separator <= 0) continue;
-    if (entry.slice(0, separator).trim() === AUTH_COOKIE_NAME)
-      return entry.slice(separator + 1).trim() || undefined;
-  }
-  return undefined;
-};
 
 /** Header > query > cookie, the same order the Koa controller applies (§5.3 #2). */
 const authTokenOf = (request: Request, url: URL): string | undefined => {
@@ -172,287 +98,21 @@ interface RouteContext {
 
 type RouteHandler = (context: RouteContext) => Promise<Response>;
 
-/** 新路由的结果已经带好状态码与 header，这里只负责写成 Response。 */
-const fromResult = (result: NewRouteResult): Response =>
-  json(result.body, result.status, result.headers);
-
-const routes: Record<string, RouteHandler> = {
-  '/login/qr/key': operationRoute(qrKey),
-  '/login/qr/create': operationRoute(qrCreate),
-  '/login/qr/check': operationRoute(qrCheck),
-  '/login/qr/cancel': operationRoute(qrCancel),
-
-  // ---- Session ----------------------------------------------------------------------------
-  '/login/status': operationRoute(loginStatus),
-
-  '/logout': operationRoute(logout),
-  '/login/refresh': operationRoute(loginRefresh),
-
-  '/user/detail': operationRoute(userDetail),
-  '/user/vip': operationRoute(userVip),
-  '/user/daily-songs': operationRoute(userDailySongs),
-  '/user/cloud': operationRoute(userCloud),
-  '/user/playlist/tracks': operationRoute(playlistTracks),
-  '/user/playlist/create': operationRoute(playlistCreate),
-  '/user/playlist/rename': operationRoute(playlistRename),
-  '/user/playlist/delete': operationRoute(playlistDelete),
-  '/user/playlist/subscribe': operationRoute(playlistSubscribe),
-  '/user/song/like': operationRoute(songLike),
-  '/user/album/subscribe': operationRoute(albumSubscribe),
-  '/user/subscription-status': operationRoute(subscriptionStatus),
-
-  '/user/guess-you-like': async ({ service: getService, token }) =>
-    fromResult(await guessYouLikeResult(await (await getService()).resolveSession(token))),
-
-  // 有会话就带凭证，没有就匿名。没设密钥时解不开任何会话，也不建服务，直接匿名读。
-  '/recommend/playlists': async ({ url, env, service: getService, token }) => {
-    const session =
-      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
-    return fromResult(
-      await recommendPlaylistsResult(
-        session,
-        recommendPlaylistsLimitOf(url.searchParams.get('limit')),
-      ),
-    );
-  },
-
-  // 相似歌曲、包含这首歌的歌单：要登录，匿名时上游只给空清单。
-  '/song/similar': async ({ url, service: getService, token }) =>
-    fromResult(
-      await similarSongsResult(
-        await (await getService()).resolveSession(token),
-        url.searchParams.get('id') ?? undefined,
-      ),
-    ),
-
-  '/song/related-playlists': async ({ url, service: getService, token }) =>
-    fromResult(
-      await relatedPlaylistsResult(
-        await (await getService()).resolveSession(token),
-        url.searchParams.get('id') ?? undefined,
-      ),
-    ),
-
-  // 刷歌模式：和推荐歌单一样，有会话就带凭证，没有就匿名。
-  '/recommend/radar': async ({ url, env, service: getService, token }) => {
-    const session =
-      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
-    return fromResult(await radarResult(session, radarPageOf(url.searchParams.get('page'))));
-  },
-
-  // 公开内容，一律匿名读；没设密钥也能用。
-  '/recommend/categories': async () => fromResult(await playlistCategoriesResult()),
-
-  '/recommend/category-playlists': async ({ url }) =>
-    fromResult(
-      await categoryPlaylistsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        page: url.searchParams.get('page') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/recommend/new-songs': async ({ url }) =>
-    fromResult(await newSongsResult(url.searchParams.get('area') ?? undefined)),
-
-  '/recommend/new-albums': async ({ url }) =>
-    fromResult(
-      await newAlbumsResult({
-        area: url.searchParams.get('area') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/recommend/toplists': async () => fromResult(await toplistsResult()),
-
-  '/recommend/toplist': async ({ url }) =>
-    fromResult(
-      await toplistSongsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        period: url.searchParams.get('period') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  // 有会话就带凭证，没有就匿名搜。没设密钥时解不开任何会话，也不建服务，直接匿名搜。
-  '/search': async ({ url, env, service: getService, token }) => {
-    const query = {
-      keyword: url.searchParams.get('keyword') ?? undefined,
-      type: url.searchParams.get('type') ?? undefined,
-      page: url.searchParams.get('page') ?? undefined,
-      limit: url.searchParams.get('limit') ?? undefined,
-    };
-    const session =
-      env.QQ_SESSION_SECRET && token ? await (await getService()).resolveSession(token) : null;
-    return fromResult(await searchResult(query, session));
-  },
-
-  // 热搜、搜索建议：公开内容，一律匿名读；没设密钥也能用。
-  '/search/hot': async () => fromResult(await hotSearchesResult()),
-
-  '/search/suggest': async ({ url }) =>
-    fromResult(await searchSuggestionsResult(url.searchParams.get('keyword') ?? undefined)),
-
-  // 歌手：公开内容，一律匿名读；没设密钥也能用。
-  '/singer/list': async ({ url }) =>
-    fromResult(
-      await singerListResult({
-        area: url.searchParams.get('area') ?? undefined,
-        sex: url.searchParams.get('sex') ?? undefined,
-        genre: url.searchParams.get('genre') ?? undefined,
-        index: url.searchParams.get('index') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/singer/detail': async ({ url }) =>
-    fromResult(await singerDetailResult(url.searchParams.get('mid') ?? undefined)),
-
-  '/singer/homepage': async ({ url }) =>
-    fromResult(await singerHomepageResult(url.searchParams.get('mid') ?? undefined)),
-
-  '/singer/similar': async ({ url }) =>
-    fromResult(await similarSingersResult(url.searchParams.get('mid') ?? undefined)),
-
-  '/singer/songs': async ({ url }) =>
-    fromResult(
-      await singerSongsResult({
-        mid: url.searchParams.get('mid') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/singer/mvs': async ({ url }) =>
-    fromResult(
-      await singerMvsResult({
-        mid: url.searchParams.get('mid') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  // 歌曲评论：公开内容，一律匿名读；没设密钥也能用。
-  '/comment/hot': async ({ url }) =>
-    fromResult(
-      await hotCommentsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/comment/new': async ({ url }) =>
-    fromResult(
-      await newCommentsResult({
-        id: url.searchParams.get('id') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/comment/count': async ({ url }) =>
-    fromResult(await commentCountResult(url.searchParams.get('id') ?? undefined)),
-
-  // MV：公开内容，一律匿名读；没设密钥也能用。
-  '/mv/list': async ({ url }) =>
-    fromResult(
-      await mvListResult({
-        area: url.searchParams.get('area') ?? undefined,
-        version: url.searchParams.get('version') ?? undefined,
-        offset: url.searchParams.get('offset') ?? undefined,
-        limit: url.searchParams.get('limit') ?? undefined,
-      }),
-    ),
-
-  '/mv/detail': async ({ url }) =>
-    fromResult(await mvDetailResult(url.searchParams.get('vid') ?? undefined)),
-
-  '/mv/url': async ({ url }) =>
-    fromResult(await mvUrlResult(url.searchParams.get('vid') ?? undefined)),
-
-  '/song/mvs': async ({ url }) =>
-    fromResult(await songMvsResult(url.searchParams.get('id') ?? undefined)),
-
-  // 歌曲标签：公开内容，一律匿名读；没设密钥也能用。
-  '/song/labels': async ({ url }) =>
-    fromResult(await songLabelsResult(url.searchParams.get('id') ?? undefined)),
-
-  '/radio/list': async ({ service: getService, token }) =>
-    fromResult(await radioListResult(await (await getService()).resolveSession(token))),
-
-  '/radio/tracks': async ({ url, service: getService, token }) =>
-    fromResult(
-      await radioTracksResult(
-        await (await getService()).resolveSession(token),
-        url.searchParams.get('id'),
-      ),
-    ),
-
-  '/user/playlist': operationRoute(getUserPlaylist),
-
-  '/user/albums': operationRoute(getUserAlbums),
-
-  '/user/liked-songs': operationRoute(getUserLikedSongs),
-
-  // A playlist the user owns, read with their credential. It must stay in this section: the
-  // anonymous `/getSongListDetail` below answers an empty shell for a 不公开 playlist.
-  '/user/playlist-detail': operationRoute(getOwnedPlaylistSongs),
-
-  '/getMusicPlay/:songmid?': operationRoute(getMusicPlay),
-  // ---- Catalog (no credential) ------------------------------------------------------------
-  // Anonymous by default, so it stays usable without a secret. Only when the anonymous CGI cannot
-  // read the playlist at all (`code: 10`, QQ's own algorithmic playlists) does a session get used,
-  // and only on a deployment that can open one; any failure there keeps the anonymous answer.
-  '/getSongListDetail/:disstid': operationRoute(getSongListDetail),
-  '/getSongInfo/:songmid/:songid?': operationRoute(getSongInfo),
-  '/getLyric': operationRoute(getLyricOperation),
-
-  '/getAlbumInfo': operationRoute(getAlbumInfo),
-
-  '/getSingerAlbum': operationRoute(getSingerAlbum),
-
-  '/getSingerHotsong': operationRoute(getSingerHotsong),
-};
+// 路由表由 manifest 生成。/login/channels 在入口最前面单独处理（不注册旧曲库传输、不接异常），
+// 不进这张表。
+const routes: Record<string, RouteHandler> = Object.fromEntries(
+  sharedRoutes
+    .filter((route) => route.name !== 'loginChannels')
+    .map((route) => [serverlessPathOf(route), operationRoute(route.handler)]),
+);
 
 const NO_SECRET =
   'QQ_SESSION_SECRET is not set, so this deployment cannot hold a session. Catalog routes still work.';
 
 /** The routes that need a session secret to mean anything. Catalog routes work without one. */
-const LOGIN_ROUTES = new Set([
-  '/login/qr/key',
-  '/login/qr/create',
-  '/login/qr/check',
-  '/login/qr/cancel',
-  '/login/status',
-  '/login/refresh',
-  '/logout',
-  '/user/detail',
-  '/user/vip',
-  '/user/playlist/tracks',
-  '/user/playlist/create',
-  '/user/playlist/rename',
-  '/user/playlist/delete',
-  '/user/playlist/subscribe',
-  '/user/song/like',
-  '/user/album/subscribe',
-  '/user/subscription-status',
-  '/user/playlist',
-  '/user/albums',
-  '/user/liked-songs',
-  '/user/playlist-detail',
-  '/user/guess-you-like',
-  '/user/daily-songs',
-  '/song/similar',
-  '/song/related-playlists',
-  '/user/cloud',
-  '/radio/list',
-  '/radio/tracks',
-  '/getMusicPlay/:songmid?',
-]);
+const LOGIN_ROUTES = new Set(
+  sharedRoutes.filter((route) => route.needsSecret).map((route) => serverlessPathOf(route)),
+);
 
 const match = createRouter(routes);
 

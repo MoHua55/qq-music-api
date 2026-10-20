@@ -49,7 +49,7 @@ describe('legacy request axios isolation', () => {
           postContentType: sharedAxios.defaults.headers.post['Content-Type'],
         };
 
-        const { default: request } = await import('../src/util/request');
+        const { default: request } = await import('../src/node/request');
         const { requestConfig } = await import('../src/config');
 
         expect({

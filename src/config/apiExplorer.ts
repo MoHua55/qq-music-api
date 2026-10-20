@@ -1,3 +1,5 @@
+import { routeManifest } from '../routes/manifest';
+
 export type ApiExplorerMethod = 'GET' | 'POST';
 
 export type ApiExplorerInputType = 'text' | 'number' | 'boolean' | 'textarea';
@@ -78,268 +80,60 @@ export const extractRouteParams = (routePath: string): ApiExplorerField[] => {
   });
 };
 
-export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = [
-  { name: 'getCookie', method: 'GET', routePath: '/user/getCookie', category: 'User' },
-  { name: 'setCookie', method: 'GET', routePath: '/user/setCookie', category: 'User' },
-  { name: 'qrKey', method: 'GET', routePath: '/login/qr/key', category: 'Login' },
-  { name: 'qrCreate', method: 'GET', routePath: '/login/qr/create', category: 'Login' },
-  { name: 'qrCheck', method: 'GET', routePath: '/login/qr/check', category: 'Login' },
-  { name: 'qrCancel', method: 'GET', routePath: '/login/qr/cancel', category: 'Login' },
-  { name: 'loginStatus', method: 'GET', routePath: '/login/status', category: 'Login' },
-  { name: 'loginChannels', method: 'GET', routePath: '/login/channels', category: 'Login' },
-  { name: 'logout', method: 'GET', routePath: '/logout', category: 'Login' },
-  { name: 'loginRefresh', method: 'POST', routePath: '/login/refresh', category: 'Login' },
-  { name: 'userDetail', method: 'GET', routePath: '/user/detail', category: 'User' },
-  { name: 'userVip', method: 'GET', routePath: '/user/vip', category: 'User' },
-  { name: 'songLike', method: 'POST', routePath: '/user/song/like', category: 'User' },
-  { name: 'albumSubscribe', method: 'POST', routePath: '/user/album/subscribe', category: 'User' },
-  { name: 'playlistTracks', method: 'POST', routePath: '/user/playlist/tracks', category: 'User' },
-  { name: 'playlistCreate', method: 'POST', routePath: '/user/playlist/create', category: 'User' },
-  { name: 'playlistRename', method: 'POST', routePath: '/user/playlist/rename', category: 'User' },
-  { name: 'playlistDelete', method: 'POST', routePath: '/user/playlist/delete', category: 'User' },
-  {
-    name: 'playlistSubscribe',
-    method: 'POST',
-    routePath: '/user/playlist/subscribe',
-    category: 'User',
-  },
-  {
-    name: 'subscriptionStatus',
-    method: 'GET',
-    routePath: '/user/subscription-status',
-    category: 'User',
-  },
-  { name: 'getUserPlaylist', method: 'GET', routePath: '/user/playlist', category: 'User' },
-  { name: 'getUserAlbums', method: 'GET', routePath: '/user/albums', category: 'User' },
-  { name: 'getUserLikedSongs', method: 'GET', routePath: '/user/liked-songs', category: 'User' },
-  {
-    name: 'getOwnedPlaylistSongs',
-    method: 'GET',
-    routePath: '/user/playlist-detail',
-    category: 'User',
-  },
-  { name: 'getGuessYouLike', method: 'GET', routePath: '/user/guess-you-like', category: 'User' },
-  { name: 'userDailySongs', method: 'GET', routePath: '/user/daily-songs', category: 'User' },
-  { name: 'userCloud', method: 'GET', routePath: '/user/cloud', category: 'User' },
-  {
-    name: 'getRecommendPlaylists',
-    method: 'GET',
-    routePath: '/recommend/playlists',
-    category: 'Recommend',
-  },
-  {
-    name: 'getPlaylistCategories',
-    method: 'GET',
-    routePath: '/recommend/categories',
-    category: 'Recommend',
-  },
-  {
-    name: 'getCategoryPlaylists',
-    method: 'GET',
-    routePath: '/recommend/category-playlists',
-    category: 'Recommend',
-  },
-  { name: 'getNewSongs', method: 'GET', routePath: '/recommend/new-songs', category: 'Recommend' },
-  { name: 'getSimilarSongs', method: 'GET', routePath: '/song/similar', category: 'Song' },
-  {
-    name: 'getRelatedPlaylists',
-    method: 'GET',
-    routePath: '/song/related-playlists',
-    category: 'Song',
-  },
-  {
-    name: 'getRecommendRadar',
-    method: 'GET',
-    routePath: '/recommend/radar',
-    category: 'Recommend',
-  },
-  {
-    name: 'getNewAlbums',
-    method: 'GET',
-    routePath: '/recommend/new-albums',
-    category: 'Recommend',
-  },
-  {
-    name: 'getRecommendToplists',
-    method: 'GET',
-    routePath: '/recommend/toplists',
-    category: 'Recommend',
-  },
-  {
-    name: 'getRecommendToplistSongs',
-    method: 'GET',
-    routePath: '/recommend/toplist',
-    category: 'Recommend',
-  },
-  { name: 'getRadioList', method: 'GET', routePath: '/radio/list', category: 'Recommend' },
-  { name: 'getRadioTracks', method: 'GET', routePath: '/radio/tracks', category: 'Recommend' },
-  { name: 'getDownloadQQMusic', method: 'GET', routePath: '/downloadQQMusic', category: 'Song' },
-  { name: 'getHotkey', method: 'GET', routePath: '/getHotkey', category: 'Search' },
-  { name: 'getSmartbox', method: 'GET', routePath: '/getSmartbox/:key?', category: 'Search' },
-  { name: 'getSearch', method: 'GET', routePath: '/search', category: 'Search' },
-  { name: 'getHotSearches', method: 'GET', routePath: '/search/hot', category: 'Search' },
-  {
-    name: 'getSearchSuggestions',
-    method: 'GET',
-    routePath: '/search/suggest',
-    category: 'Search',
-  },
-  {
-    name: 'getSongListCategories',
-    method: 'GET',
-    routePath: '/getSongListCategories',
-    category: 'Song Lists',
-  },
-  {
-    name: 'getSongLists',
-    method: 'GET',
-    routePath: '/getSongLists/:page?/:limit?/:categoryId?/:sortId?',
-    category: 'Song Lists',
-  },
-  {
-    name: 'batchGetSongLists',
-    method: 'POST',
-    routePath: '/batchGetSongLists',
-    category: 'Batch',
-  },
-  {
-    name: 'getSongInfo',
-    method: 'GET',
-    routePath: '/getSongInfo/:songmid?/:songid?',
-    category: 'Song',
-  },
-  {
-    name: 'batchGetSongInfo',
-    method: 'POST',
-    routePath: '/batchGetSongInfo',
-    category: 'Batch',
-  },
-  {
-    name: 'getSongListDetail',
-    method: 'GET',
-    routePath: '/getSongListDetail/:disstid?',
-    category: 'Song Lists',
-  },
-  {
-    name: 'getNewDisks',
-    method: 'GET',
-    routePath: '/getNewDisks/:page?/:limit?',
-    category: 'Album',
-  },
-  { name: 'getMvByTag', method: 'GET', routePath: '/getMvByTag', category: 'MV' },
-  {
-    name: 'getMv',
-    method: 'GET',
-    routePath: '/getMv/:area_id?/:version_id?/:limit?/:page?',
-    category: 'MV',
-  },
-  { name: 'listSingers', method: 'GET', routePath: '/singer/list', category: 'Singer' },
-  { name: 'getSingerDetail', method: 'GET', routePath: '/singer/detail', category: 'Singer' },
-  {
-    name: 'getSingerHomepage',
-    method: 'GET',
-    routePath: '/singer/homepage',
-    category: 'Singer',
-  },
-  { name: 'getSimilarSingers', method: 'GET', routePath: '/singer/similar', category: 'Singer' },
-  { name: 'getSingerSongs', method: 'GET', routePath: '/singer/songs', category: 'Singer' },
-  { name: 'getSingerMvs', method: 'GET', routePath: '/singer/mvs', category: 'Singer' },
-  { name: 'getHotComments', method: 'GET', routePath: '/comment/hot', category: 'Common' },
-  { name: 'getNewComments', method: 'GET', routePath: '/comment/new', category: 'Common' },
-  { name: 'getCommentCount', method: 'GET', routePath: '/comment/count', category: 'Common' },
-  { name: 'getMvList', method: 'GET', routePath: '/mv/list', category: 'MV' },
-  { name: 'getMvDetail', method: 'GET', routePath: '/mv/detail', category: 'MV' },
-  { name: 'getMvUrl', method: 'GET', routePath: '/mv/url', category: 'MV' },
-  { name: 'getSongMvs', method: 'GET', routePath: '/song/mvs', category: 'MV' },
-  { name: 'getSongLabels', method: 'GET', routePath: '/song/labels', category: 'Song' },
-  {
-    name: 'getSingerList',
-    method: 'GET',
-    routePath: '/getSingerList/:area?/:sex?/:genre?/:index?/:page?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSimilarSinger',
-    method: 'GET',
-    routePath: '/getSimilarSinger/:singermid?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerAlbum',
-    method: 'GET',
-    routePath: '/getSingerAlbum/:singermid?/:limit?/:page?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerHotsong',
-    method: 'GET',
-    routePath: '/getSingerHotsong/:singermid?/:limit?/:page?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerMv',
-    method: 'GET',
-    routePath: '/getSingerMv/:singermid?/:limit?/:order?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerDesc',
-    method: 'GET',
-    routePath: '/getSingerDesc/:singermid?',
-    category: 'Singer',
-  },
-  {
-    name: 'getSingerStarNum',
-    method: 'GET',
-    routePath: '/getSingerStarNum/:singermid?',
-    category: 'Singer',
-  },
-  { name: 'getRadioLists', method: 'GET', routePath: '/getRadioLists', category: 'Radio' },
-  {
-    name: 'getDigitalAlbumLists',
-    method: 'GET',
-    routePath: '/getDigitalAlbumLists',
-    category: 'Digital Album',
-  },
-  {
-    name: 'getLyric',
-    method: 'GET',
-    routePath: '/getLyric/:songmid?/:isFormat?',
-    category: 'Song',
-  },
-  {
-    name: 'getMusicPlay',
-    method: 'GET',
-    routePath: '/getMusicPlay/:songmid?',
-    category: 'Song',
-  },
-  {
-    name: 'getAlbumInfo',
-    method: 'GET',
-    routePath: '/getAlbumInfo/:albummid?',
-    category: 'Album',
-  },
-  {
-    name: 'getComments',
-    method: 'GET',
-    routePath:
-      '/getComments/:id?/:rootcommentid?/:cid?/:pagesize?/:pagenum?/:cmd?/:reqtype?/:biztype?',
-    category: 'Common',
-  },
-  { name: 'getRecommend', method: 'GET', routePath: '/getRecommend', category: 'Recommend' },
-  { name: 'getMvPlay', method: 'GET', routePath: '/getMvPlay/:vid?', category: 'MV' },
-  { name: 'getTopLists', method: 'GET', routePath: '/getTopLists', category: 'Rank' },
-  {
-    name: 'getRanks',
-    method: 'GET',
-    routePath: '/getRanks/:topId?/:limit?/:page?',
-    category: 'Rank',
-  },
-  { name: 'getTicketInfo', method: 'GET', routePath: '/getTicketInfo', category: 'Ticket' },
-  { name: 'getImageUrl', method: 'GET', routePath: '/getImageUrl', category: 'Common' },
-];
+// 路由列表跟着 manifest 走，顺序一样；说明和参数写在下面的 overrides。
+export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = routeManifest.map(
+  ({ name, method, path, category }) => ({ name, method, routePath: path, category }),
+);
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  searchMatch: {
+    description: '读取歌曲、歌手、专辑和 MV 的直接命中，不需要登录。',
+    queryParams: [
+      {
+        key: 'keyword',
+        label: '关键词',
+        required: true,
+        description: '去掉头尾空格后为 1–60 个字符。',
+      },
+    ],
+  },
+  allPlaylistCategories: {
+    description: '读取完整歌单分类字典，包含可用标记和排序选项；与热门分类分开。',
+    queryParams: [],
+  },
+  sortedCategoryPlaylists: {
+    description: '按分类、排序与偏移量读取歌单；使用旧 CGI 数据源，不与其他分类歌单的分页混用。',
+    queryParams: [
+      { key: 'id', label: '分类编号', defaultValue: 10000000 },
+      { key: 'offset', label: '起始位置', defaultValue: 0 },
+      { key: 'limit', label: '数量（1–60）', defaultValue: 20 },
+      { key: 'sortId', label: '上游排序编号', defaultValue: 5 },
+    ],
+  },
+  radioCategories: {
+    description: '匿名读取电台分类；不提供个人最近记录，也不改变登录后电台接口。',
+    queryParams: [],
+  },
+  commentList: {
+    description:
+      '匿名读取资源评论与回复；数字协议参数不推断资源类型。续页必须带上一次的 nextCursor。',
+    queryParams: [
+      { key: 'id', label: '资源编号', required: true },
+      { key: 'page', label: '页号（从 0 开始）', defaultValue: 0 },
+      { key: 'limit', label: '数量（1–50）', defaultValue: 25 },
+      { key: 'cursor', label: '上一页 nextCursor' },
+      { key: 'biztype', label: '上游业务类型', defaultValue: 1 },
+      { key: 'cid', label: '上游接口编号', defaultValue: 205360772 },
+      { key: 'cmd', label: '上游命令', defaultValue: 8 },
+      { key: 'reqtype', label: '上游请求类型', defaultValue: 2 },
+    ],
+  },
+  songBatch: {
+    description:
+      '一次匿名请求读取 1–20 首歌曲详情；保留输入顺序和重复项，失败按项返回，不自动重试。',
+    bodyExample: { songs: [{ mid: 'FixtureSongA1', id: 90001 }, { mid: 'FixtureSongB2' }] },
+    bodyDescription: 'songs 必填，1–20 项；mid 为字母或数字，id 可省略。',
+  },
   playlistRename: {
     description:
       'Rename your own ordinary playlist. The editor read preserves description, tag identifiers, exact cover URL including its query and visibility (only 1 or 2). Non-empty secondary covers remain unsupported until preservation is verified. One write, followed by a matching read; uncertain outcomes must not be retried blindly.',
@@ -653,10 +447,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   getDownloadQQMusic: {
     description: 'Get download URL information for QQ Music.',
   },
-  getHotkey: {
-    id: 'get-hotkey',
-    description: 'Get current hot search keywords.',
-  },
   getSmartbox: {
     description: 'Get search smartbox suggestion results.',
   },
@@ -770,7 +560,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMvUrl: {
     description:
-      'Get the MP4 files of one MV that come with links, lowest quality first. Higher qualities may need login and are left out. Read anonymously.',
+      'Get the MP4 files of one MV that come with links, lowest quality first. Works without logging in and uses the session when there is one; logging in may give more qualities. Files without links are left out.',
     queryParams: [{ key: 'vid', label: 'MV vid', description: 'MV vid.' }],
   },
   getSongMvs: {
@@ -824,9 +614,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Get song list detail by disstid. With a login session, also reads the QQ Music algorithmic playlists the anonymous CGI rejects with code 10.',
   },
-  getMv: {
-    description: 'Get MV list by area and version.',
-  },
   getSingerAlbum: {
     description: 'Get album list for a singer.',
   },
@@ -879,9 +666,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getComments: {
     description: 'Get comment list by content and pagination identifiers.',
-  },
-  getMvPlay: {
-    description: 'Get MV playable stream URLs by video ID.',
   },
 };
 

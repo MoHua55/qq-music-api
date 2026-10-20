@@ -6,62 +6,32 @@ import getComments from './comments/getComments';
 import getDigitalAlbumLists from './digitalAlbum/getDigitalAlbumLists';
 import downloadQQMusic from './downloadQQMusic';
 // music
-import getLyric from './music/getLyric';
-// MV
-import getMvByTag from './mv/getMvByTag';
 // radio
 import getRadioLists from './radio/getRadioLists';
 // getTopLists
 import getTopLists from './rank/getTopLists';
-import getGuessYouLike from './recommend/getGuessYouLike';
-import getRadar from './recommend/getRadar';
-import { getRadioList, getRadioTracks } from './recommend/getRadio';
-import getRecommendPlaylists from './recommend/getRecommendPlaylists';
-import { getRelatedPlaylists, getSimilarSongs } from './recommend/getSongRelations';
 // search
-import getHotKey from './search/getHotKey';
-import getSearch from './search/getSearch';
 import getSmartbox from './search/getSmartbox';
-// singer
-import getSimilarSinger from './singers/getSimilarSinger';
-import getSingerDesc from './singers/getSingerDesc';
-import getSingerMv from './singers/getSingerMv';
-import getSingerStarNum from './singers/getSingerStarNum';
-import getAuthenticatedSongListDetail from './songLists/getAuthenticatedSongListDetail';
 import songListCategories from './songLists/songListCategories';
 import songListDetail from './songLists/songListDetail';
 // song list
 import songLists from './songLists/songLists';
 // UCommon
 import UCommon from './UCommon/UCommon';
-import getOwnedPlaylistSongs from './user/getOwnedPlaylistSongs';
-import getUserAlbums from './user/getUserAlbums';
-import getUserLikedSongs from './user/getUserLikedSongs';
-import getUserPlaylist from './user/getUserPlaylist';
 
 export default {
   downloadQQMusic,
   // search
-  getHotKey,
   getSmartbox,
   // song lists
   songLists,
   songListCategories,
   songListDetail,
-  getAuthenticatedSongListDetail,
-  // MV
-  getMvByTag,
-  // singer
-  getSimilarSinger,
-  getSingerMv,
-  getSingerDesc,
-  getSingerStarNum,
   // radio
   getRadioLists,
   // DigitalAlbum
   getDigitalAlbumLists,
   // music
-  getLyric,
   // album
   getAlbumInfo,
   // comments
@@ -70,18 +40,4 @@ export default {
   UCommon,
   // getTopLists
   getTopLists,
-  getOwnedPlaylistSongs,
-  getUserAlbums,
-  getUserLikedSongs,
-  getUserPlaylist,
-  // recommend
-  getGuessYouLike,
-  getRecommendPlaylists,
-  getRadar,
-  getSimilarSongs,
-  getRelatedPlaylists,
-  getRadioList,
-  getRadioTracks,
-  // search
-  getSearch,
 };

@@ -7,7 +7,7 @@ import { type LegacyHttpTransport, setLegacyHttpTransport } from '../src/service
 // into every suite's module registry before the suite's own `jest.mock()` calls are applied, and
 // the already-resolved bindings inside those cached modules would silently ignore the mocks.
 const resolveAxiosTransport = (): LegacyHttpTransport => {
-  const { createAxiosLegacyTransport } = require('../src/util/request') as {
+  const { createAxiosLegacyTransport } = require('../src/node/request') as {
     createAxiosLegacyTransport: () => LegacyHttpTransport;
   };
   return createAxiosLegacyTransport();

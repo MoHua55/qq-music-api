@@ -1,10 +1,10 @@
 import { logger } from '../../util/logger';
 import type { UpstreamPhase } from '../../util/safeError';
+import { dictionaryOf, isDictionary, numberOf } from '../../util/values';
 import { credentialMusicId } from './androidDevice';
 import type { AuthHttpClient } from './httpClient';
 import { credentialCookieHeader } from './musicuProtocol';
 import type { AuthSession } from './qrTypes';
-import { dictionaryOf, isDictionary, numberOf } from './values';
 
 // src/services/auth/playlistPlayCounts.ts
 //

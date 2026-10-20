@@ -20,11 +20,11 @@ import {
   qualityFileRestriction,
 } from '../../protocol/qualityFile';
 import { logger } from '../../util/logger';
+import { type Dictionary, dictionaryOf, identifierOf, numberOf, stringOf } from '../../util/values';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu } from './musicuProtocol';
 import { type AuthSession, type PlaybackOptions } from './qrTypes';
 import { StreamCdnSelector } from './streamCdnSelector';
-import { type Dictionary, dictionaryOf, identifierOf, numberOf, stringOf } from './values';
 
 // src/services/auth/playback.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。

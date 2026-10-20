@@ -1,4 +1,5 @@
 import services from '../services';
+import type { HttpClientResponse } from '../transport/httpClientTypes';
 
 const { UCommon } = services;
 
@@ -36,7 +37,7 @@ export default async (ctx: Context) => {
     option: {},
   };
   await UCommon(props)
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       const response = res.data;
       ctx.status = 200;
       ctx.body = {

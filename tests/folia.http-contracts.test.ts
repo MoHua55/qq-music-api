@@ -28,6 +28,7 @@ jest.mock('../src/services/auth/qrLogin.node', () => ({
 
 import request from 'supertest';
 import app from '../src/app';
+import { createAxiosLegacyTransport } from '../src/node/request';
 import { handleRequest, type ServerlessEnv } from '../src/serverless';
 import { deriveAndroidDevice } from '../src/serverless/derivedDevice';
 import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
@@ -39,7 +40,6 @@ import {
 } from '../src/services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../src/services/httpTransport';
 import { logger } from '../src/util/logger';
-import { createAxiosLegacyTransport } from '../src/util/request';
 import deviceFixture from './fixtures/contracts/device-v1.json';
 import {
   CONTRACT_ALBUMS,

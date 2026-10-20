@@ -1,9 +1,9 @@
 import { logger } from '../../util/logger';
 import type { UpstreamPhase } from '../../util/safeError';
+import { type Dictionary, dictionaryOf, identifierOf, numberOf } from '../../util/values';
 import { type AndroidDevice, buildAndroidComm } from './androidDevice';
 import type { AuthHttpClient } from './httpClient';
 import { type QqCredential, type QrFailureDiagnostics } from './qrTypes';
-import { type Dictionary, dictionaryOf, identifierOf, numberOf } from './values';
 
 // src/services/auth/musicuProtocol.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。

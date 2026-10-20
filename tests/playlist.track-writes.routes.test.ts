@@ -8,8 +8,8 @@ import { useSessionUpstream } from './helpers/sessionRoutes';
 it('文档与 Explorer 不再提逐首 existed，整体变更只看 changed', () => {
   const readme = readFileSync(resolve(__dirname, '../docs/README.md'), 'utf8');
   const section = readme.slice(
-    readme.indexOf('### 普通歌单增删歌曲'),
-    readme.indexOf('### 收藏与查询收藏状态'),
+    readme.indexOf('### 5. 歌单与收藏写入'),
+    readme.indexOf('### 6. 会员状态'),
   );
   expect(section).toContain('{ code: 200, changed: true }');
   expect(section).not.toContain('existed');

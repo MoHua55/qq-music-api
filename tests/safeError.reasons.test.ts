@@ -151,8 +151,9 @@ describe('reason whitelist stays in step with the source', () => {
   const SRC = path.join(__dirname, '..', 'src');
   const ERROR_CLASSES =
     'Error|TypeError|WechatQrError|SealedSessionError|SessionCryptoError|QrLoginServiceError|RequestRejectedError';
-  // The new error core and transport build their own safe errors and are not part of this list.
-  const SKIPPED_DIRS = [path.join(SRC, 'protocol'), path.join(SRC, 'transport')];
+  // The new error core and its fetch transport build their own safe errors and are not part of
+  // this list. The other transport files (the fetch login and legacy clients) still are.
+  const SKIPPED = [path.join(SRC, 'protocol'), path.join(SRC, 'transport', 'fetch.ts')];
 
   const TEMPLATES: Record<string, string | null> = {
     'MQTT CONNACK rejected: 0x${reasonCode.toString(16)}': 'MQTT CONNACK rejected: 0x87',
@@ -171,7 +172,8 @@ describe('reason whitelist stays in step with the source', () => {
   const sources = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) return SKIPPED_DIRS.includes(full) ? [] : sources(full);
+      if (SKIPPED.includes(full)) return [];
+      if (entry.isDirectory()) return sources(full);
       return entry.name.endsWith('.ts') ? [full] : [];
     });
 

@@ -1,7 +1,7 @@
 import type { Context } from 'koa';
-import { qrCheck, qrCookieTokenOf } from '../routes/operations/qrCheck';
+import { qrCheck } from '../routes/operations/qrCheck';
+import { AUTH_COOKIE_NAME, tokenFromCookieString } from '../routes/sessionToken';
 import type { QrCheckResult } from '../services/auth/qrLogin';
-import { AUTH_COOKIE_NAME } from './login';
 import { operationController } from './operation';
 
 const commonQrCheck = operationController(qrCheck);
@@ -10,7 +10,7 @@ export default async (ctx: Context): Promise<void> => {
   await commonQrCheck(ctx);
   const result = ctx.body as QrCheckResult;
   if (result.code === 803 && result.cookie) {
-    const token = qrCookieTokenOf(result.cookie);
+    const token = tokenFromCookieString(result.cookie);
     if (token)
       ctx.cookies.set(AUTH_COOKIE_NAME, token, {
         httpOnly: true,

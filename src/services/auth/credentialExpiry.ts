@@ -1,5 +1,5 @@
+import { numberOf } from '../../util/values';
 import { type QqCredential } from './qrTypes';
-import { numberOf } from './values';
 
 // src/services/auth/credentialExpiry.ts
 // 凭证寿命的计算。会话保存与静默续期都要用，单独放一个不依赖协议调用的模块，免得互相引用。

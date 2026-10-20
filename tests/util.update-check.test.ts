@@ -1,9 +1,9 @@
-import { loggerState } from '../src/util/logger';
 import {
   shouldCheckLatestVersion,
   UPDATE_CHECK_ENV,
   UPDATE_CHECK_OPT_IN_ENV,
-} from '../src/util/updateCheck';
+} from '../src/node/updateCheck';
+import { loggerState } from '../src/util/logger';
 
 describe('shouldCheckLatestVersion', () => {
   const originalNodeEnv = process.env.NODE_ENV;

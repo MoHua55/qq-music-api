@@ -1,3 +1,4 @@
+import { dictionaryOf, isAbortError } from '../../util/values';
 import { type AndroidDevice } from './androidDevice';
 import { createNativeQr } from './bootstrap';
 import type { AuthHttpClient } from './httpClient';
@@ -16,7 +17,6 @@ import {
   type QrListenerFactory,
   type QrSessionRecord,
 } from './qrTypes';
-import { dictionaryOf, isAbortError } from './values';
 import {
   createWechatQr,
   eventForWechatStatus,

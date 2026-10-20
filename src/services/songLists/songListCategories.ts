@@ -1,12 +1,12 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpClientResponse, HttpRequestConfig } from '../../transport/httpClientTypes';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
-interface SongListCategoriesParams {
+export interface SongListCategoriesParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 const upstream = '/splcloud/fcgi-bin/fcg_get_diss_tag_conf.fcg';
@@ -25,7 +25,7 @@ export default ({ method = 'get', params = {}, option = {} }: SongListCategories
     method,
     options,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       const response = res.data;
       logServiceSuccess('songListCategories', upstream, response);
       return {

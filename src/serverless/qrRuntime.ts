@@ -14,21 +14,9 @@ import {
 import { isMqttLoginChannel } from '../services/auth/qrTypes';
 import { deriveAndroidDevice } from './derivedDevice';
 import type { ServerlessEnv, ServerlessOptions } from './index';
-import { AUTH_COOKIE_NAME } from './response';
 import type { SealedQrDeviceStateV1 } from './sealedQrState';
 // 一次 /login/qr/check 最多做多久；Folia 等登录请求 20 秒，这里留出余量。
 export const CHECK_BUDGET_MS = 15_000;
-export const tokenFromCookieString = (cookie: string): string | undefined => {
-  for (const entry of cookie.split(';')) {
-    const separator = entry.indexOf('=');
-    if (separator <= 0) continue;
-    if (entry.slice(0, separator).trim() === AUTH_COOKIE_NAME)
-      return entry.slice(separator + 1).trim() || undefined;
-  }
-  return undefined;
-};
-
-/** Header > query > cookie, the same order the Koa controller applies (§5.3 #2). */
 export const secretsOf = (env: ServerlessEnv) => ({
   current: env.QQ_SESSION_SECRET ?? '',
   previous: env.QQ_SESSION_SECRET_PREVIOUS,

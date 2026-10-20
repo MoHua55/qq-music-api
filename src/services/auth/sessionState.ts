@@ -1,4 +1,5 @@
 import { logger } from '../../util/logger';
+import { isDictionary, stringOf } from '../../util/values';
 import { isAndroidDevice } from './androidDevice';
 import { Buffer } from './bytes';
 import { authSessionExpiryAt, credentialExpiryAt } from './credentialExpiry';
@@ -14,7 +15,6 @@ import {
   type QrState,
   type SessionResolver,
 } from './qrTypes';
-import { isDictionary, stringOf } from './values';
 
 // src/services/auth/sessionState.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。
