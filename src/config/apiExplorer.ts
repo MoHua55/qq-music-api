@@ -560,7 +560,7 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   },
   getMvUrl: {
     description:
-      'Get the MP4 files of one MV that come with links, lowest quality first. Higher qualities may need login and are left out. Read anonymously.',
+      'Get the MP4 files of one MV that come with links, lowest quality first. Works without logging in and uses the session when there is one; logging in may give more qualities. Files without links are left out.',
     queryParams: [{ key: 'vid', label: 'MV vid', description: 'MV vid.' }],
   },
   getSongMvs: {

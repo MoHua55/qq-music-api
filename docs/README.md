@@ -207,7 +207,8 @@ Serverless 的登出会清除客户端 token / Cookie，但已签发的 sealed t
 | **评论** | | | |
 | `GET /comment/hot`、`/comment/new`、`/comment/count` | 否 | 一首歌的热评、最新评论（可翻页）和评论数 | ✓ |
 | **MV** | | | |
-| `GET /mv/list`、`/mv/detail`、`/mv/url` | 否 | MV 列表（可按地区、版本筛选，可翻页）、MV 详情、MV 播放链接 | ✓ |
+| `GET /mv/list`、`/mv/detail` | 否 | MV 列表（可按地区、版本筛选，可翻页）、MV 详情 | ✓ |
+| `GET /mv/url` | 可选 | MV 播放链接；登录后可能多几档画质 | ✓ |
 | `GET /song/mvs` | 否 | 一首歌相关的 MV | ✓ |
 | `GET /song/labels` | 否 | 一首歌的标签 | ✓ |
 | **播放与曲库** | | | |
@@ -737,7 +738,7 @@ Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一�
 
 ## MV
 
-不用登录，Node 和 Serverless 都能用。`vid` 是 MV 的 vid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
+不用登录，Node 和 Serverless 都能用；只有 `/mv/url` 带了会话会用它读。`vid` 是 MV 的 vid（只有字母和数字），没给或格式不对回 `400`、不请求上游。
 
 `GET /mv/list?area=15&version=7&offset=0&limit=20` 读 MV 列表。`area`、`version` 不给就是「全部」（15、7），可以用的值在回包的 `tags` 里（`area`、`version` 各是一组 `{ id, name }`），读不到时是空的、MV 照样给。`limit` 默认 20、最多 40。每支 MV 有 `vid`、`title`、`singers`（`mid`、`name`），以及可选的 `id`、`cover`、`playCount`、`duration`（秒）、`publishTime`（秒级时间戳）：
 
@@ -747,7 +748,7 @@ Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一�
 
 `GET /mv/detail?vid=` 读一支 MV：`vid`、`title`、`singers`，以及可选的 `desc`、`cover`、`playCount`、`duration`、`publishTime`。
 
-`GET /mv/url?vid=` 给这支 MV 的 MP4 播放链接。`files` 只放真的有链接的档，按上游的顺序（画质由低到高）：`quality` 是上游的档位数字（目前看到 10、20、30），`urls` 是同一个文件的几个链接，`size` 是文件大小（字节，有才给）。不登录时更高的档位上游不给链接，这里也就没有；一档都没有回 `422`：
+`GET /mv/url?vid=` 给这支 MV 的 MP4 播放链接。`files` 只放真的有链接的档，按上游的顺序（画质由低到高）：`quality` 是上游的档位数字（不登录时目前看到 10、20、30），`urls` 是同一个文件的几个链接，`size` 是文件大小（字节，有才给）。不登录时更高的档位上游不给链接，这里也就没有。带了会话就用它读，登录后可能拿到更多档位（Serverless 要配置 `QQ_SESSION_SECRET`）；会话解不开就照常匿名读，带会话时上游拒绝也是回 `502`，不会因此要你重新登录。一档都没有回 `422`：
 
 ```json
 { "code": 200, "vid": "demovid", "files": [{ "quality": 10, "size": 12345678, "urls": ["https://example.com/demo.mp4"] }] }

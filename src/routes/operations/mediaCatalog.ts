@@ -18,12 +18,12 @@ import {
   singerMvsResult,
   singerSongsResult,
 } from '../../services/singers/catalog';
-import { rawQuery } from './requestValues';
+import { optionalSession, rawQuery } from './requestValues';
 import type { OperationHandler } from './types';
 
 // src/routes/operations/mediaCatalog.ts
 //
-// 歌手、歌曲评论、MV、歌曲标签：公开内容，一律匿名读，没设会话密钥也能用。
+// 歌手、歌曲评论、MV、歌曲标签：公开内容，没设会话密钥也能用。除了 MV 播放链接有会话就带凭证读，其余一律匿名。
 
 const pageOf = (request: Parameters<OperationHandler>[0], key: 'mid' | 'id') => ({
   [key]: rawQuery(request, key),
@@ -74,7 +74,8 @@ export const getMvList: OperationHandler = (request) =>
 
 export const getMvDetail: OperationHandler = (request) => mvDetailResult(rawQuery(request, 'vid'));
 
-export const getMvUrl: OperationHandler = (request) => mvUrlResult(rawQuery(request, 'vid'));
+export const getMvUrl: OperationHandler = async (request) =>
+  mvUrlResult(rawQuery(request, 'vid'), await optionalSession(request));
 
 export const getSongMvs: OperationHandler = (request) => songMvsResult(rawQuery(request, 'id'));
 
