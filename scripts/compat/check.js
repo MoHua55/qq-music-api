@@ -45,6 +45,29 @@ if (!fs.existsSync(path.join(baselineRoot, 'dist/src/app.js'))) {
   const extracted = spawnSync('tar', ['-xzf', tarball], { cwd: target, encoding: 'utf8' });
   if (extracted.status !== 0) fail(`解压基准版本失败：\n${extracted.stderr}`);
 }
+// 仓库拿掉的依赖（例如 3.3.5 移除的 moment、colors）基准版本还要用：只把仓库里找不到的那几个
+// 装到 .compat/<版本>/node_modules，基准包往上找得到，仓库自己的依赖不动。
+const baselineDeps = require(path.join(baselineRoot, 'package.json')).dependencies ?? {};
+const missingDeps = Object.entries(baselineDeps).filter(([name]) => {
+  try {
+    require.resolve(`${name}/package.json`, { paths: [baselineRoot] });
+    return false;
+  } catch {
+    return true;
+  }
+});
+if (missingDeps.length) {
+  const target = path.join(compatDir, baselineVersion);
+  fs.writeFileSync(
+    path.join(target, 'package.json'),
+    `${JSON.stringify({ private: true, dependencies: Object.fromEntries(missingDeps) }, null, 2)}\n`,
+  );
+  const installed = npm(
+    ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--no-package-lock'],
+    target,
+  );
+  if (installed.status !== 0) fail(`安装基准版本缺的依赖失败：\n${installed.stderr}`);
+}
 if (!fs.existsSync(path.join(repo, 'dist/src/app.js'))) fail('当前工作树还没有 dist，先跑 npm run build:js');
 
 // 路由清单与参数取自两个版本各自的 API Explorer 数据，取并集。
