@@ -1,5 +1,5 @@
-import { createFetchAuthHttpClient } from '../src/serverless/fetchAuthHttpClient';
-import { createFetchLegacyTransport } from '../src/serverless/fetchLegacyTransport';
+import { createFetchAuthHttpClient } from '../src/transport/fetchAuthHttpClient';
+import { createFetchLegacyTransport } from '../src/transport/fetchLegacyTransport';
 
 // These two clients exist because `fetch` cannot be asked to both follow redirects and reveal the
 // `set-cookie` headers deposited along the way, which is exactly what the QQ login flow needs.

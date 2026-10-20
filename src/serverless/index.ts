@@ -8,9 +8,9 @@ import {
   type QrLoginService,
 } from '../services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../services/httpTransport';
+import { createFetchAuthHttpClient } from '../transport/fetchAuthHttpClient';
+import { createFetchLegacyTransport } from '../transport/fetchLegacyTransport';
 import { deriveAndroidDevice } from './derivedDevice';
-import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
-import { createFetchLegacyTransport } from './fetchLegacyTransport';
 import { operationRoute } from './operationRoute';
 import { CHECK_BUDGET_MS, capabilitiesFor, secretsOf } from './qrRuntime';
 import { failureResponse, json } from './response';

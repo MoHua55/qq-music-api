@@ -3,12 +3,12 @@ import Router from 'koa-router';
 import request from 'supertest';
 import { operationController } from '../../src/controllers/operation';
 import type { OperationHandler } from '../../src/routes/operations/types';
-import { createFetchLegacyTransport } from '../../src/serverless/fetchLegacyTransport';
 import { type OperationRouteContext, operationRoute } from '../../src/serverless/operationRoute';
 import { failureResponse } from '../../src/serverless/response';
 import { createRouter } from '../../src/serverless/router';
 import type { QrLoginService } from '../../src/services/auth/qrLogin';
 import { setLegacyHttpTransport } from '../../src/services/httpTransport';
+import { createFetchLegacyTransport } from '../../src/transport/fetchLegacyTransport';
 import { withControllerLogging } from '../../src/util/observability';
 import {
   type CatalogRuntimeName,

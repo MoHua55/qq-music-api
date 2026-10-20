@@ -1,5 +1,9 @@
-import type { LegacyHttpTransport, LegacyRequestDefaults } from '../services/httpTransport';
-import type { HttpClientResponse, HttpRequestConfig } from '../transport/httpClientTypes';
+import type {
+  HttpClientResponse,
+  HttpRequestConfig,
+  LegacyHttpTransport,
+  LegacyRequestDefaults,
+} from './httpClientTypes';
 
 /**
  * The legacy catalog transport over `fetch`, registered by the serverless entry.

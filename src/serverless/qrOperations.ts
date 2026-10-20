@@ -3,8 +3,8 @@ import type { AuthHttpClient } from '../services/auth/httpClient';
 import type { QrLoginService } from '../services/auth/qrLogin';
 import { createQrLoginService, QrLoginServiceError } from '../services/auth/qrLogin';
 import { isMqttLoginChannel, type QrLoginChannel } from '../services/auth/qrTypes';
+import { createFetchAuthHttpClient } from '../transport/fetchAuthHttpClient';
 import { deriveAndroidDevice } from './derivedDevice';
-import { createFetchAuthHttpClient } from './fetchAuthHttpClient';
 import type { ServerlessEnv, ServerlessOptions } from './index';
 import {
   CHECK_BUDGET_MS,

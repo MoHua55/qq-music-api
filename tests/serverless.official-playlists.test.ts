@@ -3,7 +3,6 @@ import request from 'supertest';
 import app from '../src/app';
 import { handleRequest, type ServerlessEnv } from '../src/serverless';
 import { deriveAndroidDevice } from '../src/serverless/derivedDevice';
-import { createFetchLegacyTransport } from '../src/serverless/fetchLegacyTransport';
 import { createSealedSessionResolver } from '../src/serverless/sealedResolver';
 import { createAndroidDevice } from '../src/services/auth/androidDevice';
 import type { AuthHttpClient } from '../src/services/auth/httpClient';
@@ -14,6 +13,7 @@ import {
 } from '../src/services/auth/qrLogin';
 import qrLoginService from '../src/services/auth/qrLogin.node';
 import { type LegacyHttpTransport, setLegacyHttpTransport } from '../src/services/httpTransport';
+import { createFetchLegacyTransport } from '../src/transport/fetchLegacyTransport';
 import type { HttpClientResponse, HttpRequestConfig } from '../src/transport/httpClientTypes';
 import aiDissInfo211111 from './fixtures/official-playlists/ai-dissinfo-211111.json';
 import aiDissInfo211192 from './fixtures/official-playlists/ai-dissinfo-211192.json';

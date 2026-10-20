@@ -1,4 +1,3 @@
-import type { AuthHttpClient } from '../services/auth/httpClient';
 import {
   cookieHeader,
   JSON_CONTENT_TYPE,
@@ -9,11 +8,11 @@ import {
   redirectedMethod,
   seedCookieJar,
   updateCookieJar,
-} from '../transport/cookieJar';
-import type { HttpClientResponse, HttpRequestConfig } from '../transport/httpClientTypes';
+} from './cookieJar';
+import type { AuthHttpClient, HttpClientResponse, HttpRequestConfig } from './httpClientTypes';
 
 /**
- * `AuthHttpClient` over `fetch`. The jar and the redirect rules come from `../transport/cookieJar`,
+ * `AuthHttpClient` over `fetch`. The jar and the redirect rules come from `./cookieJar`,
  * so the login protocol behaves identically here and on Node — this file only
  * translates between the request config the auth services speak and a `Request`.
  *
