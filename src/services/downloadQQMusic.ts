@@ -4,7 +4,7 @@ import type { HttpClientResponse, HttpRequestConfig } from '../transport/httpCli
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../util/observability';
 import { toLegacyErrorBody } from '../util/safeError';
 
-interface DownloadQQMusicParams {
+export interface DownloadQQMusicParams {
   method?: string;
   params?: Record<string, unknown>;
   option?: HttpRequestConfig;

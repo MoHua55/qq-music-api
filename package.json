@@ -36,7 +36,7 @@
     "dev": "AUTO_OPEN_EXPLORER=true ts-node-dev --respawn --transpile-only src/app.ts",
     "start": "node -r ts-node/register/transpile-only src/app.ts",
     "start:dist": "node dist/src/app.js",
-    "build": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit --declaration",
     "clean:dist": "node -e \"for (const d of ['dist','dist-esm']) require('node:fs').rmSync(d, { recursive: true, force: true })\"",
     "build:js": "npm run clean:dist && tsc -p tsconfig.build.json --outDir dist && npm run build:types && npm run build:esm && node scripts/prepare-runtime-assets.js",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",

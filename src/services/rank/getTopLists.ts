@@ -3,7 +3,7 @@ import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../u
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
 
-interface GetTopListsParams {
+export interface GetTopListsParams {
   method?: string;
   params?: Record<string, unknown>;
   option?: HttpRequestConfig;

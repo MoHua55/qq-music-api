@@ -6,7 +6,7 @@ import { dictionaryOf, identifierOf, isDictionary, numberOf } from '../../util/v
 import y_common from '../y_common';
 import { type SongListDetailResponse, toSongListDetailResponse } from './officialPlaylist';
 
-interface SongListDetailParams {
+export interface SongListDetailParams {
   method?: string;
   params?: Record<string, unknown>;
   option?: HttpRequestConfig;
