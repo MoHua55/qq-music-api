@@ -1,6 +1,7 @@
 import type { UpstreamOperation } from '../../protocol/businessCodes';
 import { readCgi } from '../../protocol/cgi';
 import { QqApiError } from '../../protocol/errors';
+import { defaultTokenBucket } from '../../protocol/tokenBucket';
 import { createFetchCgiTransport } from '../../transport/fetchCgi';
 import type { UpstreamPhase } from '../../util/safeError';
 import { failureResult, type NewRouteResult } from '../recommend/newRouteResult';
@@ -60,10 +61,14 @@ export const anonymousResult = async (
   }
 };
 
-/** 匿名旧 CGI 读取走协议层：一次请求、25 秒截止，不经过旧曲库的全局传输槽，不发送会话。 */
+/** 匿名旧 CGI 读取走协议层：一次请求、25 秒截止，和 musicu 共用令牌桶；不经过旧曲库的全局传输槽，不发送会话。 */
 export const readAnonymousCgi = (
   path: string,
   params: Record<string, string | number>,
   operation: UpstreamOperation,
 ): Promise<Data> =>
-  readCgi('https://c.y.qq.com', path, params, { operation, http: createFetchCgiTransport() });
+  readCgi('https://c.y.qq.com', path, params, {
+    operation,
+    http: createFetchCgiTransport(),
+    limiter: defaultTokenBucket,
+  });
