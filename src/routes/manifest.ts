@@ -58,6 +58,7 @@ import {
 } from './operations/recommendCatalog';
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
 import { searchMatch } from './operations/searchMatch';
+import { searchUsers } from './operations/searchUsers';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
@@ -98,6 +99,14 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'searchUsers',
+    method: 'GET',
+    path: '/search/users',
+    category: 'Search',
+    handler: searchUsers,
+    needsSecret: true,
+  },
   {
     name: 'songFavCount',
     method: 'GET',

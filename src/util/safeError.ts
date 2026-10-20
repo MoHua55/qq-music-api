@@ -55,6 +55,7 @@ export const UPSTREAM_PHASES = [
   'get-toplists',
   'get-toplist',
   'search',
+  'search-users',
   'get-hot-searches',
   'get-search-suggestions',
   'get-singer-list',
