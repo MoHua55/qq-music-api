@@ -1,4 +1,4 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpClientResponse, HttpRequestConfig } from '../../transport/httpClientTypes';
 import { logger } from '../../util/logger';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
@@ -9,7 +9,7 @@ import { type SongListDetailResponse, toSongListDetailResponse } from './officia
 interface SongListDetailParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
   /**
    * 匿名 CGI 读不到时（`code: 10`）用登录凭据重读同一张歌单。由各入口在请求带着会话时注入，
    * 解析结果交给 `toSongListDetailResponse`；没有会话就不传，行为与原来完全相同。
@@ -77,7 +77,7 @@ export default ({
     method,
     options,
   })
-    .then(async (res: import('axios').AxiosResponse<any>) => {
+    .then(async (res: HttpClientResponse<any>) => {
       const response = res.data;
       logServiceSuccess('songListDetail', upstream, response, {
         disstid: data.disstid,

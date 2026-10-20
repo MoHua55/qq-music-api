@@ -1,10 +1,10 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpRequestConfig } from '../../transport/httpClientTypes';
 import u_common from '../u_common';
 
 interface UCommonParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 export default ({ method = 'get', params = {}, option = {} }: UCommonParams) => {

@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { createAxiosLegacyTransport } from '../src/node/request';
 import {
   clearLegacyHttpTransport,
@@ -10,11 +9,12 @@ import {
 } from '../src/services/httpTransport';
 import u_common from '../src/services/u_common';
 import y_common from '../src/services/y_common';
+import type { HttpClientResponse, HttpRequestConfig } from '../src/transport/httpClientTypes';
 
 interface RecordedCall {
   url: string;
   method: string;
-  options?: AxiosRequestConfig;
+  options?: HttpRequestConfig;
   target?: string;
 }
 
@@ -40,11 +40,11 @@ const createRecordingTransport = (): { transport: LegacyHttpTransport; calls: Re
       request: async <T>(
         url: string,
         method: string,
-        options?: AxiosRequestConfig,
+        options?: HttpRequestConfig,
         target?: string,
-      ): Promise<AxiosResponse<T>> => {
+      ): Promise<HttpClientResponse<T>> => {
         calls.push({ url, method, options, target });
-        return { data: {} as T, status: 200 } as AxiosResponse<T>;
+        return { data: {} as T, status: 200 } as HttpClientResponse<T>;
       },
     },
   };

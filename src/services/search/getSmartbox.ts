@@ -1,4 +1,4 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpClientResponse, HttpRequestConfig } from '../../transport/httpClientTypes';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
@@ -6,7 +6,7 @@ import y_common from '../y_common';
 interface GetSmartboxParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 const upstream = '/splcloud/fcgi-bin/smartbox_new.fcg';
@@ -26,7 +26,7 @@ export default ({ method = 'get', params = {}, option = {} }: GetSmartboxParams)
     method,
     options,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       const response = res.data;
       logServiceSuccess('getSmartbox', upstream, response, {
         key: data.key,

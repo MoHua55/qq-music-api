@@ -1,4 +1,3 @@
-import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import type { AuthHttpClient } from '../services/auth/httpClient';
 import {
   cookieHeader,
@@ -11,17 +10,18 @@ import {
   seedCookieJar,
   updateCookieJar,
 } from '../transport/cookieJar';
+import type { HttpClientResponse, HttpRequestConfig } from '../transport/httpClientTypes';
 
 /**
  * `AuthHttpClient` over `fetch`. The jar and the redirect rules come from `../transport/cookieJar`,
  * so the login protocol behaves identically here and on Node — this file only
- * translates between the axios-shaped config the auth services already speak and a `Request`.
+ * translates between the request config the auth services speak and a `Request`.
  *
  * 🔴 Redirects are followed by hand (`redirect: 'manual'`) for the same reason the axios client
  * sets `maxRedirects: 0`: the upstream login flow deposits cookies on the redirect hops, and a
  * runtime that follows redirects internally never lets us see those `set-cookie` headers.
  *
- * The `AuthHttpClient` type is imported type-only, so nothing pulls axios into the bundle.
+ * The `AuthHttpClient` type is imported type-only and does not depend on axios.
  */
 
 const RESPONSE_TYPES = new Set(['json', 'text', 'arraybuffer']);
@@ -64,7 +64,7 @@ export const createFetchAuthHttpClient = (
   if (options.initialCookies) seedCookieJar(jar, options.initialCookies);
   const defaultBudgetMs = options.budgetMs ?? 10_000;
 
-  const request = async <T>(initial: AxiosRequestConfig): Promise<AxiosResponse<T>> => {
+  const request = async <T>(initial: HttpRequestConfig): Promise<HttpClientResponse<T>> => {
     let config = { ...initial };
     for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
       const configuredHeaders = { ...(config.headers ?? {}) } as Record<string, unknown>;
@@ -121,8 +121,8 @@ export const createFetchAuthHttpClient = (
           status: response.status,
           statusText: response.statusText,
           headers: responseHeaders,
-          config: config as AxiosResponse<T>['config'],
-        } as AxiosResponse<T>;
+          config: config,
+        } as HttpClientResponse<T>;
       }
       if (redirectCount === MAX_REDIRECTS) throw new Error('QQ auth redirect limit exceeded');
 
@@ -130,7 +130,7 @@ export const createFetchAuthHttpClient = (
       config = {
         ...config,
         url: new URL(location, url).toString(),
-        method: nextMethod as AxiosRequestConfig['method'],
+        method: nextMethod,
         // Params were folded into the URL above; re-applying them would double them on the hop.
         params: undefined,
         data: nextMethod === 'GET' ? undefined : config.data,
@@ -142,7 +142,7 @@ export const createFetchAuthHttpClient = (
   return {
     getCookieHeader: () => cookieHeader(jar),
     request,
-    post: <T>(url: string, data?: unknown, config: AxiosRequestConfig = {}) =>
+    post: <T>(url: string, data?: unknown, config: HttpRequestConfig = {}) =>
       request<T>({ ...config, url, data, method: 'POST' }),
   };
 };

@@ -1,4 +1,4 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpClientResponse, HttpRequestConfig } from '../../transport/httpClientTypes';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
@@ -6,7 +6,7 @@ import y_common from '../y_common';
 interface GetRadioListsParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 const upstream = '/v8/fcg-bin/fcg_v8_radiolist.fcg';
@@ -30,7 +30,7 @@ export default ({ method = 'get', params = {}, option = {} }: GetRadioListsParam
     method,
     options,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       const response = res.data;
       logServiceSuccess('getRadioLists', upstream, response, {
         page: data.p,

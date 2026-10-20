@@ -1,4 +1,4 @@
-import { AxiosRequestConfig } from 'axios';
+import type { HttpClientResponse, HttpRequestConfig } from '../../transport/httpClientTypes';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
 import y_common from '../y_common';
@@ -6,7 +6,7 @@ import y_common from '../y_common';
 interface GetTopListsParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 const upstream = '/v8/fcg-bin/fcg_myqq_toplist.fcg';
@@ -31,7 +31,7 @@ export default ({ method = 'get', params = {}, option = {} }: GetTopListsParams)
     options,
     hasCommonParams,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       let response = res.data;
       if (typeof response === 'string') {
         const reg = /^\w+\(({[^()]+})\)$/;

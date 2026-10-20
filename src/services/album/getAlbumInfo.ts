@@ -1,3 +1,4 @@
+import type { HttpClientResponse } from '../../transport/httpClientTypes';
 import { BaseServiceParams, BaseServiceResponse } from '../../types/core/request';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
@@ -25,7 +26,7 @@ export default ({
     method,
     options: opts,
   })
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       const response = res.data;
       logServiceSuccess('getAlbumInfo', upstream, response);
       return {

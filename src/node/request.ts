@@ -2,6 +2,7 @@ import axios, { AxiosRequestConfig, AxiosResponse, Method, ResponseType } from '
 import { apiConfig, requestConfig } from '../config';
 import { legacyRequestStructureOf, upstreamRouteOf } from '../protocol/logStructure';
 import type { LegacyHttpTransport } from '../services/httpTransport';
+import type { HttpRequestConfig } from '../transport/httpClientTypes';
 import { logger } from '../util/logger';
 import { summarizeValue } from '../util/observability';
 
@@ -21,7 +22,7 @@ qqMusicHttpClient.defaults.headers.post['Content-Type'] = requestConfig.contentT
 function request<T = unknown>(
   url: string,
   method: string,
-  options: AxiosRequestConfig = {},
+  options: HttpRequestConfig = {},
   isUUrl = 'c',
 ): Promise<AxiosResponse<T>> {
   let baseURL = '';
@@ -42,7 +43,7 @@ function request<T = unknown>(
 
   const axiosMethod = method.toLowerCase() as Method;
   const requestConfigOptions: AxiosRequestConfig = {
-    ...options,
+    ...(options as AxiosRequestConfig),
     url: baseURL,
     method: axiosMethod,
   };

@@ -1,13 +1,13 @@
-import { AxiosRequestConfig } from 'axios';
 import { requestConfig } from '../config';
 import request from '../node/request';
+import type { HttpClientResponse, HttpRequestConfig } from '../transport/httpClientTypes';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../util/observability';
 import { toLegacyErrorBody } from '../util/safeError';
 
 interface DownloadQQMusicParams {
   method?: string;
   params?: Record<string, unknown>;
-  option?: AxiosRequestConfig;
+  option?: HttpRequestConfig;
 }
 
 const upstream = '/download/download.js';
@@ -18,7 +18,7 @@ export default ({ method = 'get', params = {}, option = {} }: DownloadQQMusicPar
     jsonpCallback: 'MusicJsonCallback',
     platform: 'yqq',
   });
-  const options: AxiosRequestConfig = Object.assign(option, {
+  const options: HttpRequestConfig = Object.assign(option, {
     headers: {
       host: 'y.qq.com',
       referer: requestConfig.referer.y,
@@ -28,7 +28,7 @@ export default ({ method = 'get', params = {}, option = {} }: DownloadQQMusicPar
   });
   logServiceRequest('downloadQQMusic', upstream, data);
   return request(upstream, method, options, 'y')
-    .then((res: import('axios').AxiosResponse<any>) => {
+    .then((res: HttpClientResponse<any>) => {
       let response = res.data;
       const isJsonpResponse = typeof response === 'string';
       if (typeof response === 'string') {
