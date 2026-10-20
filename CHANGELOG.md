@@ -22,6 +22,7 @@
 
 ### 改进
 
+- 匿名旧 CGI 接口（`/search/match`、`/recommend/categories/all`、`/recommend/category-playlists/sorted`、`/comment/list`）和其他新接口共用同一个进程内的请求限流，等待的时间算在原来的 25 秒内。回包和错误都没有变。
 - 启动和请求日志不再带终端颜色码，文字内容不变。运行依赖少了 `chalk`、`colors`、`moment`；载入本包也不会再往 `String.prototype` 上加属性，嵌入 Electron 时不影响主进程里的其他代码。
 
 ## [3.3.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.3...v3.3.4) (2026-10-21)
