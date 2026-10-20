@@ -342,6 +342,7 @@ POST /login/refresh
 | `/logout` | 退出登录 | 是 |
 | `/user/detail` | 用户资料 | 是 |
 | `/user/vip` | 会员状态 | 是 |
+| `/user/music-gene` | 本人音乐基因 | 是 |
 
 ### 搜索与曲库
 
@@ -351,7 +352,10 @@ POST /login/refresh
 | `/search/hot` | 热搜关键词 | 否 |
 | `/search/suggest` | 搜索建议 | 否 |
 | `/search/match` | 搜索直接命中的歌曲、歌手、专辑与 MV | 否 |
+| `/search/users` | 搜索用户 | 是 |
 | `/song/batch` | 批量歌曲详情，POST | 否 |
+| `/song/fav-count` | 歌曲收藏数 | 否 |
+| `/song/versions` | 歌曲其他版本 | 否 |
 | `/getSongInfo` | 歌曲资料 | 否 |
 | `/getAlbumInfo` | 专辑详情 | 否 |
 | `/getLyric` | 歌词与翻译 | 否 |
@@ -786,6 +790,60 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 缺少游标时不能保证已经读取全部评论，也不能凭空生成下一页游标。
 
 ---
+
+### 11. 歌曲收藏数
+
+```text
+GET /song/fav-count?ids=90001,90002,90001
+```
+
+不需要登录。`ids` 必填，用逗号分隔 1–20 个正整数 songid，不能传 MID 或超出安全整数范围的数字。同一个 id 只查询一次，响应仍按输入顺序保留重复项。
+
+```json
+{
+  "code": 200,
+  "items": [
+    { "id": 90001, "count": 12, "display": "fixture-count" },
+    { "id": 90002, "count": null, "display": null },
+    { "id": 90001, "count": 12, "display": "fixture-count" }
+  ]
+}
+```
+
+上游未提供某首的计数或展示文字时，对应字段为 `null`；整批都没有数据回 `422`。输入超过 20 项时，即使去重后不超过 20，也回 `400`。
+
+### 12. 用户搜索
+
+```text
+GET /search/users?keyword=fixture-user&page=1&limit=10
+```
+
+需要有效会话。`keyword` 必填，去掉首尾空格后为 1–60 个字符；`page` 为从 1 开始的正整数，默认 1；`limit` 为 1–20 的整数，默认 10。给了不合法的分页参数回 `400`。
+
+响应为 `{ code: 200, users: [...], total: number | null }`。`users` 保留上游 `item_user` 的原始条目，`total` 取可靠的 `meta.sum`，缺失或格式不可靠时为 `null`。本页没有用户回 `422`，即使总数非零也一样。本接口不改变 `/search` 的类型和排序。
+
+### 13. 歌曲其他版本
+
+```text
+GET /song/versions?id=90001
+GET /song/versions?mid=fixtureVersionA
+```
+
+不需要登录。`id` 是正整数 songid，`mid` 是歌曲 MID，两者必须二选一；同时提供、都不提供或提供空值都回 `400`。MID 最长 64 个字母或数字。
+
+响应为 `{ code: 200, songs: [...] }`，`songs` 保留上游 `versionList` 的原始条目；没有其他版本回 `422`。不同歌曲能返回的版本数量可能不同。
+
+### 14. 本人音乐基因
+
+```text
+GET /user/music-gene
+```
+
+需要有效会话，没有业务参数，只读取当前登录账号。请求中的账号目标参数不会传给上游。
+
+响应为 `{ code: 200, profile: {...} }`，`profile` 保留上游 `data` 的原始结构，包括数字类型的 `IsVisitAccount`，不转换成布尔值。成功的空对象也原样返回。上游非零业务码回 `502` 并保留 `upstreamCode`，不能仅凭数字把它解释成未登录。
+
+四条接口在 Node 和 Serverless 使用同一套处理。两条需要会话的接口缺失、无效或过期会话回 `401`；Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`。其余上游业务拒绝、格式异常与网络失败沿用现有的安全 `502` 分类；空清单不用 `404` 表示。
 
 ## 错误处理
 

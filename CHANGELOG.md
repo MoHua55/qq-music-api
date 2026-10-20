@@ -1,5 +1,14 @@
 ## 未发布
 
+### 新功能
+
+- **歌曲收藏数**：`GET /song/fav-count?ids=` 匿名查询 1–20 个数字 songid。重复 id 只查一次，结果保留输入顺序和重复项；缺值为 `null`，整批没有数据回 `422`。
+- **用户搜索**：`GET /search/users?keyword=&page=&limit=` 需要会话，原样返回用户条目和可用的总数，空页回 `422`。不改变已有 `/search` 的类型和排序。
+- **歌曲其他版本**：`GET /song/versions?id=` 或 `?mid=` 匿名读取其他版本，两种标识必须二选一，歌曲条目保留原格式，空列表回 `422`。
+- **本人音乐基因**：`GET /user/music-gene` 需要会话，只读本人，原样返回 `profile`；`IsVisitAccount` 保留数字，上游非零业务码回 `502` 并保留 `upstreamCode`。
+
+四条路由在 Node 和 Serverless 都可用；两条需要会话的路由在 Serverless 未配置密钥时回 `501`。
+
 ### 移除
 
 以下 17 条只在 Node 上有的旧路由已移除，上一版已提前预告。Node 现在回 `404`，Serverless 照旧回 `501`。有替代接口的请按[使用文档](./docs/README.md#335-已移除)调整参数和响应解析，不能只替换路径：

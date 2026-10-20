@@ -86,6 +86,56 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = routeManifest.map(
 );
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  songFavCount: {
+    description:
+      '匿名读取歌曲收藏数。重复 id 只查询一次，items 保留输入顺序和重复项；缺值为 null，整批无数据回 422。',
+    queryParams: [
+      {
+        key: 'ids',
+        label: '歌曲数字 id（1–20 项）',
+        required: true,
+        placeholder: '90001,90002,90001',
+        description: '逗号分隔的安全正整数 songid，不接受 MID；输入项数在去重前计数。',
+      },
+    ],
+  },
+  searchUsers: {
+    description:
+      '带会话搜索用户，users 保留上游条目原格式；total 不可靠时为 null，空页回 422。Serverless 需要会话密钥。',
+    queryParams: [
+      {
+        key: 'keyword',
+        label: '关键词',
+        required: true,
+        placeholder: 'fixture-user',
+        description: '去掉首尾空格后为 1–60 个字符。',
+      },
+      { key: 'page', label: '页码（从 1 开始）', defaultValue: 1, inputType: 'number' },
+      { key: 'limit', label: '数量（1–20）', defaultValue: 10, inputType: 'number' },
+    ],
+  },
+  songVersions: {
+    description: '匿名读取歌曲其他版本，id 和 mid 必须二选一；songs 保留原格式，空列表回 422。',
+    queryParams: [
+      {
+        key: 'id',
+        label: '歌曲数字 id（二选一）',
+        placeholder: '90001',
+        description: '安全正整数 songid。',
+      },
+      {
+        key: 'mid',
+        label: '歌曲 MID（二选一）',
+        placeholder: 'fixtureVersionA',
+        description: '1–64 个字母或数字。',
+      },
+    ],
+  },
+  userMusicGene: {
+    description:
+      '带会话读取本人的音乐基因，无业务参数。profile 保留原始结构，IsVisitAccount 保持数字；上游非零业务码回 502 并保留 upstreamCode。Serverless 需要会话密钥。',
+    queryParams: [],
+  },
   searchMatch: {
     description: '读取歌曲、歌手、专辑和 MV 的直接命中，不需要登录。',
     queryParams: [

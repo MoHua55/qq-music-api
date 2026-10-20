@@ -1,5 +1,29 @@
 [
   {
+    "path": "/song/fav-count",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "新增路由，匿名读取歌曲收藏数，不改变既有路由"
+  },
+  {
+    "path": "/search/users",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "新增路由，带会话搜索用户，不改变既有搜索"
+  },
+  {
+    "path": "/song/versions",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "新增路由，匿名读取歌曲其他版本，不改变既有路由"
+  },
+  {
+    "path": "/user/music-gene",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "新增路由，带会话读取本人音乐基因，不改变既有用户接口"
+  },
+  {
     "path": "/search/match",
     "baseline": "3.3.3",
     "since": "3.3.4",
