@@ -47,6 +47,10 @@ isolated checkout. Do not change the user's installed application or login state
 - Confirm the candidate works in Node, Docker, Vercel, and Cloudflare, including the
   relay-backed login channels where configured. Record which hosts and channels
   were actually checked; offline tests alone do not establish live compatibility.
+- With authorization to contact the real upstream, run
+  `npm run smoke:upstream -- --yes-call-upstream` after `npm run build:js`. It requests
+  each anonymous read route once and only compares response structure with
+  `scripts/smoke/expected.json`; investigate any change before publishing.
 - Arrange authorized manual acceptance with the account owner for login, library,
   playback, session renewal, and writes. Read back and restore test changes where
   possible. Do not include account data or credentials in the release evidence.
