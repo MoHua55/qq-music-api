@@ -123,7 +123,7 @@ export const routeManifest = [
     category: 'Recommend',
     handler: sortedCategoryPlaylists,
   },
-  { name: 'songBatch', method: 'POST', path: '/song/batch', category: 'Music', handler: songBatch },
+  { name: 'songBatch', method: 'POST', path: '/song/batch', category: 'Song', handler: songBatch },
   {
     name: 'radioCategories',
     method: 'GET',
@@ -135,7 +135,7 @@ export const routeManifest = [
     name: 'commentList',
     method: 'GET',
     path: '/comment/list',
-    category: 'Comment',
+    category: 'Common',
     handler: commentList,
   },
   { name: 'getCookie', method: 'GET', path: '/user/getCookie', category: 'User', nodeOnly: true },

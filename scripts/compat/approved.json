@@ -36,12 +36,6 @@
     "reason": "新增匿名路由，Node 和 Serverless 共用处理，不改变旧路由"
   },
   {
-    "path": "/recommend/toplist",
-    "baseline": "3.3.3",
-    "since": "3.3.4",
-    "reason": "同一次上游读取新增可选 ranks 和 history，原有歌曲、分页和错误不变"
-  },
-  {
     "path": "/getHotkey",
     "since": "3.3.4",
     "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"

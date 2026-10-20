@@ -1,3 +1,10 @@
+## 未发布
+
+### 新功能
+
+- 新增六个匿名接口：`/search/match`（实体直接命中）、`/recommend/categories/all`（完整歌单分类）、`/recommend/category-playlists/sorted`（保留排序的分类歌单）、`POST /song/batch`（批量歌曲详情）、`/radio/categories`（匿名电台分类）、`/comment/list`（资源评论和回复）。Node 和 Serverless 都能用，不需要会话密钥。
+- `/recommend/toplist` 在同一次上游读取中补充可选 `ranks`（歌曲编号、排名、变化类型和值）与 `history`（上游的往期目录）；原有歌曲、分页和错误不变。当前实测的两个榜都没有往期条目，不保证每个榜都有历史目录。
+
 ## [3.3.3](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.2...v3.3.3) (2026-10-18)
 
 这一版让 Vercel、Cloudflare 不用中继也能手机 QQ 扫码登录，不登录也搜得到歌了，还加上排行榜、新碟、刷歌模式、相似歌曲，以及歌手、评论、MV、热搜和搜索建议、歌曲标签这一批新接口。Folia 已经在用的接口，路径、参数、字段和状态码都没变；要注意的是 Serverless 的 `/login/channels` 默认多了 `qq`，见下面「给下游的通知」。
@@ -335,13 +342,3 @@
 * rebuild router and axios ([0b737df](https://github.com/Rain120/qq-music-api/commit/0b737df8971a560119af2bcae199a1ea5549859c))
 * rebuild router for lost ([2165b6a](https://github.com/Rain120/qq-music-api/commit/2165b6a8b5527bb2b68592b17e28846fce1e856f))
 * rebuild routers ([1278008](https://github.com/Rain120/qq-music-api/commit/1278008d57bd8fb4bced800c3de6c6f16f0aee8f))
-
-
-
-## 未发布
-
-### 新功能
-
-- 新增六个匿名接口：`/search/match`（实体直接命中）、`/recommend/categories/all`（完整歌单分类）、`/recommend/category-playlists/sorted`（保留排序的分类歌单）、`POST /song/batch`（批量歌曲详情）、`/radio/categories`（匿名电台分类）、`/comment/list`（资源评论和回复）。Node 和 Serverless 都能用，不需要会话密钥。
-- `/recommend/toplist` 在同一次上游读取中补充可选 `ranks`（歌曲编号、排名、变化类型和值）与 `history`（上游的往期目录）；原有歌曲、分页和错误不变。当前实测的两个榜都没有往期条目，不保证每个榜都有历史目录。
-
