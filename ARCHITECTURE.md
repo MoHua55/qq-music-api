@@ -4,7 +4,10 @@
 
 项目有两个请求入口：Node 使用 Koa，Serverless 使用 Web 标准的 `Request` / `Response`。大部分路由通过同一个 operation handler 调用业务服务，宿主负责解析请求、提供依赖和写回响应。
 
-## 代码怎么分工
+## 架构图
+
+<img width="1672" height="941" alt="QQ Music API 分層架構與資料流程圖" src="https://github.com/user-attachments/assets/e4e9de88-e468-4112-8552-d3593ba9c11f" />
+
 
 | 位置 | 负责什么 |
 | --- | --- |
