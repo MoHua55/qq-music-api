@@ -9,7 +9,9 @@ const { builtinModules } = require('node:module');
 
 const HOSTS = '^src/(app\\.ts|controllers/|serverless/|node/|middlewares/)';
 // 编译后的 require 不一定带 node: 前缀，所以按 Node 自带模块的名单比对。
-const NODE_BUILTINS = `^(node:)?(${builtinModules.map((name) => name.replace(/[/.]/g, '\\$&')).join('|')})$`;
+// 名字放进正则前把所有正则特殊字符都转义（包括反斜线），不只转义 / 和 .。
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+const NODE_BUILTINS = `^(node:)?(${builtinModules.map(escapeRegExp).join('|')})$`;
 const NPM_OR_NODE = `(^|/)node_modules/|${NODE_BUILTINS}`;
 
 /** @type {import('dependency-cruiser').IConfiguration} */
