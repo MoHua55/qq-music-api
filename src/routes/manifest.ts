@@ -59,6 +59,7 @@ import {
 import { getHotSearches, getSearch, getSearchSuggestions } from './operations/searchCatalog';
 import { searchMatch } from './operations/searchMatch';
 import { songBatch } from './operations/songBatch';
+import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
@@ -97,6 +98,13 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'songFavCount',
+    method: 'GET',
+    path: '/song/fav-count',
+    category: 'Song',
+    handler: songFavCount,
+  },
   {
     name: 'searchMatch',
     method: 'GET',
