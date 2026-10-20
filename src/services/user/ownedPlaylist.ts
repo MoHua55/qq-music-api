@@ -1,8 +1,8 @@
 import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
+import { isDictionary } from '../../util/values';
 import { credentialMusicId } from '../auth/androidDevice';
 import type { AuthSession } from '../auth/qrLogin';
-import { isDictionary } from '../auth/values';
 import { positiveIntegerOf } from './writeInput';
 
 export const ownedPlaylistsDescriptor = (session: AuthSession): MusicuDescriptor<unknown[]> => ({

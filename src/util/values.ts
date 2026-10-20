@@ -1,4 +1,4 @@
-// Value coercions shared by the auth protocol modules. Upstream answers are untrusted JSON, so
+// Value coercions shared by the domain modules. Upstream answers are untrusted JSON, so
 // every field is read through one of these instead of being asserted into a type.
 //
 // This module is runtime-neutral on purpose: it must stay importable from a serverless bundle,

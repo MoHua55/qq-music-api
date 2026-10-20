@@ -1,8 +1,4 @@
 import { logger } from '../../util/logger';
-import { type AndroidDevice, buildQimeiRequest, QIMEI_URL } from './androidDevice';
-import { Buffer } from './bytes';
-import type { AuthHttpClient } from './httpClient';
-import { callMusicu, QqDeviceBootstrapError } from './musicuProtocol';
 import {
   type Dictionary,
   dictionaryOf,
@@ -10,7 +6,11 @@ import {
   numberOf,
   parseDictionary,
   stringOf,
-} from './values';
+} from '../../util/values';
+import { type AndroidDevice, buildQimeiRequest, QIMEI_URL } from './androidDevice';
+import { Buffer } from './bytes';
+import type { AuthHttpClient } from './httpClient';
+import { callMusicu, QqDeviceBootstrapError } from './musicuProtocol';
 
 // src/services/auth/bootstrap.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。

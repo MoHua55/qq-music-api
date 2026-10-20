@@ -5,12 +5,12 @@ import {
   isDictionary,
   numberOf,
   stringOf,
-} from '../auth/values';
+} from '../../util/values';
 
 // src/services/songLists/officialPlaylist.ts
 //
 // QQ 音乐官方按账号生成的歌单（每日30首、百万收藏、歌手漫游……）的两条共用规则。
-// 只依赖 `auth/values`，保持运行时中立：Node 与 serverless 都从这里取同一套判定与改写。
+// 只依赖 `util/values`，保持运行时中立：Node 与 serverless 都从这里取同一套判定与改写。
 
 /**
  * 官方歌单在 `/user/playlist` 的收藏条目里用 `dirType` 标出来（2026-10-09 真实账号实测）：

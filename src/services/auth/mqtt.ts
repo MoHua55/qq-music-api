@@ -1,7 +1,13 @@
+import {
+  type Dictionary,
+  dictionaryOf,
+  numberOf,
+  parseDictionary,
+  stringOf,
+} from '../../util/values';
 import { randomDigits } from './androidDevice';
 import { Buffer } from './bytes';
 import { type QrEvent, type QrEventListener } from './qrTypes';
-import { type Dictionary, dictionaryOf, numberOf, parseDictionary, stringOf } from './values';
 
 // src/services/auth/mqtt.ts
 // 从认证入口搬出的同一套实现；协议、状态与对外回包沿用原规则。

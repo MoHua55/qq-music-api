@@ -2,7 +2,7 @@ import { AxiosRequestConfig } from 'axios';
 import { logger } from '../../util/logger';
 import { logServiceFailure, logServiceRequest, logServiceSuccess } from '../../util/observability';
 import { toLegacyErrorBody } from '../../util/safeError';
-import { dictionaryOf, identifierOf, isDictionary, numberOf } from '../auth/values';
+import { dictionaryOf, identifierOf, isDictionary, numberOf } from '../../util/values';
 import y_common from '../y_common';
 import { type SongListDetailResponse, toSongListDetailResponse } from './officialPlaylist';
 

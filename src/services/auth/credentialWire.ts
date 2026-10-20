@@ -1,8 +1,8 @@
+import { type Dictionary, isDictionary, numberOf, stringOf } from '../../util/values';
 import { type AndroidDevice } from './androidDevice';
 import type { AuthHttpClient } from './httpClient';
 import { callMusicu, ExactInteger } from './musicuProtocol';
 import { type QqCredential } from './qrTypes';
-import { type Dictionary, isDictionary, numberOf, stringOf } from './values';
 import { WECHAT_APP_ID, WECHAT_LOGIN_TYPE } from './wechatLogin';
 
 // src/services/auth/credentialWire.ts

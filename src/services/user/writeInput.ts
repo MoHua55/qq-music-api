@@ -1,5 +1,5 @@
 import { QqApiError } from '../../protocol/errors';
-import { isDictionary } from '../auth/values';
+import { isDictionary } from '../../util/values';
 
 export const positiveIntegerOf = (value: unknown): number | undefined => {
   const number = typeof value === 'string' && /^\d{1,15}$/.test(value) ? Number(value) : value;

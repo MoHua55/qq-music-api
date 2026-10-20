@@ -3,6 +3,14 @@ import { GatewayCredentialConflictError } from '../../util/gatewayCredentialConf
 import { logger } from '../../util/logger';
 import type { UpstreamPhase } from '../../util/safeError';
 import {
+  type Dictionary,
+  dictionaryOf,
+  identifierOf,
+  isDictionary,
+  numberOf,
+  stringOf,
+} from '../../util/values';
+import {
   albumPicCoverUrlOf,
   firstSongAlbumCoverUrl,
   isOfficialPlaylistEntry,
@@ -13,14 +21,6 @@ import type { AuthHttpClient } from './httpClient';
 import { callMusicu, credentialCookieHeader, QqProtocolError } from './musicuProtocol';
 import { withPlayCounts } from './playlistPlayCounts';
 import { type AuthSession, type QqCredential } from './qrTypes';
-import {
-  type Dictionary,
-  dictionaryOf,
-  identifierOf,
-  isDictionary,
-  numberOf,
-  stringOf,
-} from './values';
 import { WECHAT_LOGIN_TYPE } from './wechatLogin';
 
 // src/services/auth/authenticatedReads.ts

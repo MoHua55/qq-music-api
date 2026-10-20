@@ -1,8 +1,8 @@
 import { QqApiError } from '../../protocol/errors';
 import type { MusicuDescriptor } from '../../protocol/musicu';
+import { type Dictionary, dictionaryOf, isDictionary, stringOf } from '../../util/values';
 import { credentialMusicId } from '../auth/androidDevice';
 import type { AuthSession } from '../auth/qrLogin';
-import { type Dictionary, dictionaryOf, isDictionary, stringOf } from '../auth/values';
 import { GUESS_YOU_LIKE } from './guessYouLike';
 import { failureResult, type NewRouteResult, okResult } from './newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from './sessionMusicu';

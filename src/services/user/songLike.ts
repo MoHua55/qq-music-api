@@ -1,6 +1,6 @@
 import { QqApiError } from '../../protocol/errors';
+import { isDictionary } from '../../util/values';
 import type { AuthSession } from '../auth/qrLogin';
-import { isDictionary } from '../auth/values';
 import { failureResult, type NewRouteResult, okResult } from '../recommend/newRouteResult';
 import { createSessionMusicuClient, type SessionMusicuOptions } from '../recommend/sessionMusicu';
 import { exactObjectOf, positiveIntegerOf } from './writeInput';
