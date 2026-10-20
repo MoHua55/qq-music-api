@@ -57,11 +57,11 @@ npm run build:local-images
 npm run run:images
 ```
 
-镜像使用 Node.js 24，只安装生产依赖，默认映射本机 `3200` 端口。运行脚本会挂载 `qq-music-api-state` 卷；重建时复用同一个卷和密钥，才能保留设备身份与加密会话。没有密钥时会话只存内存，重启后需要重新登录。详见[部署与配置](./docs/README.md#启动服务)
+镜像使用 Node.js 24，只安装生产依赖，默认映射本机 `3200` 端口。运行脚本会挂载 `qq-music-api-state` 卷；重建时复用同一个卷和密钥，才能保留设备身份与加密会话。没有密钥时会话只存内存，重启后需要重新登录。详见[部署与配置](./docs/README.md#docker-部署)
 
 ### Electron 与 Serverless
 
-Electron 在主进程加载根模块即可启动服务，导出的 `server` 用于监听启动结果和关闭服务。宿主可以通过 `configureAuthSessionRepository` 注入加密会话仓库，配置方法见[嵌入 Node.js 与 Electron](./docs/README.md#嵌入-nodejs-与-electron)。
+Electron 在主进程加载根模块即可启动服务，导出的 `server` 用于监听启动结果和关闭服务。宿主可以通过 `configureAuthSessionRepository` 注入加密会话仓库，入口说明见[运行时导出](./docs/README.md#运行时导出)。
 
 Vercel、Cloudflare Workers 等宿主使用 `@yakult-green-tea/qq-music-api/serverless` 的 `handleRequest(request, env, options)`，并由平台传入 `QQ_SESSION_SECRET`。这是可嵌入的请求处理函数，部署入口、跨来源 CORS 和预检由宿主负责。详见 [Serverless 接入](./docs/README.md#serverless-接入)。
 
@@ -77,7 +77,7 @@ Vercel、Cloudflare Workers 等宿主使用 `@yakult-green-tea/qq-music-api/serv
 
 QQ 音乐 App 扫码使用 App 当前登录的账号。Serverless 的中继由宿主提供，例如 Cloudflare Durable Object，本包不附带中继服务。没有中继时，设置 `QQ_PTLOGIN_HTTP_ENABLED=0` 可关闭手机 QQ 网页登录。可用通道以 `/login/channels` 的 `data.channels` 为准
 
-Node 使用 `stored` 会话，默认保存在内存，可配置加密持久化，并在凭证快到期、有请求时自动续期。Serverless 使用 `sealed` 会话，客户端需要在到期前调用 `POST /login/refresh` 并保存新 token，从首次扫码起最多续到 30 天。完整流程见[扫码登录](./docs/README.md#qq-音乐原生扫码登录)
+Node 使用 `stored` 会话，默认保存在内存，可配置加密持久化，并在凭证快到期、有请求时自动续期。Serverless 使用 `sealed` 会话，客户端需要在到期前调用 `POST /login/refresh` 并保存新 token，从首次扫码起最多续到 30 天。完整流程见[扫码登录](./docs/README.md#扫码登录与会话管理)
 
 部署前还要留意：
 
@@ -96,20 +96,15 @@ Node 使用 `stored` 会话，默认保存在内存，可配置加密持久化�
 
 ## 致谢
 
-原作者: https://github.com/Rain120/qq-music-api ) 为本项目基础
+原作者: https://github.com/Rain120/qq-music-api 为本项目基础
 
 - 感谢 [chthollyphile](https://github.com/chthollyphile) 在请求隔离、会话仓库、Serverless 集成、登录态播放和 QIMEI 时钟偏差恢复方面的贡献
 - 感谢 [lantudou](https://github.com/lantudou) 对登录态自建歌单详情和不公开歌单读取的支持
 - 完整说明见 [ATTRIBUTION.md](./ATTRIBUTION.md) 与 Git 历史
 
-项目参考: 
-
-https://github.com/L-1124/QQMusicApi
-
-
 ### 依赖此项目的优秀开源项目
 
-- [chthollyphlie/folia-major](https://github.com/chthollyphile/folia-major)
+- [chthollyphile/folia-major](https://github.com/chthollyphile/folia-major)
 
 
 ## 授权

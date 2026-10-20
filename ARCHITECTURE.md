@@ -6,7 +6,7 @@
 
 ## 架构图
 
-<img width="1672" height="941" alt="QQ Music API 分層架構與資料流程圖" src="https://github.com/user-attachments/assets/e4e9de88-e468-4112-8552-d3593ba9c11f" />
+<img width="1672" height="941" alt="QQ Music API 分层架构与数据流程图" src="https://github.com/user-attachments/assets/e4e9de88-e468-4112-8552-d3593ba9c11f" />
 
 
 | 位置 | 负责什么 |
