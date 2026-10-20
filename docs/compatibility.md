@@ -49,7 +49,36 @@ HTTP 状态也是接口的一部分：`401` 表示未登录或已确认的凭证
 3. 移除时同步接口文档、API Explorer 和契约测试，确认已知下游不再依赖该路由。
 4. 在使用文档的“已移除”一节保留迁移对照，方便旧链接的读者找到接手接口。
 
-`3.3.4` 移除的 9 条路由及替代接口见[已移除](./README.md#已移除)。其余旧路由的迁移安排另行公布，本次列表不能用于推断它们也已移除。
+`3.3.4` 移除的 9 条路由及替代接口见[已移除](./README.md#已移除)。
+
+## 3.3.5 退役预告
+
+以下 17 条 Node 旧路由计划在 `3.3.5` 移除，`3.3.4` 仍保留。对仍在使用这些路由的调用方，这是破坏性变更，不能仅凭 patch 版本号判断升级没有影响。有替代接口的按下表迁移，并调整参数、响应和分页；没有替代接口的会直接移除。
+
+| 计划移除的旧路由 | 改用 |
+| --- | --- |
+| `/getSmartbox` | `/search/match`、`/search/suggest` |
+| `/getSongListCategories` | `/recommend/categories/all` |
+| `/getSongLists` | `/recommend/category-playlists/sorted` |
+| `/batchGetSongInfo` | `POST /song/batch` |
+| `/getRadioLists` | `/radio/categories` |
+| `/getComments` | `/comment/list` |
+| `/getNewDisks` | `/recommend/new-albums` |
+| `/getTopLists` | `/recommend/toplists` |
+| `/getRanks` | `/recommend/toplist` |
+
+以下 8 条没有替代接口，将直接移除：
+
+- `/user/getCookie`
+- `/user/setCookie`
+- `/downloadQQMusic`
+- `/getImageUrl`
+- `/getRecommend`
+- `/getTicketInfo`
+- `/getDigitalAlbumLists`
+- `/batchGetSongLists`
+
+保留接口的契约不因内部整理而改变，Folia 这类使用保留接口的下游不用修改接入代码。迁移细节见[使用文档的退役预告](./README.md#335-退役预告)。
 
 ## 下游怎么升级
 

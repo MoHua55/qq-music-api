@@ -1,9 +1,68 @@
 ## 未发布
 
+这一版补上六条匿名读取接口和排行榜的可选字段，同时移除九条已经预告的旧路由。其余已有接口的调用方式和行为保持不变，Folia 这类使用保留接口的下游不用修改接入代码。
+
 ### 新功能
 
-- 新增六个匿名接口：`/search/match`（实体直接命中）、`/recommend/categories/all`（完整歌单分类）、`/recommend/category-playlists/sorted`（保留排序的分类歌单）、`POST /song/batch`（批量歌曲详情）、`/radio/categories`（匿名电台分类）、`/comment/list`（资源评论和回复）。Node 和 Serverless 都能用，不需要会话密钥。
-- `/recommend/toplist` 在同一次上游读取中补充可选 `ranks`（歌曲编号、排名、变化类型和值）与 `history`（上游的往期目录）；原有歌曲、分页和错误不变。当前实测的两个榜都没有往期条目，不保证每个榜都有历史目录。
+下面六条接口在 Node 和 Serverless 都有提供，不需要登录或会话密钥，带上会话也不会用它访问上游：
+
+- **搜索直接命中**：`GET /search/match?keyword=` 返回歌曲、歌手、专辑、MV 分组中的匹配条目。要搜索词建议仍用 `/search/suggest`。
+- **完整歌单分类**：`GET /recommend/categories/all` 读取旧 CGI 的分类字典，保留分组、可用标记和上游给出的排序选项；原来的 `/recommend/categories` 继续提供热门分类。
+- **带排序的分类歌单**：`GET /recommend/category-playlists/sorted` 接受 `id`、`offset`、`limit` 和 `sortId`。它与 `/recommend/category-playlists` 使用不同数据源，分页位置和总数不能混用。
+- **批量歌曲详情**：`POST /song/batch` 一次查询 1–20 首，保留输入顺序和重复项。部分成功时逐项返回结果并标记 `partial`；全空或全失败时返回整体错误，不自动重试。
+- **匿名电台分类**：`GET /radio/categories` 列出电台分组，保留空分组，不提供账号的最近记录。`/radio/list` 和 `/radio/tracks` 仍要求登录。
+- **资源评论与回复**：`GET /comment/list` 读取评论和回复，下一页要带上一页给的 `nextCursor`。资源类型的数字参数还没有完整验证，跨页是否重复也未完成受控验证，不能把一次返回数据当作全部类型和分页都已确认。
+
+`GET /recommend/toplist` 还会从同一次上游响应中补上可选的 `ranks` 和 `history`。`ranks` 按歌曲编号给出排名及上游提供的变化类型和值；`history` 保留往期目录。**实测的两个榜都没有往期条目**，不保证每个榜都有可用的往期目录。缺少或损坏的可选数据会省略，原来的歌曲、分页和错误处理不变，也不增加上游请求。
+
+### 移除
+
+以下九条旧路由已移除，上一版已提前预告。请按[使用文档](./docs/README.md#已移除)调整参数和响应解析，不能只替换路径：
+
+| 已移除路由 | 替代接口 |
+| --- | --- |
+| `/getHotkey` | `/search/hot` |
+| `/getSingerList` | `/singer/list` |
+| `/getSingerDesc` | `/singer/detail` |
+| `/getSingerStarNum` | `/singer/homepage` |
+| `/getSimilarSinger` | `/singer/similar` |
+| `/getSingerMv` | `/singer/mvs` |
+| `/getMv` | `/mv/list` |
+| `/getMvByTag` | `/mv/list` |
+| `/getMvPlay` | `/mv/detail` 和 `/mv/url` |
+
+### 改进
+
+路由注册统一由清单生成，Node 专用代码和共用业务的职责也重新整理，并补上依赖边界检查。除本页列出的新增接口、可选字段和旧路由移除外，已有接口行为不变，Folia 这类下游不用为内部整理改代码。
+
+### 给下游的通知
+
+**计划在 3.3.5 移除以下 17 条 Node 旧路由，3.3.4 仍保留。** 请在升级前迁移；替代接口的参数、响应、分页方式可能不同，不承诺与旧接口逐字段相同。
+
+| 计划移除的旧路由 | 改用 |
+| --- | --- |
+| `/getSmartbox` | `/search/match`、`/search/suggest` |
+| `/getSongListCategories` | `/recommend/categories/all` |
+| `/getSongLists` | `/recommend/category-playlists/sorted` |
+| `/batchGetSongInfo` | `POST /song/batch` |
+| `/getRadioLists` | `/radio/categories` |
+| `/getComments` | `/comment/list` |
+| `/getNewDisks` | `/recommend/new-albums` |
+| `/getTopLists` | `/recommend/toplists` |
+| `/getRanks` | `/recommend/toplist` |
+
+以下 8 条没有替代接口，将直接移除：
+
+- `/user/getCookie`
+- `/user/setCookie`
+- `/downloadQQMusic`
+- `/getImageUrl`
+- `/getRecommend`
+- `/getTicketInfo`
+- `/getDigitalAlbumLists`
+- `/batchGetSongLists`
+
+这些变动不包括 Folia 正在使用的保留接口。精确锁版的应用仍需更新依赖和锁文件；Electron 要重新打包，Docker 要重建镜像，Vercel 和 Cloudflare 要重新部署，详见[相容与版本政策](./docs/compatibility.md)。
 
 ## [3.3.3](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.2...v3.3.3) (2026-10-18)
 

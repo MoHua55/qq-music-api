@@ -6,8 +6,8 @@ QQ Music API 是非官方项目。可以运行独立的 Node 服务，也可以�
 
 - **部署**：[启动服务](#启动服务)、[配置](#配置)、[运行时入口](#运行时入口)、[Serverless 接入](#serverless-接入)与[部署限制](#serverless-部署限制)。
 - **登录**：[扫码流程](#qq-音乐原生扫码登录)、[失败诊断](#扫码失败诊断)、[后端能力](#查询登录通道与后端能力)。
-- **调用接口**：[接口一览](#接口一览)、[个人音乐库与歌单](#登录后的资料与歌单)、[推荐与电台](#猜你喜欢与推荐歌单)、[搜索](#搜索)、[歌手](#歌手)、[评论](#歌曲评论)、[MV](#mv)、[曲库与保留旧接口](#api接口)。
-- **升级**：[相容与版本政策](./compatibility.md)、[已移除的路由](#已移除)与 [CHANGELOG](../CHANGELOG.md)。
+- **调用接口**：[接口一览](#接口一览)、[个人音乐库与歌单](#登录后的资料与歌单)、[推荐与电台](#猜你喜欢与推荐歌单)、[搜索](#搜索)、[歌手](#歌手)、[评论](#歌曲评论)、[MV](#mv)、[匿名补充接口](#匿名读取的补充接口)、[曲库与保留旧接口](#api接口)。
+- **升级**：[相容与版本政策](./compatibility.md)、[3.3.5 退役预告](#335-退役预告)、[已移除的路由](#已移除)与 [CHANGELOG](../CHANGELOG.md)。
 - **排查与开发**：[错误响应](#出错时的响应)、[错误对照表](./errors.md)、[开发与验证](#开发与验证)、[排查问题](#排查问题)。
 
 本文按 3.3.4 的接口范围编写。示例里的歌曲、歌单、账号标识和链接都是虚构值，只展示格式；实际调用请使用自己查询到的结果。
@@ -759,11 +759,100 @@ Node 已用手机 QQ 与微信（含 19 位 owner）各完成一次收藏、一�
 
 这几条都是：上游给空清单回 `422`；给了条目却一支都读不出来回 `502`（`upstream.invalid-response`）；上游业务码不是 0 回 `502` 并保留数字。
 
+## 匿名读取的补充接口
+
+下面六条接口不用登录，也不用配置 `QQ_SESSION_SECRET`。Node 和 Serverless 共用处理代码；即使请求带了会话，也不会用它访问上游。参数校验通过后，每次调用最多发送一次上游请求，不自动重试。
+
+### 搜索直接命中
+
+`GET /search/match?keyword=<关键词>` 返回匹配的歌曲、歌手、专辑和 MV 条目。`keyword` 必填，去掉前后空格后为 1–60 个字符。
+
+成功响应是 `{ code: 200, keyword, data }`。`data` 按 `song`、`singer`、`album`、`mv` 分组，每组有 `itemlist`，以及上游给出的可选 `count`、`name`、`order`、`type`。条目只保留已确认的公开标量字段。
+
+要显示匹配到的实体，用这条接口；只需要搜索词建议时，用 [`/search/suggest`](#热搜和搜索建议)。
+
+### 完整歌单分类
+
+`GET /recommend/categories/all` 不带参数，返回旧 CGI 的完整分类字典。`/recommend/categories` 继续提供热门分类，两条接口的用途不同。
+
+成功响应是 `{ code: 200, groups }`：每组有 `name`、`categories`，以及可选的 `usable` 标记；每个分类有 `id`、`name`，以及可选的 `usable` 和 `sorts: [{ id, name }]`。分组本身没有补造的编号。
+
+分类编号和上游提供的排序选项可以交给下面的排序歌单接口使用。
+
+### 带排序的分类歌单
+
+`GET /recommend/category-playlists/sorted` 按分类和排序值读取歌单：
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `id` | `10000000` | 分类编号，必须为正整数 |
+| `offset` | `0` | 起始位置，从 0 开始 |
+| `limit` | `20` | 本次读取数量，1–60 |
+| `sortId` | `5` | 上游排序值，按数字传递；未确认的数字不另起含义名称 |
+
+成功响应是 `{ code: 200, playlists, total?, more }`。歌单包含 `tid`、`title`、`desc`、`picurl`、`creator`，以及可选的 `play_cnt`。
+
+这里的 `offset` 是起始位置，`limit` 是数量，不是旧 `/batchGetSongLists` 的起止下标。这条接口用旧 CGI，`/recommend/category-playlists` 用 musicu，两份数据的页号、总数和续读位置不能混用。上游没有可信总数时，省略 `total`，`more` 为 `false`，不据此猜测还有多少页。
+
+### 批量歌曲详情
+
+`POST /song/batch` 用 JSON 正文传入 `{ songs: [{ mid, id? }] }`，每次 1–20 首。`mid` 是 1–64 个字母或数字，`id` 可选，提供时必须是正整数。这是读取接口，POST 用于携带整批查询参数。
+
+成功响应是 `{ code: 200, results, partial }`。`results` 按输入顺序逐项给结果，重复歌曲也保留：
+
+- 成功项：`{ index, code: 200, song, info }`，`song` 是详情里的 `track_info`，`info` 是其他详情。
+- 失败项：`{ index, code, kind, errorKey, ... }`，不使用 `null` 代替错误。
+
+整批参数会先校验，再把每首歌的 RPC 合成一次上游 HTTP 请求。只要有成功项，整体就回 `200`；`partial: true` 表示还有失败项。全为空回 `422`；全失败时，优先返回第一个表示“失败而非空数据”的错误。全局网关或传输失败直接回整体错误，不拆成多次请求重试。
+
+20 个子请求已做过匿名取样，但样本只由两首歌曲的重复项组成，不能据此保证所有歌曲都能查到。
+
+### 匿名电台分类
+
+`GET /radio/categories` 不带参数，匿名读取 musicu 的电台分类，成功响应是 `{ code: 200, groups }`。
+
+每个分组有 `id`、`title`、`radios`；电台有 `id`、`title`、`picurl` 和可选的 `listenNum`。空分组会保留，但这条接口不提供账号的最近记录。需要登录的 [`/radio/list` 和 `/radio/tracks`](#电台) 保持原样。
+
+### 资源评论与回复
+
+`GET /comment/list` 读取评论和回复，参数如下：
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `id` | 必填 | 资源编号，必须为正整数 |
+| `page` | `0` | 页号，从 0 开始 |
+| `limit` | `25` | 每页数量，1–50 |
+| `cursor` | 不传 | 下一页使用上一次的 `nextCursor`，最多 256 个字符，不接受控制字符 |
+| `biztype`、`cid`、`cmd`、`reqtype` | 依次为 `1`、`205360772`、`8`、`2` | 上游协议的数字参数，按传入值转交 |
+
+成功响应是 `{ code: 200, data, nextCursor? }`。`data` 可以带普通评论 `comment`、热评 `hot_comment` 和已确认的公开标量标记。评论组里有 `commentlist` 与可选的 `commenttotal`；条目保留已确认的内容、昵称、头像、时间、点赞和回复字段，不交出账号标识。
+
+`page > 0` 时必须带上一页的 `nextCursor`。游标只从普通评论的末条取得，不能拿热评替代，也不要把它转成数字或自行加一。没有 `nextCursor` 时不要拼造游标继续请求；这本身也不能证明所有评论已经读完。
+
+这些数字参数和歌曲、专辑、歌单等资源类型的对应关系还没有完整确认，跨页是否重复也未完成受控验证。不要把一次有数据当作所有资源类型和分页都已验证。
+
+### 参数、错误和宿主限制
+
+六条接口的数值参数都严格校验：不接受小数、负数、空字符串或夹杂字母的值；只有省略参数时才用默认值。同名 query 参数取第一个值。
+
+参数不对回 `400`；成功但没有数据回 `422`；上游拒绝、网络失败或响应结构损坏回 `502`，明确限流回 `429`。错误带 `code`、`kind`、`errorKey`、`message`、`retryable` 和取得的安全数字码，不用 `404` 表示空数据。批量接口部分成功的情况按上面的逐项结果处理。
+
+新 CGI 读取不借用旧服务的配置 Cookie 或全局 HTTP 注册槽。它会先按 UTF-8 解码，失败时尝试 GB18030；GB18030 解码在 Cloudflare Workers 上尚未验收，宿主不支持解码或内容读不懂时回 `upstream.invalid-response`，不能把离线测试通过当作该宿主已验收。
+
+### 排行榜的可选字段
+
+`GET /recommend/toplist` 会从同一次上游响应中补上可选的 `ranks` 和 `history`：
+
+- `ranks: [{ songId, rank, rankType?, rankValue? }]` 按歌曲编号关联排名，不能按 `songs` 的下标配对。
+- `history: { year, subPeriod }` 保留上游往期目录的原始条目形状。**实测的两个榜都没有往期条目**，不保证非空目录可用，也不保证每个榜都有往期目录。
+
+可选数据缺失或损坏时省略对应字段，原来的 `songs`、`toplist`、`total`、`more` 和错误处理不变，不增加上游请求。
+
 <a id="api接口"></a>
 
 ## 曲库与保留旧接口
 
-下面是原有路由的索引，主要用于 Node 服务。Serverless 支持的范围以 `/login/channels` 为准，不能把整个 Node 路由表当成 Serverless 的功能清单。
+下面是原有路由的索引，主要用于 Node 服务；其中计划在 3.3.5 移除的 17 条见[退役预告](#335-退役预告)。Serverless 支持的范围以 `/login/channels` 为准，不能把整个 Node 路由表当成 Serverless 的功能清单。
 
 示例中的 `demo-*` 和 `90001` 都是虚构值，只展示写法；实际调用时从查询结果取得歌曲、歌手、专辑和歌单标识。为避免不同路由对路径参数的处理差异，这里统一使用 query 参数。
 
@@ -894,7 +983,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取关键字搜索提示
 
-`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，以后会移除（3.3.4 先留着）：要搜索词请用 [`/search/suggest`](#热搜和搜索建议)，要直接找歌曲、歌手、专辑请用 `/search`。
+`GET /getSmartbox?key=示例关键词` 返回搜索提示；`key` 必填。只在 Node 上有，计划在 3.3.5 移除：要直接命中的条目，改用 [`/search/match`](#搜索直接命中)；要搜索词，改用 [`/search/suggest`](#热搜和搜索建议)。
 
 ### 获取新碟信息
 
@@ -916,7 +1005,7 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 ### 获取评论信息
 
-`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。只在 Node 上有，以后会移除（3.3.4 先留着，专辑、歌单等其他评论还没有新路由）；歌曲评论请改用 [`/comment/hot`、`/comment/new`](#歌曲评论)。
+`GET /getComments?id=90001&pagenum=0&pagesize=25` 返回评论。`id` 必填，`pagenum` 默认 0、`pagesize` 默认 25。接着读时，把上一次结果中的 `rootcommentid` 传回来。只在 Node 上有，计划在 3.3.5 移除；改用 [`/comment/list`](#资源评论与回复)。只读歌曲热评或新评时，也可以用 [`/comment/hot`、`/comment/new`](#歌曲评论)。
 
 其他参数 `cid`、`cmd`、`reqtype`、`biztype` 保留原有传递方式，默认分别为 `205360772`、`8`、`2`、`1`；具体上游含义未完整确认，不把这些参数当作通用分类保证。
 
@@ -960,6 +1049,35 @@ QQ 音乐按账号生成的官方歌单（`/user/playlist` 收藏项目中的 `d
 
 Web 宿主没有全局 `Buffer` 时，扫码和二进制协议使用标准 Web API 的字节实现；Node 保留原 Buffer。serverless 核心无需 npm 包或 Node 运行时模块。Cloudflare 的构建需按宿主设置编译时的日志环境变量；未配置会话密钥的登录路由仍回 `501`。
 
+## 3.3.5 退役预告
+
+以下 17 条 Node 旧路由计划在 3.3.5 移除，3.3.4 仍可使用。已有接手接口的请提前迁移；新旧接口的参数、响应和分页可能不同，按新接口说明调整，不要只替换路径。
+
+| 计划移除的旧路由 | 改用 |
+| --- | --- |
+| `/getSmartbox` | `/search/match`、`/search/suggest` |
+| `/getSongListCategories` | `/recommend/categories/all` |
+| `/getSongLists` | `/recommend/category-playlists/sorted` |
+| `/batchGetSongInfo` | `POST /song/batch` |
+| `/getRadioLists` | `/radio/categories` |
+| `/getComments` | `/comment/list` |
+| `/getNewDisks` | `/recommend/new-albums` |
+| `/getTopLists` | `/recommend/toplists` |
+| `/getRanks` | `/recommend/toplist` |
+
+以下 8 条没有替代接口，将直接移除：
+
+- `/user/getCookie`
+- `/user/setCookie`
+- `/downloadQQMusic`
+- `/getImageUrl`
+- `/getRecommend`
+- `/getTicketInfo`
+- `/getDigitalAlbumLists`
+- `/batchGetSongLists`
+
+没有替代接口的功能不会在移除后自动转到其他来源。Folia 正在使用的保留接口不在本次退役清单中。
+
 ## 已移除
 
 以下 9 条旧路由已在 3.3.4 移除，3.3.3 已提前预告。请改用右侧接口；新接口的参数、响应和分页方式可能不同，按对应章节调整调用，不能只替换路径。
@@ -986,7 +1104,7 @@ Web 宿主没有全局 `Buffer` 时，扫码和二进制协议使用标准 Web A
 | `/getMvByTag` | [`/mv/list`](#mv) | 从响应的 `tags` 读取筛选值 |
 | `/getMvPlay` | [`/mv/detail`、`/mv/url`](#mv) | 分别读取详情与播放链接，参数仍为 `vid` |
 
-替代接口在 Node 和 Serverless 都有提供，错误处理方式见[出错时的响应](#出错时的响应)。其他旧路由本阶段保持原样，后续迁移安排另行公布。
+替代接口在 Node 和 Serverless 都有提供，错误处理方式见[出错时的响应](#出错时的响应)。另外 17 条 Node 旧路由在 3.3.4 仍保留，计划在 3.3.5 移除，见[退役预告](#335-退役预告)。
 
 ## 当前架构
 
@@ -1026,24 +1144,3 @@ Web 宿主没有全局 `Buffer` 时，扫码和二进制协议使用标准 Web A
 先确认部署实际加载的包版本、入口和配置，再看脱敏后的状态码与诊断字段。重启本身不能证明某个上游错误已经修复。
 
 一般日志不记录原始上游 body、二维码标识、Cookie、token、设备识别值、账号 id 或完整播放链接。反馈时只提供复现步骤、运行环境和脱敏摘要，敏感 HAR 留在本地。
-
-## 匿名读取的补充接口
-
-以下接口不需要登录，也不需要 `QQ_SESSION_SECRET`，Node 和 Serverless 使用同一份处理。附带会话也不会发送给上游。这六个接口每次只尝试一次上游请求；没有数据回 `422`，参数错误回 `400`，上游拒绝、连接失败或数据结构损坏回 `502`，明确限流回 `429`。错误包含 `code`、`kind`、`errorKey`、`message`、`retryable` 和可选的安全数字码，不用 `404` 表示空数据。
-
-| 接口 | 参数 | 成功响应 |
-| --- | --- | --- |
-| `GET /search/match` | `keyword` 必填，去掉头尾空格后 1–60 个字符 | `{ code:200, keyword, data }`；`data` 按 `song`、`singer`、`album`、`mv` 分组，每组有 `itemlist` 和可选的数量、名称、顺序、类型；条目保留已确认的公开标量字段。它返回实体命中，`/search/suggest` 返回搜索词 |
-| `GET /recommend/categories/all` | 无 | `{ code:200, groups:[{ name, usable?, categories:[{ id, name, usable?, sorts?:[{ id,name }] }] }] }`；这是完整的旧 CGI 分类字典，`/recommend/categories` 仍是热门分类，不虚构分组编号 |
-| `GET /recommend/category-playlists/sorted` | `id=10000000`、`offset=0`、`limit=20`（1–60）、`sortId=5` | `{ code:200, playlists, total?, more }`；歌单字段为 `tid`、`title`、`desc`、`picurl`、可选 `play_cnt`、`creator`。`sortId` 按上游数字传递，不为未确认的数字命名 |
-| `POST /song/batch` | JSON `{ songs:[{ mid, id? }] }`，1–20 首；mid 为 1–64 个字母或数字，id 是可选的正整数 | `{ code:200, results:[{ index, code:200, song, info } 或 { index, code, kind, errorKey, ... }], partial }`；`song` 是上游歌曲详情中的 `track_info`，`info` 是其他详情，保留输入顺序与重复项 |
-| `GET /radio/categories` | 无 | `{ code:200, groups:[{ id,title,radios:[{ id,title,picurl,listenNum? }] }] }`；取匿名 musicu 分类，保留空分组。不提供账号的最近记录；`/radio/list` 和 `/radio/tracks` 仍要求登录 |
-| `GET /comment/list` | `id` 必填；`page=0`、`limit=25`（1–50）、`cursor`；数字协议参数 `biztype=1`、`cid=205360772`、`cmd=8`、`reqtype=2` | `{ code:200, data:{ comment?, hot_comment?, ...公开标量标记 }, nextCursor? }`；评论组有 `commentlist`、可选 `commenttotal`；条目保留已确认的内容、昵称、头像、时间、点赞与回复字段，不交出账号标识。数字参数不承诺通用的资源类型映射 |
-
-新接口的数值参数严格验证，不接受小数、负数、空字符串或夹字母；省略时才使用默认值。同名 query 参数取第一个值。`/comment/list` 的 `page>0` 必须带上一页的 `nextCursor`（最多 256 个字符）；只有普通评论的末条能提供这个游标，热评不能替代续页游标。没有足够证据时不推算“还有下一页”。评论类型码和跨页是否重复没有完整受控验证，不把一次有数据当成类型语义已确认。
-
-排序歌单的 `offset` 是起始位置，数量为 `limit`，与旧 `/batchGetSongLists` 的起止下标不同。这个 CGI 数据源与 `/recommend/category-playlists` 的 musicu 数据源不能混用页号、总数或续读位置；没有可信总数就省略 `total`，`more` 为 `false`。新接口不借用旧服务的配置 Cookie 或全局 HTTP 注册槽。
-
-歌曲批次在一次 HTTP 中发送每首歌曲各自的 RPC；20 个子请求已经匿名取样通过，但取样只包含两首歌的重复项，不代表验证过所有歌曲。整批参数先验证；只要有成功项就回 `200`，逐项给出失败，`partial` 表示存在失败。全为空回 `422`，全失败优先回报第一个非空结果错误；全局网关或传输失败直接回整体错误，不用 `null` 表示失败，也不改成多次请求重试。
-
-`GET /recommend/toplist` 还会从同一次回包中交出可选 `ranks:[{ songId, rank, rankType?, rankValue? }]` 与 `history:{ year,subPeriod }`。排名用歌曲编号关联，不能按 `songs` 的下标配对。往期目录保持上游条目的原始形状；当前两个匿名样本的目录都是空数组，不保证非空往期目录可用。可选数据缺失或损坏时省略，原来的 `songs`、`toplist`、`total`、`more` 与错误处理不变，不增加上游请求。

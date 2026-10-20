@@ -20,7 +20,16 @@
 
 handler 依赖 `OperationRequest`，不用知道 Koa `Context` 或 Web `Request` 的细节。结果统一为 `{ status, headers, body }`，两种转接器分别写入 `ctx` 或生成 `Response`。业务解析和上游调用放在服务中，便于用同一份模拟响应测试。
 
-HTTP 实现目前有三条路径：共用 musicu 客户端使用 `src/protocol/http.ts` 定义的传输接口，fetch 实现在 `src/transport/`；认证服务使用注入的 `AuthHttpClient`；旧曲库服务通过 `src/services/httpTransport.ts` 的注册槽取得传输。后两者在 Node 注入 axios 实现，在 Serverless 注入 fetch 实现。它们的超时、重试和重定向规则需要分别检查，不能把共用传输的规则当成全部接口的规则。
+HTTP 实现目前有四条路径：
+
+| 路径 | 实现与调用方式 |
+| --- | --- |
+| 共用 musicu 客户端 | 使用 `src/protocol/http.ts` 定义的传输接口，fetch 实现在 `src/transport/` |
+| 认证服务 | 注入 `AuthHttpClient`，Node 使用 axios 实现，Serverless 使用 fetch 实现 |
+| 旧曲库服务 | 通过 `src/services/httpTransport.ts` 的注册槽取得传输，Node 注入 axios 实现，Serverless 注入 fetch 实现 |
+| 新的匿名 CGI 读取 | `src/services/catalog/anonymous.ts` 直接调用全局 `fetch`，自带 25 秒超时，不经过共用传输接口、限流或旧曲库注册槽；每次只尝试一次，不跟随重定向 |
+
+第四条路径目前由搜索直接命中、完整分类、排序歌单和资源评论使用；歌曲批量查询与匿名电台分类仍走共用 musicu 客户端。四条路径的超时、重试和重定向规则需要分别检查，不能把共用传输的规则当成全部接口的规则。
 
 ## 请求怎么走
 
