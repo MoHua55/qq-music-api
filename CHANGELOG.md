@@ -11,7 +11,7 @@
 - **带排序的分类歌单**：`GET /recommend/category-playlists/sorted` 接受 `id`、`offset`、`limit` 和 `sortId`。它与 `/recommend/category-playlists` 使用不同数据源，分页位置和总数不能混用。
 - **批量歌曲详情**：`POST /song/batch` 一次查询 1–20 首，保留输入顺序和重复项。部分成功时逐项返回结果并标记 `partial`；全空或全失败时返回整体错误，不自动重试。
 - **匿名电台分类**：`GET /radio/categories` 列出电台分组，保留空分组，不提供账号的最近记录。`/radio/list` 和 `/radio/tracks` 仍要求登录。
-- **资源评论与回复**：`GET /comment/list` 读取评论和回复，下一页要带上一页给的 `nextCursor`；普通评论的末条没有 `rootcommentid` 时不给 `nextCursor`，个别评论缺这个字段也照样交出。资源类型的数字参数还没有完整验证，跨页是否重复也未完成受控验证，不能把一次返回数据当作全部类型和分页都已确认。
+- **资源评论与回复**：`GET /comment/list` 读取评论和回复，下一页要带上一页给的 `nextCursor`；普通评论的末条没有 `rootcommentid` 时不给 `nextCursor`，个别评论缺这个字段也照样交出。资源类型的数字参数还没有完整验证。实测一次读同一个资源的两页，普通评论没有重复，热评只在第一页出现；这只是一个样本，不能当作全部类型和分页都已确认。
 
 `GET /recommend/toplist` 还会从同一次上游响应中补上可选的 `ranks` 和 `history`。`ranks` 按歌曲编号给出排名及上游提供的变化类型和值；`history` 保留往期目录。**实测的两个榜都没有往期条目**，不保证每个榜都有可用的往期目录。缺少或损坏的可选数据会省略，原来的歌曲、分页和错误处理不变，也不增加上游请求。
 
