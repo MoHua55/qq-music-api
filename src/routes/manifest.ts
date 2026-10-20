@@ -69,6 +69,7 @@ import type { OperationHandler } from './operations/types';
 import { userCloud } from './operations/userCloud';
 import { userDailySongs } from './operations/userDailySongs';
 import { userDetail } from './operations/userDetail';
+import { userMusicGene } from './operations/userMusicGene';
 import { userVip } from './operations/userVip';
 
 // src/routes/manifest.ts
@@ -100,6 +101,14 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'userMusicGene',
+    method: 'GET',
+    path: '/user/music-gene',
+    category: 'User',
+    handler: userMusicGene,
+    needsSecret: true,
+  },
   {
     name: 'songVersions',
     method: 'GET',

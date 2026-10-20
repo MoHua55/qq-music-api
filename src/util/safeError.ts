@@ -17,6 +17,7 @@ export const UPSTREAM_PHASES = [
   'get-preview-detail',
   'get-quality-detail',
   'get-user-vip',
+  'get-user-music-gene',
   'playlist-track-write',
   'playlist-subscribe',
   'song-like',
