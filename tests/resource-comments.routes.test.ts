@@ -181,6 +181,40 @@ describe.each(['node', 'serverless'] as const)('匿名迁移路由 %s', (runtime
     expect(res.status).toBe(status);
     expect(res.body.kind).toBe(kind);
   });
+  const { rootcommentid: _root, ...withoutRoot } = entry;
+  const lastWithoutRoot = { ...withoutRoot, commentid: 'fixture-comment-last' };
+  it('一般评论末笔没有 rootcommentid 时照样交出，但不给续页游标', async () => {
+    fixture.body.comment.commentlist = [entry, lastWithoutRoot];
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(res.body.data.comment.commentlist).toEqual([publicEntry, lastWithoutRoot]);
+    expect(res.body.data.morecomment).toBe(1);
+    expect(res.body.nextCursor).toBeUndefined();
+  });
+  it('中间一笔没有 rootcommentid 不影响用末笔续页', async () => {
+    fixture.body.comment.commentlist = [lastWithoutRoot, entry];
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(res.body.data.comment.commentlist).toEqual([lastWithoutRoot, publicEntry]);
+    expect(res.body.nextCursor).toBe('fixture-root');
+  });
+  it.each([
+    ['空字符串', ''],
+    ['不是字符串', 90003],
+  ])('rootcommentid 是%s时当成没有', async (_label, value) => {
+    fixture.body.comment.commentlist = [{ ...entry, rootcommentid: value }];
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(res.body.data.comment.commentlist).toEqual([withoutRoot]);
+    expect(res.body.nextCursor).toBeUndefined();
+  });
+  it('热评没有 rootcommentid 也照样交出', async () => {
+    fixture.body.hot_comment.commentlist = [withoutRoot];
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(res.body.data.hot_comment.commentlist).toEqual([withoutRoot]);
+    expect(res.body.nextCursor).toBe('fixture-root');
+  });
   it('有热评而新评为空时仍交出热评', async () => {
     fixture.body.comment.commentlist = [];
     const res = await call();
