@@ -36,6 +36,13 @@
     "reason": "新增匿名路由，Node 和 Serverless 共用处理，不改变旧路由"
   },
   {
+    "path": "/mv/url",
+    "baseline": "3.3.3",
+    "since": "3.3.4",
+    "session": true,
+    "reason": "带会话时改用凭证读，送给上游的 comm 换成带凭证的那套；不带会话的案例和回包都不变"
+  },
+  {
     "path": "/getHotkey",
     "since": "3.3.4",
     "reason": "3.3.4 移除：3.3.3 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"

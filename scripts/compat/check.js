@@ -1,7 +1,7 @@
 // 行为比对：同一份离线假上游，分别跑「已发布的某个版本」和「当前工作树的 dist」，
 // 逐条比较全部路由在 Node 与 Serverless 上的状态码、关键响应头、响应体，以及送给上游的请求。
 // 重构时用它确认对外行为没变；预期中的差异（例如退役的路由）登记在 approved.json，
-// 每条可以限定 runtime，也可以用 baseline 限定只对某个基准版本成立。
+// 每条可以限定 runtime、限定只放行带或不带会话的案例（session），也可以用 baseline 限定只对某个基准版本成立。
 //
 // 用法：npm run build:js && npm run compat:check -- [--baseline 3.3.3] [--only /getSongInfo]
 // 不连真实 QQ；只有第一次取某个基准版本时会向 npm 下载包。
@@ -58,7 +58,7 @@ for (const endpoint of [...endpointsOf(baselineRoot), ...endpointsOf(repo)])
 const SAMPLES = {
   id: '90001', ids: '70001,70002', tid: '70001', dirid: '10', uid: '10000', songmid: 'fixture-song-a',
   songid: '90001', disstid: '70001', albummid: 'fixture-album', singermid: 'fixture-singer',
-  mid: 'fixture-song-a', vid: 'fixture-video', keyword: 'fixture', key: 'fixture', page: '2',
+  mid: 'fixture-song-a', vid: 'fixturevideo', keyword: 'fixture', key: 'fixture', page: '2',
   limit: '5', offset: '3', area: '1', area_id: '15', version_id: '7', topId: '26',
   categoryId: '10000000', sortId: '5', type: 'song', channel: 'wechat', period: '2026-10',
   pagesize: '5', pagenum: '1', cmd: '8', reqtype: '2', biztype: '1', rootcommentid: 'fixture-comment',
@@ -129,6 +129,7 @@ const approvalOf = (testCase) =>
     (entry) =>
       (testCase.path === entry.path || testCase.path.startsWith(`${entry.path}/`)) &&
       (!entry.runtime || entry.runtime === testCase.runtime) &&
+      (entry.session === undefined || entry.session === testCase.session) &&
       // 带 baseline 的登记只对那个基准版本成立，换了基准就不再放行。
       (!entry.baseline || entry.baseline === baselineVersion),
   );
