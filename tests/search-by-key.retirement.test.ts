@@ -3,7 +3,6 @@ import path from 'node:path';
 import request from 'supertest';
 import app from '../src/app';
 import { apiExplorerBaseRoutes } from '../src/config/apiExplorer';
-import services from '../src/services';
 
 // 旧的 /getSearchByKey 在 3.3.1 预告过要移除，搜索统一走 /search。
 const ROOT = path.join(__dirname, '..');
@@ -19,7 +18,6 @@ describe('旧搜索接口 /getSearchByKey 已移除', () => {
   it('controller 和 service 文件都删掉了', () => {
     expect(fs.existsSync(path.join(ROOT, 'src/controllers/getSearchByKey.ts'))).toBe(false);
     expect(fs.existsSync(path.join(ROOT, 'src/services/search/getSearchByKey.ts'))).toBe(false);
-    expect(Object.keys(services)).not.toContain('getSearchByKey');
   });
 
   it('API Explorer 和首页示例不再列出它', () => {

@@ -96,11 +96,6 @@ export interface SharedRoute extends RouteBase {
   needsSecret?: true;
 }
 
-/** 只有 Node 有的旧路由，Serverless 回 501。controller 在 controllers/index.ts，退役时两边一起删。 */
-export interface NodeOnlyRoute extends RouteBase {
-  nodeOnly: true;
-}
-
 export const routeManifest = [
   {
     name: 'searchMatch',
@@ -138,8 +133,6 @@ export const routeManifest = [
     category: 'Common',
     handler: commentList,
   },
-  { name: 'getCookie', method: 'GET', path: '/user/getCookie', category: 'User', nodeOnly: true },
-  { name: 'setCookie', method: 'GET', path: '/user/setCookie', category: 'User', nodeOnly: true },
 
   // 扫码登录与会话
   {
@@ -434,22 +427,8 @@ export const routeManifest = [
     handler: getRadioTracks,
     needsSecret: true,
   },
-  {
-    name: 'getDownloadQQMusic',
-    method: 'GET',
-    path: '/downloadQQMusic',
-    category: 'Song',
-    nodeOnly: true,
-  },
 
   // 搜索
-  {
-    name: 'getSmartbox',
-    method: 'GET',
-    path: '/getSmartbox/:key?',
-    category: 'Search',
-    nodeOnly: true,
-  },
   { name: 'getSearch', method: 'GET', path: '/search', category: 'Search', handler: getSearch },
   {
     name: 'getHotSearches',
@@ -468,40 +447,12 @@ export const routeManifest = [
 
   // 曲库
   {
-    name: 'getSongListCategories',
-    method: 'GET',
-    path: '/getSongListCategories',
-    category: 'Song Lists',
-    nodeOnly: true,
-  },
-  {
-    name: 'getSongLists',
-    method: 'GET',
-    path: '/getSongLists/:page?/:limit?/:categoryId?/:sortId?',
-    category: 'Song Lists',
-    nodeOnly: true,
-  },
-  {
-    name: 'batchGetSongLists',
-    method: 'POST',
-    path: '/batchGetSongLists',
-    category: 'Batch',
-    nodeOnly: true,
-  },
-  {
     name: 'getSongInfo',
     method: 'GET',
     path: '/getSongInfo/:songmid?/:songid?',
     serverlessPath: '/getSongInfo/:songmid/:songid?',
     category: 'Song',
     handler: getSongInfo,
-  },
-  {
-    name: 'batchGetSongInfo',
-    method: 'POST',
-    path: '/batchGetSongInfo',
-    category: 'Batch',
-    nodeOnly: true,
   },
   // 默认匿名读，没设密钥也能用。匿名读不到（QQ 自己的算法歌单回 code 10）且能开会话时才带凭证重读。
   {
@@ -511,13 +462,6 @@ export const routeManifest = [
     serverlessPath: '/getSongListDetail/:disstid',
     category: 'Song Lists',
     handler: getSongListDetail,
-  },
-  {
-    name: 'getNewDisks',
-    method: 'GET',
-    path: '/getNewDisks/:page?/:limit?',
-    category: 'Album',
-    nodeOnly: true,
   },
   {
     name: 'listSingers',
@@ -610,20 +554,6 @@ export const routeManifest = [
     handler: getSingerHotsong,
   },
   {
-    name: 'getRadioLists',
-    method: 'GET',
-    path: '/getRadioLists',
-    category: 'Radio',
-    nodeOnly: true,
-  },
-  {
-    name: 'getDigitalAlbumLists',
-    method: 'GET',
-    path: '/getDigitalAlbumLists',
-    category: 'Digital Album',
-    nodeOnly: true,
-  },
-  {
     name: 'getLyric',
     method: 'GET',
     path: '/getLyric/:songmid?/:isFormat?',
@@ -647,49 +577,13 @@ export const routeManifest = [
     category: 'Album',
     handler: getAlbumInfo,
   },
-  {
-    name: 'getComments',
-    method: 'GET',
-    path: '/getComments/:id?/:rootcommentid?/:cid?/:pagesize?/:pagenum?/:cmd?/:reqtype?/:biztype?',
-    category: 'Common',
-    nodeOnly: true,
-  },
-  {
-    name: 'getRecommend',
-    method: 'GET',
-    path: '/getRecommend',
-    category: 'Recommend',
-    nodeOnly: true,
-  },
-  { name: 'getTopLists', method: 'GET', path: '/getTopLists', category: 'Rank', nodeOnly: true },
-  {
-    name: 'getRanks',
-    method: 'GET',
-    path: '/getRanks/:topId?/:limit?/:page?',
-    category: 'Rank',
-    nodeOnly: true,
-  },
-  {
-    name: 'getTicketInfo',
-    method: 'GET',
-    path: '/getTicketInfo',
-    category: 'Ticket',
-    nodeOnly: true,
-  },
-  { name: 'getImageUrl', method: 'GET', path: '/getImageUrl', category: 'Common', nodeOnly: true },
-] as const satisfies readonly (SharedRoute | NodeOnlyRoute)[];
+] as const satisfies readonly SharedRoute[];
 
 export type RouteEntry = (typeof routeManifest)[number];
 export type RouteName = RouteEntry['name'];
-export type NodeOnlyRouteName = Extract<RouteEntry, { nodeOnly: true }>['name'];
 
-const isNodeOnly = (route: SharedRoute | NodeOnlyRoute): route is NodeOnlyRoute =>
-  'nodeOnly' in route;
-
-/** 两边都有的路由。 */
-export const sharedRoutes: readonly SharedRoute[] = routeManifest.filter(
-  (route): route is Extract<RouteEntry, SharedRoute> => !isNodeOnly(route),
-);
+/** 两边都有的路由。只有 Node 有的旧路由在 3.3.5 都退役了，现在就是整张清单。 */
+export const sharedRoutes: readonly SharedRoute[] = routeManifest;
 
 /** Serverless 路由表里的写法。 */
 export const serverlessPathOf = (route: SharedRoute): string => route.serverlessPath ?? route.path;

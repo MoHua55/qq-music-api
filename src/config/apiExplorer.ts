@@ -193,12 +193,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
     description:
       'Get the membership level of the signed-in account. vipLevel is free, green (green diamond), super (super VIP) or unknown: HugeVip 1 means super, otherwise iVipFlag 1 means green and 0 means free; a missing or unexpected flag stays unknown instead of free. isVip is still true only when iVipFlag equals 1. Neither field decides playback: a free account may still play full songs. Other known flags remain in upstream.',
   },
-  getCookie: {
-    description: 'Get safe cookie status information.',
-  },
-  setCookie: {
-    description: 'Attempt to update cookie dynamically. Disabled by default for security.',
-  },
   qrKey: {
     description: 'Create one short-lived native QQ Music QR login session.',
     queryParams: [
@@ -444,12 +438,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       'Get a few songs from one radio station for the authenticated user. Radio 99 is Guess You Like and may add extras with reasons. Songs keep the upstream format. Without a session it answers 401; a bad id answers 400.',
     queryParams: [{ key: 'id', label: 'Radio id', description: 'Radio id from /radio/list.' }],
   },
-  getDownloadQQMusic: {
-    description: 'Get download URL information for QQ Music.',
-  },
-  getSmartbox: {
-    description: 'Get search smartbox suggestion results.',
-  },
   getHotSearches: {
     description:
       'Get the hot search keywords, each with an optional title and description. Read anonymously.',
@@ -585,30 +573,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Items per page, 10 by default, up to 20.' },
     ],
   },
-  getSongLists: {
-    description: 'Get song list results by page, limit, category, and sort.',
-  },
-  batchGetSongLists: {
-    id: 'batch-get-song-lists',
-    description: 'Batch fetch song lists by multiple category IDs.',
-    bodyDescription: 'JSON body with category IDs and paging options.',
-    bodyExample: {
-      page: 0,
-      limit: 19,
-      sortId: 5,
-      categoryIds: ['10000000'],
-    },
-  },
   getSongInfo: {
     description: 'Get song detail by song MID and optional song ID.',
-  },
-  batchGetSongInfo: {
-    id: 'batch-get-song-info',
-    description: 'Batch fetch song detail for a list of song IDs.',
-    bodyDescription: 'JSON body with `songs` as `[[songmid, songid]]`.',
-    bodyExample: {
-      songs: [['001fNHEf1SFEFN', '']],
-    },
   },
   getSongListDetail: {
     description:
@@ -663,9 +629,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         defaultValue: '0016l2F430zMux',
       },
     ],
-  },
-  getComments: {
-    description: 'Get comment list by content and pagination identifiers.',
   },
 };
 

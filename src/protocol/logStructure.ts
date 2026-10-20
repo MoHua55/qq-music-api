@@ -13,8 +13,6 @@ export const parameterStructureOf = (value: unknown): unknown =>
     : valueStructureOf(value);
 
 const STATIC_ROUTES = new Set([
-  '/user/getCookie',
-  '/user/setCookie',
   '/user/detail',
   '/user/vip',
   '/user/playlist',
@@ -68,28 +66,13 @@ const STATIC_ROUTES = new Set([
   '/user/subscription-status',
 ]);
 const CATALOG_ROUTES = new Set([
-  'getSongListCategories',
-  'getSongLists',
-  'batchGetSongLists',
   'getSongInfo',
-  'batchGetSongInfo',
   'getSongListDetail',
-  'getNewDisks',
   'getSingerAlbum',
   'getSingerHotsong',
-  'getRadioLists',
-  'getDigitalAlbumLists',
   'getLyric',
   'getMusicPlay',
   'getAlbumInfo',
-  'getComments',
-  'getSmartbox',
-  'getTopLists',
-  'getRanks',
-  'getRecommend',
-  'getTicketInfo',
-  'getImageUrl',
-  'downloadQQMusic',
 ]);
 export const requestRouteOf = (input: string, matchedRoute?: string): string => {
   if (matchedRoute) return matchedRoute.replace(/\?/g, '');

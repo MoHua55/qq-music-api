@@ -100,5 +100,124 @@
     "baseline": "3.3.3",
     "since": "3.3.4",
     "reason": "3.3.3 的 /getSingerList 会改写共用的 commonParams，比对时排在它后面的请求会夹带它的 data；那条路由移除后就不再夹带"
+  },
+  {
+    "path": "/getSmartbox",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSongListCategories",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getSongLists",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/batchGetSongInfo",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getRadioLists",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getComments",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getNewDisks",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getTopLists",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getRanks",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，功能已由新路由接手，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/user/getCookie",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/user/setCookie",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/downloadQQMusic",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getImageUrl",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getRecommend",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getTicketInfo",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/getDigitalAlbumLists",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
+  },
+  {
+    "path": "/batchGetSongLists",
+    "runtime": "node",
+    "baseline": "3.3.4",
+    "since": "3.3.5",
+    "reason": "3.3.5 移除：3.3.4 预告过，没有替代接口，Node 改回 404，Serverless 照旧 501"
   }
 ]
