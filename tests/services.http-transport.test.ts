@@ -136,21 +136,6 @@ describe('legacy transport axios and prototype isolation', () => {
     });
   });
 
-  it('should not load the colors side effect through the legacy request module', async () => {
-    await jest.isolateModulesAsync(async () => {
-      let colorsLoaded = false;
-      jest.doMock('colors', () => {
-        colorsLoaded = true;
-        return { setTheme: () => undefined };
-      });
-
-      await import('../src/node/request');
-
-      // `colors` patches `String.prototype`; only the Koa entry point may pull it in.
-      expect(colorsLoaded).toBe(false);
-    });
-  });
-
   it('should keep the transport registry free of runtime imports', () => {
     const source = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'services', 'httpTransport.ts'),

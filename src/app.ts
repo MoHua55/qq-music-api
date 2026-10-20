@@ -1,11 +1,11 @@
 import { exec } from 'node:child_process';
 import type { Server } from 'node:http';
 import path from 'node:path';
-import chalk from 'chalk';
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import serve from 'koa-static';
-
+import pkg from '../package.json';
+import { serverConfig, userInfo } from './config';
 import {
   API_EXPLORER_INDEX_PATH,
   API_EXPLORER_METADATA_PATH,
@@ -22,9 +22,6 @@ import { configureAuthSessionPersistence } from './services/auth/fileAuthSession
 import { setLegacyHttpTransport } from './services/httpTransport';
 import { logger, loggerState } from './util/logger';
 import { sanitizeRequestUrl } from './util/observability';
-import './node/colors';
-import pkg from '../package.json';
-import { serverConfig, userInfo } from './config';
 
 // Node composition root. Choosing the legacy HTTP transport here is dependency wiring, and
 // dependency wiring is the only thing this file performs: the middleware chain, the router
@@ -43,22 +40,16 @@ const logExplorerRequestDebug = (stage: string, details: Record<string, unknown>
   logger.debug(`[explorer.server] ${stage}`, details);
 };
 
-logger.info(chalk.green('\n🥳🎉 We had supported config the user cookies. \n'));
+logger.info('\n🥳🎉 We had supported config the user cookies. \n');
 
 if (!(userInfo.loginUin || userInfo.uin)) {
   logger.info(
-    chalk.yellow(
-      `😔 The configuration ${chalk.red('loginUin')} or your ${chalk.red('cookie')} in file ${chalk.green('config/user-info')} has not configured. \n`,
-    ),
+    `😔 The configuration loginUin or your cookie in file config/user-info has not configured. \n`,
   );
 }
 
 if (!userInfo.cookie) {
-  logger.info(
-    chalk.yellow(
-      `😔 The configuration ${chalk.red('cookie')} in file ${chalk.green('config/user-info')} has not configured. \n`,
-    ),
-  );
+  logger.info(`😔 The configuration cookie in file config/user-info has not configured. \n`);
 }
 
 if (shouldCheckLatestVersion()) {
@@ -68,9 +59,7 @@ if (shouldCheckLatestVersion()) {
       const version = stdout.trim();
       if (pkg.version < version) {
         logger.info(
-          chalk.white(
-            `Current Version: ${version}, Local Version: ${pkg.version}, Please update it.`,
-          ),
+          `Current Version: ${version}, Local Version: ${pkg.version}, Please update it.`,
         );
       }
     }
@@ -156,7 +145,7 @@ app.use(async (ctx: Koa.Context, next: Koa.Next) => {
     });
   }
 
-  logger.info(chalk.white(`${ctx.method} ${sanitizedUrl} - ${rt}`));
+  logger.info(`${ctx.method} ${sanitizedUrl} - ${rt}`);
 });
 
 // cors
@@ -183,7 +172,7 @@ app.use(router.routes()).use(router.allowedMethods());
 export const server: Server | null = isTestEnv
   ? null
   : app.listen(serverConfig.port, () => {
-      logger.info(chalk.white(`server running @ http://localhost:${serverConfig.port}`));
+      logger.info(`server running @ http://localhost:${serverConfig.port}`);
       autoOpenExplorer(serverConfig.port);
     });
 
