@@ -73,6 +73,7 @@ export const UPSTREAM_PHASES = [
   'get-song-mvs',
   'get-song-labels',
   'get-song-fav-count',
+  'get-song-versions',
   'get-search-match',
   'get-all-playlist-categories',
   'get-sorted-category-playlists',

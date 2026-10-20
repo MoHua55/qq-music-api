@@ -62,6 +62,7 @@ import { searchUsers } from './operations/searchUsers';
 import { songBatch } from './operations/songBatch';
 import { songFavCount } from './operations/songFavCount';
 import { songLike } from './operations/songLike';
+import { songVersions } from './operations/songVersions';
 import { sortedCategoryPlaylists } from './operations/sortedCategoryPlaylists';
 import { playlistSubscribe, subscriptionStatus } from './operations/subscriptions';
 import type { OperationHandler } from './operations/types';
@@ -99,6 +100,13 @@ export interface SharedRoute extends RouteBase {
 }
 
 export const routeManifest = [
+  {
+    name: 'songVersions',
+    method: 'GET',
+    path: '/song/versions',
+    category: 'Song',
+    handler: songVersions,
+  },
   {
     name: 'searchUsers',
     method: 'GET',
