@@ -97,6 +97,12 @@ export const QR_COOLDOWN_MS = 15 * 1000;
 /** The upstream explicitly said "too frequent" (login 104604 or an upstream HTTP 429). */
 export const QR_RATE_LIMITED_COOLDOWN_MS = 30 * 1000;
 
+/**
+ * 确认后的领取期：手机上最后几秒才确认时，二维码已经过了有效期，还在路上的轮询仍要拿得到 803。
+ * 领取期是二维码有效期和确认后这么久里较晚的那个。
+ */
+export const QR_CLAIM_MS = 60 * 1000;
+
 const LOGIN_RATE_LIMITED_CODE = 104604;
 
 // A fallback's own result replaces the primary one on top, so "too frequent" is looked for in both.
@@ -117,6 +123,13 @@ export class QrLoginServiceImpl implements QrLoginService {
   private readonly drivers: Partial<Record<QrLoginChannel, QrChannelDriver>>;
   private readonly qrSessionStore: QrSessionStore;
   private readonly qrRuntimes = new Map<string, QrSessionRuntime>();
+  /** 换凭证时被客户端取消的扫码：换完不发会话，记一条没交出去。 */
+  private readonly withdrawals = new WeakSet<QrSessionRecord>();
+  /**
+   * 已确认的扫码什么时候确认、803 有没有交出去过。不放进 QrSessionRecord，保存格式不变；
+   * 重启后还原的已确认扫码没有这条记录，当成交出去过，免得误撤一个可能已经在用的会话。
+   */
+  private readonly claims = new Map<string, { confirmedAt: number; delivered: boolean }>();
   private readonly sessionResolver: SessionResolver;
   private readonly deviceStore: DeviceContextStore;
   private creatingSession = false;
@@ -188,13 +201,40 @@ export class QrLoginServiceImpl implements QrLoginService {
     runtime?.listener?.close();
     runtime?.driver.close(session);
     this.qrRuntimes.delete(session.key);
+    this.claims.delete(session.key);
     this.qrSessionStore.delete(session.key);
+  }
+
+  /** 换到的凭证没交到客户端手上：撤销会话，记下在哪一步丢的。不记任何凭证或账号。 */
+  private discardUndelivered(
+    session: QrSessionRecord,
+    token: string | undefined,
+    reason: 'canceled' | 'unclaimed',
+  ): void {
+    if (token)
+      void this.sessionResolver.revoke(token).catch((error) => {
+        logger.warn('qq-auth.login-undelivered-revoke-failed', {
+          loginChannel: session.channel,
+          name: error instanceof Error ? error.name : 'Error',
+        });
+      });
+    logger.warn('qq-auth.login-undelivered', { loginChannel: session.channel, reason });
   }
 
   private cleanup(): void {
     const current = this.now();
     for (const session of this.qrSessionStore.values()) {
       if (session.expiresAt > current) continue;
+      // 换凭证中的扫码手机上已经确认了，几秒内就会变成已确认或失败，到时再按领取期处理。
+      if (session.state === 'exchanging') continue;
+      if (session.state === 'confirmed') {
+        const claim = this.claims.get(session.key);
+        if (claim && current < claim.confirmedAt + QR_CLAIM_MS) continue;
+        if (claim && !claim.delivered)
+          this.discardUndelivered(session, session.authToken, 'unclaimed');
+        this.dropSession(session);
+        continue;
+      }
       // A pull channel has no background timer to raise `timeout` at expiry, so the expiry itself
       // has to keep counting as a failure. Both guards mirror when a push listener would have
       // raised it: only after a code exists to scan, and only if nothing terminal happened first.
@@ -398,18 +438,29 @@ export class QrLoginServiceImpl implements QrLoginService {
       session.failureStage = 'credential-validation';
       credential = await validateWechatCredential(this.http, this.deviceStore.get(), credential);
     }
+    // 换凭证时客户端已经取消：没人会来拿，不发会话。
+    if (this.withdrawals.has(session)) {
+      this.discardUndelivered(session, undefined, 'canceled');
+      return;
+    }
     session.failureStage = 'session-issue';
     const token = await this.sessionResolver.issue({
       credential,
       device: this.deviceStore.get(),
       expiresAt: authSessionExpiryAt(credential, this.now()),
     });
+    // 发会话的同时被取消：刚发的这把立刻撤掉。
+    if (this.withdrawals.has(session)) {
+      this.discardUndelivered(session, token, 'canceled');
+      return;
+    }
     session.authToken = token;
     session.failureStage = undefined;
     session.failureReason = undefined;
     session.primaryFailure = undefined;
     session.fallbackAttempted = undefined;
     session.state = 'confirmed';
+    this.claims.set(session.key, { confirmedAt: this.now(), delivered: false });
     this.qrSessionStore.persist();
     this.nextQrAllowedAt = 0;
     this.lastQrFailure = undefined;
@@ -581,6 +632,8 @@ export class QrLoginServiceImpl implements QrLoginService {
     // A confirmed session is left to expire on its own: the credential already reached authSessions
     // and a poll still in flight has to keep reading 803 rather than flip a login into "expired".
     if (session.state === 'confirmed') return;
+    // 换凭证已经在路上：记下被取消，换完就不发会话（见 finalizeLogin），不留没人拿得到的凭证。
+    if (session.state === 'exchanging') this.withdrawals.add(session);
     this.dropSession(session);
     logger.info('qq-auth.qr-session-canceled', { loginChannel: session.channel });
   }
@@ -646,6 +699,8 @@ export class QrLoginServiceImpl implements QrLoginService {
       const session = this.sessionFor(key);
       await this.advanceSession(session, budgetMs);
       if (session.state === 'confirmed' && session.authToken) {
+        const claim = this.claims.get(session.key);
+        if (claim) claim.delivered = true;
         return this.observedCheckResult(session, {
           code: 803,
           message: 'Authorization login successful',
@@ -657,8 +712,19 @@ export class QrLoginServiceImpl implements QrLoginService {
       if (session.state === 'expired' || session.state === 'failed')
         return this.observedCheckResult(session, this.failedCheckResult(session));
       return this.observedCheckResult(session, { code: 801, message: 'Waiting for QR scan' });
-    } catch {
-      return { code: 800, message: 'QR code expired' };
+    } catch (error) {
+      // 找不到会话（过期、被取消、从没有过）照旧回过期；其他例外不能也说成过期，免得真正的原因被盖掉。
+      if (error instanceof QrLoginServiceError && error.httpStatus === 404)
+        return { code: 800, message: 'QR code expired' };
+      logger.warn('qq-auth.qr-check-failed', {
+        name: error instanceof Error ? error.name : 'Error',
+      });
+      return {
+        code: 800,
+        message: 'QR login failed',
+        failureStage: 'qr-poll',
+        failureReason: 'unexpected-error',
+      };
     }
   }
 
@@ -696,7 +762,11 @@ export class QrLoginServiceImpl implements QrLoginService {
     try {
       return await withCredentialRejectionMapped(() => getLoginProfile(this.http, auth));
     } catch (error) {
-      if (error instanceof AuthCredentialRejectedError) return null;
+      if (error instanceof AuthCredentialRejectedError) {
+        // 对外照旧回「未登录」；只记上游给的码，方便分出是不是新凭证一换到就被拒。
+        logger.warn('qq-auth.login-status-rejected', { upstreamCode: error.upstreamCode });
+        return null;
+      }
       throw error;
     }
   }
@@ -818,9 +888,15 @@ export class QrLoginServiceImpl implements QrLoginService {
     this.sessionResolver.useRepository?.(repository);
   }
 
+  /**
+   * 只登出这一把会话：撤销 token，收掉用它确认的那个扫码。别的扫码（等待中、换凭证中、
+   * 别人确认的）都不碰，取消扫码请用 cancelSession。
+   */
   public async logout(token?: string): Promise<void> {
-    if (token) await this.sessionResolver.revoke(token);
-    for (const session of this.qrSessionStore.values()) this.dropSession(session);
+    if (!token) return;
+    await this.sessionResolver.revoke(token);
+    for (const session of this.qrSessionStore.values())
+      if (session.authToken === token) this.dropSession(session);
   }
 }
 
