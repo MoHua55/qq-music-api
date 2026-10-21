@@ -80,7 +80,7 @@ describe('上游冒烟工具', () => {
       (item: { method?: string; path: string }) => `${item.method ?? 'GET'} ${item.path}`,
     );
     expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toHaveLength(38);
+    expect(keys).toHaveLength(40);
     const provided = new Set([
       'songmid',
       'songid',
