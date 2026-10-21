@@ -86,6 +86,56 @@ export const apiExplorerBaseRoutes: ApiExplorerBaseRoute[] = routeManifest.map(
 );
 
 export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> = {
+  songFavCount: {
+    description:
+      '匿名读取歌曲收藏数。重复 id 只查询一次，items 保留输入顺序和重复项；缺值为 null，整批无数据回 422。',
+    queryParams: [
+      {
+        key: 'ids',
+        label: '歌曲数字 id（1–20 项）',
+        required: true,
+        placeholder: '90001,90002,90001',
+        description: '逗号分隔的安全正整数 songid，不接受 MID；输入项数在去重前计数。',
+      },
+    ],
+  },
+  searchUsers: {
+    description:
+      '带会话搜索用户，users 保留上游条目原格式；total 不可靠时为 null，空页回 422。Serverless 需要会话密钥。',
+    queryParams: [
+      {
+        key: 'keyword',
+        label: '关键词',
+        required: true,
+        placeholder: 'fixture-user',
+        description: '去掉首尾空格后为 1–60 个字符。',
+      },
+      { key: 'page', label: '页码（从 1 开始）', defaultValue: 1, inputType: 'number' },
+      { key: 'limit', label: '数量（1–20）', defaultValue: 10, inputType: 'number' },
+    ],
+  },
+  songVersions: {
+    description: '匿名读取歌曲其他版本，id 和 mid 必须二选一；songs 保留原格式，空列表回 422。',
+    queryParams: [
+      {
+        key: 'id',
+        label: '歌曲数字 id（二选一）',
+        placeholder: '90001',
+        description: '安全正整数 songid。',
+      },
+      {
+        key: 'mid',
+        label: '歌曲 MID（二选一）',
+        placeholder: 'fixtureVersionA',
+        description: '1–64 个字母或数字。',
+      },
+    ],
+  },
+  userMusicGene: {
+    description:
+      '带会话读取本人的音乐基因，无业务参数。profile 保留原始结构，IsVisitAccount 保持数字；上游非零业务码回 502 并保留 upstreamCode。Serverless 需要会话密钥。',
+    queryParams: [],
+  },
   searchMatch: {
     description: '读取歌曲、歌手、专辑和 MV 的直接命中，不需要登录。',
     queryParams: [
@@ -192,12 +242,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
   userVip: {
     description:
       'Get the membership level of the signed-in account. vipLevel is free, green (green diamond), super (super VIP) or unknown: HugeVip 1 means super, otherwise iVipFlag 1 means green and 0 means free; a missing or unexpected flag stays unknown instead of free. isVip is still true only when iVipFlag equals 1. Neither field decides playback: a free account may still play full songs. Other known flags remain in upstream.',
-  },
-  getCookie: {
-    description: 'Get safe cookie status information.',
-  },
-  setCookie: {
-    description: 'Attempt to update cookie dynamically. Disabled by default for security.',
   },
   qrKey: {
     description: 'Create one short-lived native QQ Music QR login session.',
@@ -444,12 +488,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       'Get a few songs from one radio station for the authenticated user. Radio 99 is Guess You Like and may add extras with reasons. Songs keep the upstream format. Without a session it answers 401; a bad id answers 400.',
     queryParams: [{ key: 'id', label: 'Radio id', description: 'Radio id from /radio/list.' }],
   },
-  getDownloadQQMusic: {
-    description: 'Get download URL information for QQ Music.',
-  },
-  getSmartbox: {
-    description: 'Get search smartbox suggestion results.',
-  },
   getHotSearches: {
     description:
       'Get the hot search keywords, each with an optional title and description. Read anonymously.',
@@ -585,30 +623,8 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
       { key: 'limit', label: 'Limit', description: 'Items per page, 10 by default, up to 20.' },
     ],
   },
-  getSongLists: {
-    description: 'Get song list results by page, limit, category, and sort.',
-  },
-  batchGetSongLists: {
-    id: 'batch-get-song-lists',
-    description: 'Batch fetch song lists by multiple category IDs.',
-    bodyDescription: 'JSON body with category IDs and paging options.',
-    bodyExample: {
-      page: 0,
-      limit: 19,
-      sortId: 5,
-      categoryIds: ['10000000'],
-    },
-  },
   getSongInfo: {
     description: 'Get song detail by song MID and optional song ID.',
-  },
-  batchGetSongInfo: {
-    id: 'batch-get-song-info',
-    description: 'Batch fetch song detail for a list of song IDs.',
-    bodyDescription: 'JSON body with `songs` as `[[songmid, songid]]`.',
-    bodyExample: {
-      songs: [['001fNHEf1SFEFN', '']],
-    },
   },
   getSongListDetail: {
     description:
@@ -663,9 +679,6 @@ export const apiExplorerOverrides: Record<string, Partial<ApiExplorerEndpoint>> 
         defaultValue: '0016l2F430zMux',
       },
     ],
-  },
-  getComments: {
-    description: 'Get comment list by content and pagination identifiers.',
   },
 };
 

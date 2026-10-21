@@ -4,7 +4,6 @@ import request from 'supertest';
 import app from '../src/app';
 import { apiExplorerBaseRoutes } from '../src/config/apiExplorer';
 import { handleRequest } from '../src/serverless';
-import services from '../src/services';
 
 // 这 9 条旧路由在 3.3.3 预告过要移除，功能都已经有新路由接手；它们只在 Node 上有，下游没有引用。
 const ROOT = path.join(__dirname, '..');
@@ -77,16 +76,6 @@ describe('已被新路由取代的旧路由在 3.3.4 移除', () => {
 
   it('controller 和只给它们用的 service 都删掉了', () => {
     for (const file of REMOVED_FILES) expect(fs.existsSync(path.join(ROOT, file))).toBe(false);
-    expect(Object.keys(services)).toEqual(
-      expect.not.arrayContaining([
-        'getHotKey',
-        'getMvByTag',
-        'getSimilarSinger',
-        'getSingerDesc',
-        'getSingerMv',
-        'getSingerStarNum',
-      ]),
-    );
   });
 
   it('API Explorer 和首页不再列出它们，接手的新路由都还在', () => {

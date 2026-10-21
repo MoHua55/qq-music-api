@@ -18,10 +18,8 @@ describe('路由清单', () => {
     expect(duplicates(sharedRoutes.map(serverlessPathOf))).toEqual([]);
   });
 
-  it('只给 Node 的旧路由不进 Serverless', () => {
-    const shared = new Set(sharedRoutes.map((route) => route.name));
-    const nodeOnly = routeManifest.filter((route) => 'nodeOnly' in route);
-    expect(nodeOnly).toHaveLength(17);
-    for (const route of nodeOnly) expect(shared.has(route.name)).toBe(false);
+  it('只给 Node 的旧路由都退役了，每条路由两边都有', () => {
+    expect(sharedRoutes).toHaveLength(routeManifest.length);
+    for (const route of routeManifest) expect('nodeOnly' in route).toBe(false);
   });
 });

@@ -1,3 +1,51 @@
+## [3.3.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.4...v3.3.5) (2026-10-21)
+
+这一版修好扫码登录在几种时序下「手机上显示成功、客户端仍未登录」的问题，补上四条读取接口，并移除 3.3.4 预告过的 17 条 Node 旧路由。其余已有接口的调用方式和回包不变，Folia 这类使用保留接口的下游不用修改接入代码。
+
+### 新功能
+
+- **歌曲收藏数**：`GET /song/fav-count?ids=` 匿名查询 1–20 个数字 songid。重复 id 只查一次，结果保留输入顺序和重复项；缺值为 `null`，整批没有数据回 `422`。
+- **用户搜索**：`GET /search/users?keyword=&page=&limit=` 需要会话，原样返回用户条目和可用的总数，空页回 `422`。不改变已有 `/search` 的类型和排序。
+- **歌曲其他版本**：`GET /song/versions?id=` 或 `?mid=` 匿名读取其他版本，两种标识必须二选一，歌曲条目保留原格式，空列表回 `422`。
+- **本人音乐基因**：`GET /user/music-gene` 需要会话，只读本人，原样返回 `profile`；`IsVisitAccount` 保留数字，上游非零业务码回 `502` 并保留 `upstreamCode`。
+
+四条路由在 Node 和 Serverless 都可用；两条需要会话的路由在 Serverless 未配置密钥时回 `501`。
+
+### 移除
+
+以下 17 条只在 Node 上有的旧路由已移除，上一版已提前预告。Node 现在回 `404`，Serverless 照旧回 `501`。有替代接口的请按[使用文档](./docs/README.md#335-已移除)调整参数和响应解析，不能只替换路径：
+
+| 已移除路由 | 替代接口 |
+| --- | --- |
+| `/getSmartbox` | `/search/match`、`/search/suggest` |
+| `/getSongListCategories` | `/recommend/categories/all` |
+| `/getSongLists` | `/recommend/category-playlists/sorted` |
+| `/batchGetSongInfo` | `POST /song/batch` |
+| `/getRadioLists` | `/radio/categories` |
+| `/getComments` | `/comment/list` |
+| `/getNewDisks` | `/recommend/new-albums` |
+| `/getTopLists` | `/recommend/toplists` |
+| `/getRanks` | `/recommend/toplist` |
+
+下面 8 条没有替代接口，直接移除：`/user/getCookie`、`/user/setCookie`、`/downloadQQMusic`、`/getImageUrl`、`/getRecommend`、`/getTicketInfo`、`/getDigitalAlbumLists`、`/batchGetSongLists`。
+
+保留的接口不受影响，Folia 这类使用保留接口的下游不用修改接入代码。
+
+### 修复
+
+- 扫码登录在几种时序下会出现「手机上显示登录成功、客户端仍未登录」：换凭证时被取消，凭证存下来却没人拿得到；`/logout` 不管带的是哪把会话，都会丢掉所有正在进行的扫码；最后几秒才确认的二维码一过有效期就被清掉，还在路上的轮询只拿到过期；轮询遇到意外错误也一律说成过期。现在取消、退出登录和过期分开处理：换凭证时被取消的不会再发会话；`/logout` 只退出自己那把会话；已确认的二维码在有效期后再留 60 秒给轮询领取，没人领取的才撤销；意外错误回 `QR login failed`。`/login/status` 被上游拒绝时照旧回空，但会记一条带上游码的日志。回包字段和格式都没有变。
+
+### 改进
+
+- 匿名旧 CGI 接口（`/search/match`、`/recommend/categories/all`、`/recommend/category-playlists/sorted`、`/comment/list`）和其他新接口共用同一个进程内的请求限流，等待的时间算在原来的 25 秒内。回包和错误都没有变。
+- 启动和请求日志不再带终端颜色码，文字内容不变。运行依赖少了 `chalk`、`colors`、`moment`；载入本包也不会再往 `String.prototype` 上加属性，嵌入 Electron 时不影响主进程里的其他代码。
+
+### 给下游的通知
+
+- 扫码登录的修复在后端：Folia 等嵌入方要升级依赖和锁文件、重新打包，才会到用户手上。客户端如果自己在「已扫码」后很快放弃并取消，手机上晚确认的那次登录仍然会丢，需要客户端放宽等待时间。
+- `/logout` 现在只退出当前带的会话，不再顺带取消别的正在进行的扫码；要取消扫码请用 `/login/qr/cancel?key=`。
+- 已移除的 17 条旧路由见上表。精确锁版的应用要更新依赖和锁文件；Electron 要重新打包，Docker 要重建镜像，Vercel 和 Cloudflare 要重新部署，详见[相容与版本政策](./docs/compatibility.md)。
+
 ## [3.3.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.3...v3.3.4) (2026-10-21)
 
 这一版补上六条匿名读取接口和排行榜的可选字段，MV 播放链接也能带会话读，同时移除九条已经预告的旧路由。其余已有接口的调用方式和行为保持不变，Folia 这类使用保留接口的下游不用修改接入代码。

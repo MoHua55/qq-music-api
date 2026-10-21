@@ -43,12 +43,12 @@ describe('apiExplorer metadata coverage', () => {
   });
 
   it('应为含路径参数的路由生成可调试参数输入项', () => {
-    const endpoint = apiExplorerMetadata.endpoints.find(({ name }) => name === 'getRanks');
+    const endpoint = apiExplorerMetadata.endpoints.find(({ name }) => name === 'getSingerAlbum');
 
     expect(endpoint).toBeDefined();
     expect(endpoint?.queryParams).toEqual([
       expect.objectContaining({
-        key: 'topId',
+        key: 'singermid',
         required: false,
       }),
       expect.objectContaining({

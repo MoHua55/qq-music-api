@@ -30,9 +30,9 @@ HTTP 实现目前有四条路径：
 | 共用 musicu 客户端 | 使用 `src/protocol/http.ts` 定义的传输接口，fetch 实现在 `src/transport/` |
 | 认证服务 | 注入 `AuthHttpClient`，Node 使用 axios 实现，Serverless 使用 fetch 实现 |
 | 旧曲库服务 | 通过 `src/services/httpTransport.ts` 的注册槽取得传输，Node 注入 axios 实现，Serverless 注入 fetch 实现 |
-| 新的匿名 CGI 读取 | `src/services/catalog/anonymous.ts` 直接调用全局 `fetch`，自带 25 秒超时，不经过共用传输接口、限流或旧曲库注册槽；每次只尝试一次，不跟随重定向 |
+| 匿名旧 CGI 读取 | `src/protocol/cgi.ts` 的 `readCgi` 负责截止时间、状态码、解码和业务码，fetch 实现在 `src/transport/fetchCgi.ts`；和 musicu 共用进程内的令牌桶，不经过旧曲库注册槽；每次只尝试一次，不跟随重定向，等令牌的时间也算在 25 秒里 |
 
-第四条路径目前由搜索直接命中、完整分类、排序歌单和资源评论使用；歌曲批量查询与匿名电台分类仍走共用 musicu 客户端。四条路径的超时、重试和重定向规则需要分别检查，不能把共用传输的规则当成全部接口的规则。
+匿名旧 CGI 目前由搜索直接命中、完整分类、排序歌单和资源评论使用；歌曲批量查询与匿名电台分类仍走共用 musicu 客户端。四条路径的超时、重试和重定向规则需要分别检查，不能把共用传输的规则当成全部接口的规则。
 
 ## 请求怎么走
 
@@ -45,8 +45,6 @@ flowchart TD
   H --> S[业务服务]
   S --> P[协议处理与 HTTP 传输]
   P --> Q[QQ 音乐]
-  N --> L[Node 旧路由 controller]
-  L --> P
 ```
 
 ### Node
@@ -55,7 +53,7 @@ flowchart TD
 
 `src/node/router.ts` 按 manifest 的方法与路径注册 Koa 路由。`src/controllers/index.ts` 为共用路由生成 `operationController(handler)`，外层加 `withControllerLogging`。转接器读取参数、会话 token 和正文，`service()` 提供 Node 登录服务单例，handler 返回后再写回状态、响应头和正文。
 
-少数路由需要 Node 专用转接：`qrCheck` 在登录成功时设置 Cookie，`logout` 清除 Cookie，`getMusicPlay` 补上匿名播放所需的 Node 配置。这些转接在 `nodeAdapters` 中指定。标为 `nodeOnly` 的旧路由则从 `nodeOnlyControllers` 取得原 controller。
+少数路由需要 Node 专用转接：`qrCheck` 在登录成功时设置 Cookie，`logout` 清除 Cookie，`getMusicPlay` 补上匿名播放所需的 Node 配置。这些转接在 `nodeAdapters` 中指定。
 
 加载包根模块会启动监听，测试环境除外。根模块的 `server`、`configureAuthSessionRepository` 和默认 Koa 应用导出供嵌入方使用。Node 的 `stored` 会话默认存在进程内，可配置加密持久化；相关行为是嵌入契约的一部分，见[相容政策](./docs/compatibility.md)。
 
@@ -79,7 +77,7 @@ Serverless 使用 `sealed` 会话，凭证加密封装在 token 中；二维码�
 | `query(name)` | 同名参数的第一个值 | 同名参数的第一个值 |
 | `queryRaw(name)` | 重复参数可返回数组 | 返回第一个值 |
 | 路径格式 | 使用 manifest 的 `path` | 优先使用 `serverlessPath`，未设置时使用 `path` |
-| Node 专用旧路由 | 通过旧 controller 处理 | 不注册，返回 `501` |
+| 没有注册的路径 | `404` | `501`，并提示去看 `/login/channels` |
 
 例如 `/getAlbumInfo` 在 Node 仍接受可选路径参数，在 Serverless 只匹配 `/getAlbumInfo` 并读取 query。迁移实现时，这些差异由测试保留；共用业务代码不意味着可以直接统一已有的 HTTP 行为。
 
@@ -96,7 +94,6 @@ Serverless 使用 `sealed` 会话，凭证加密封装在 token 中；二维码�
 | `serverlessPath` | 可选，两边路径格式不同时使用 |
 | `needsSecret` | 可选，Serverless 缺密钥时提前返回 `501`；不负责验证登录 |
 | `category` | Explorer 分类 |
-| `nodeOnly` | Node 旧路由标记，这类记录不带共用 handler |
 
 Koa 路由表、controller 导出、Serverless 路径表、需要密钥的路径集合和 `apiExplorerBaseRoutes` 都从这份清单生成。清单顺序也决定 Explorer 的展示顺序。Serverless 的 `/login/channels` 使用专门的提前处理分支。
 

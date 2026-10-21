@@ -66,7 +66,7 @@ Node 与 Serverless 共用业务处理。改动共用代码时，检查两个宿
 5. **同步公开文档。** 在 `docs/README.md` 写调用方式与响应，在 `CHANGELOG.md` 写用户能观察到的变化。改变错误或稳定接口时，也更新下方清单中的错误说明和相容政策。
 6. **跑验证。** 使用后面的完整验证命令，其中 `compat:check` 必须在 `build:js` 之后运行，它比较的是编译产物。
 
-普通共用路由会自动进入 Koa、Serverless 和 Explorer，不需要在各入口再注册一次。需要操作 Koa Cookie 等宿主 API 时，参考 `src/controllers/index.ts` 的 `nodeAdapters`；现有 `nodeOnly` 项用于保留 Node 旧路由，不是新增跨宿主功能的模板。
+普通共用路由会自动进入 Koa、Serverless 和 Explorer，不需要在各入口再注册一次。需要操作 Koa Cookie 等宿主 API 时，参考 `src/controllers/index.ts` 的 `nodeAdapters`。
 
 写入路由还要在 handler 检查 POST 方法、验证 JSON 正文，并在上游请求中设置 `readOnly: false`。写入只发送一次，读回确认后才报告成功；结果不明时不能自动重送。handler 及其依赖会进入 Serverless 打包范围，不要引入 Koa、axios、`node:*` 或 `qrLogin.node`，详细规则见[Serverless 打包边界](./ARCHITECTURE.md#serverless-打包边界)。
 
@@ -118,6 +118,8 @@ npm pack --dry-run
 `compat:check` 用同一份离线样本比较已发布版本与当前 `dist`，检查状态、关键响应头、正文和上游请求。上面的 `3.3.3` 是明确指定的基准；维护后续版本时按需要调整。第一次使用该版本会从 npm 下载基准包，案例执行不访问真实 QQ 服务。工具不会测试扫码状态流程，也不能代替路由的专门测试或真账号验收，细节见[行为比对工具](./ARCHITECTURE.md#行为比对工具)。
 
 旧路由测试已改成模拟上游并纳入默认测试，不再按“旧路由”统一排除。测试集合的约定由 `tests/testSuite.layout.test.ts` 检查；新增或移动测试时要核对这份约定。需要连接真实 QQ 服务或使用真实账号的验证应与默认测试分开，明确说明操作范围并取得授权。离线测试通过不能替代真账号或各宿主的实际验收。
+
+想知道上游接口有没有改，可以在 `npm run build:js` 之后跑 `npm run smoke:upstream -- --yes-call-upstream`。它会对真实 QQ 音乐把 40 条匿名读取的路由各请求一次（不带会话），只比较回包结构（状态码、`code`、键名、类型、数组空不空），和 `scripts/smoke/expected.json` 的快照对照后列出差异，不输出任何值。歌曲、歌手等编号从首页示例关键字的搜索结果里接力取得，只在内存里用。确认差异无害后加 `--update` 更新快照。这个工具不进 CI 和默认测试，每次运行前都要确认可以访问真实上游。
 
 `pre-commit` 对暂存的 TypeScript 文件运行 `lint-staged` 和 Biome，可能自动调整格式或 import；`commit-msg` 检查提交规范。hooks 不能替代完整验证，请在提交后再检查一次 diff。PR 中列出实际运行的检查，未完成的项目说明原因；合并前必须通过所需 CI 检查。
 

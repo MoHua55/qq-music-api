@@ -4,7 +4,7 @@ QQ Music API 是一个基于 **Koa2 + TypeScript** 的非官方 QQ 音乐 API，
 
 提供扫码登录、歌曲搜索、播放链接、个人音乐库、歌单管理、推荐、电台、歌词及 MV 等功能。
 
-> **适用版本：3.3.4**
+> **适用版本：3.3.5**
 >
 > - 项目主页：[QQ Music API](../README.md)
 > - 接口错误：[错误对照表](./errors.md)
@@ -233,6 +233,8 @@ Serverless 请求由部署平台的网络出口发送，可能与用户本地网
 
 需要取消二维码时，调用 `GET /login/qr/cancel`。
 
+取消、退出登录和过期是三件分开的事：`/login/qr/cancel?key=` 只取消这一个二维码；`/logout` 只退出当前带的会话，不会取消别的正在进行的扫码。手机上已经确认、还在换凭证时被取消的，换完不会发会话。已确认的二维码在有效期过后还会保留 60 秒，轮询照样拿得到 `803`；这段时间里一直没有被轮询领走的登录会被撤销。轮询时遇到意外错误回 `800`、`QR login failed`，并带 `failureStage: qr-poll`、`failureReason: unexpected-error`；只有找不到这个二维码才回 `QR code expired`。
+
 ### 登录会话
 
 成功后可以使用以下方式携带会话：
@@ -342,6 +344,7 @@ POST /login/refresh
 | `/logout` | 退出登录 | 是 |
 | `/user/detail` | 用户资料 | 是 |
 | `/user/vip` | 会员状态 | 是 |
+| `/user/music-gene` | 本人音乐基因 | 是 |
 
 ### 搜索与曲库
 
@@ -351,7 +354,10 @@ POST /login/refresh
 | `/search/hot` | 热搜关键词 | 否 |
 | `/search/suggest` | 搜索建议 | 否 |
 | `/search/match` | 搜索直接命中的歌曲、歌手、专辑与 MV | 否 |
+| `/search/users` | 搜索用户 | 是 |
 | `/song/batch` | 批量歌曲详情，POST | 否 |
+| `/song/fav-count` | 歌曲收藏数 | 否 |
+| `/song/versions` | 歌曲其他版本 | 否 |
 | `/getSongInfo` | 歌曲资料 | 否 |
 | `/getAlbumInfo` | 专辑详情 | 否 |
 | `/getLyric` | 歌词与翻译 | 否 |
@@ -787,6 +793,60 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 
 ---
 
+### 11. 歌曲收藏数
+
+```text
+GET /song/fav-count?ids=90001,90002,90001
+```
+
+不需要登录。`ids` 必填，用逗号分隔 1–20 个正整数 songid，不能传 MID 或超出安全整数范围的数字。同一个 id 只查询一次，响应仍按输入顺序保留重复项。
+
+```json
+{
+  "code": 200,
+  "items": [
+    { "id": 90001, "count": 12, "display": "fixture-count" },
+    { "id": 90002, "count": null, "display": null },
+    { "id": 90001, "count": 12, "display": "fixture-count" }
+  ]
+}
+```
+
+上游未提供某首的计数或展示文字时，对应字段为 `null`；整批都没有数据回 `422`。输入超过 20 项时，即使去重后不超过 20，也回 `400`。
+
+### 12. 用户搜索
+
+```text
+GET /search/users?keyword=fixture-user&page=1&limit=10
+```
+
+需要有效会话。`keyword` 必填，去掉首尾空格后为 1–60 个字符；`page` 为从 1 开始的正整数，默认 1；`limit` 为 1–20 的整数，默认 10。给了不合法的分页参数回 `400`。
+
+响应为 `{ code: 200, users: [...], total: number | null }`。`users` 保留上游 `item_user` 的原始条目，`total` 取可靠的 `meta.sum`，缺失或格式不可靠时为 `null`。本页没有用户回 `422`，即使总数非零也一样。本接口不改变 `/search` 的类型和排序。
+
+### 13. 歌曲其他版本
+
+```text
+GET /song/versions?id=90001
+GET /song/versions?mid=fixtureVersionA
+```
+
+不需要登录。`id` 是正整数 songid，`mid` 是歌曲 MID，两者必须二选一；同时提供、都不提供或提供空值都回 `400`。MID 最长 64 个字母或数字。
+
+响应为 `{ code: 200, songs: [...] }`，`songs` 保留上游 `versionList` 的原始条目；没有其他版本回 `422`。不同歌曲能返回的版本数量可能不同。
+
+### 14. 本人音乐基因
+
+```text
+GET /user/music-gene
+```
+
+需要有效会话，没有业务参数，只读取当前登录账号。请求中的账号目标参数不会传给上游。
+
+响应为 `{ code: 200, profile: {...} }`，`profile` 保留上游 `data` 的原始结构，包括数字类型的 `IsVisitAccount`，不转换成布尔值。成功的空对象也原样返回。上游非零业务码回 `502` 并保留 `upstreamCode`，不能仅凭数字把它解释成未登录。
+
+四条接口在 Node 和 Serverless 使用同一套处理。两条需要会话的接口缺失、无效或过期会话回 `401`；Serverless 未配置 `QQ_SESSION_SECRET` 时先回 `501`。其余上游业务拒绝、格式异常与网络失败沿用现有的安全 `502` 分类；空清单不用 `404` 表示。
+
 ## 错误处理
 
 新式接口使用统一错误结构：
@@ -853,9 +913,9 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 
 替代接口可能使用不同参数、分页方式和错误响应结构，升级时需要同时检查调用逻辑。
 
-### 3.3.5 计划移除
+### 3.3.5 已移除
 
-以下 9 条旧接口已有替代方案：
+以下 9 条接口已移除，改用对应的替代接口：
 
 | 旧接口 | 替代接口 |
 | --- | --- |
@@ -869,7 +929,7 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 | `/getTopLists` | `/recommend/toplists` |
 | `/getRanks` | `/recommend/toplist` |
 
-另外 8 条没有直接替代接口，计划一并移除：
+另外 8 条没有替代接口，已直接移除：
 
 - `/user/getCookie`
 - `/user/setCookie`
@@ -880,9 +940,7 @@ GET /comment/list?id=90001&page=1&limit=25&cursor=...
 - `/getDigitalAlbumLists`
 - `/batchGetSongLists`
 
-**这些接口在 3.3.4 中仍保留，3.3.5 为计划退役版本。**
-
-请不要将计划退役误认为已经移除。
+这 17 条在 `3.3.4` 预告过。Node 现在对它们回 `404`，Serverless 照旧回 `501`。
 
 保留的主要曲库与 Folia 所需接口不属于上述退役清单。
 

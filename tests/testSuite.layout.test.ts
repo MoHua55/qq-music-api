@@ -12,23 +12,7 @@ const ROOT = path.join(__dirname, '..');
 const ROOT_DIR_TOKEN = '<rootDir>';
 const OFFLINE_SETUP = `${ROOT_DIR_TOKEN}/tests/helpers/offlineNetwork.cjs`;
 
-const PROMOTED_ROUTE_TESTS = [
-  'batchGetSongInfo.test.ts',
-  'batchGetSongLists.test.ts',
-  'getComments.test.ts',
-  'getDigitalAlbumLists.test.ts',
-  'getDownloadQQMusic.test.ts',
-  'getImageUrl.test.ts',
-  'getLyric.test.ts',
-  'getNewDisks.test.ts',
-  'getRadioLists.test.ts',
-  'getRanks.test.ts',
-  'getSmartbox.test.ts',
-  'getSongListCategories.test.ts',
-  'getSongLists.test.ts',
-  'getTicketInfo.test.ts',
-  'getTopLists.test.ts',
-];
+const PROMOTED_ROUTE_TESTS = ['getLyric.test.ts'];
 
 /** Folia calls these routes, so their tests stay in the default suite as upstream-stubbed contracts. */
 const FOLIA_ROUTE_TESTS = [

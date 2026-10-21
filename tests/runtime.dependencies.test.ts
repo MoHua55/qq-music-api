@@ -44,7 +44,7 @@ describe('runtime dependencies', () => {
   const devDependencies = new Set(Object.keys(pkg.devDependencies));
 
   it('finds the packages that src actually imports', () => {
-    expect(runtimePackages).toEqual(expect.arrayContaining(['axios', 'chalk', 'colors', 'koa']));
+    expect(runtimePackages).toEqual(expect.arrayContaining(['axios', 'koa']));
   });
 
   it('declares every src import in dependencies, not devDependencies', () => {

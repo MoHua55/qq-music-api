@@ -35,8 +35,7 @@ module.exports = {
       name: 'services-below-routes',
       comment: 'services 不能依赖路由层、宿主和 Node 的配置系统',
       severity: 'error',
-      // /downloadQQMusic 是只有 Node 有的旧路由，3.3.5 退役时这个文件一起删掉。
-      from: { path: '^src/services/', pathNot: '^src/services/downloadQQMusic\\.ts$' },
+      from: { path: '^src/services/' },
       to: { path: `^src/(routes|config)/|${HOSTS}` },
     },
     {
