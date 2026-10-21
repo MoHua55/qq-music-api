@@ -38,11 +38,15 @@ const CASES = [
   },
   { path: '/search/suggest', query: () => ({ keyword: KEYWORD }) },
   { path: '/search/match', query: () => ({ keyword: KEYWORD }) },
-  { path: '/recommend/categories' },
+  {
+    path: '/recommend/categories',
+    take: (body) => ({ catid: id(get(first(get(first(body.groups), 'categories')), 'id')) }),
+  },
   { path: '/recommend/categories/all' },
   {
     path: '/recommend/category-playlists',
-    query: () => ({ id: 10000000 }),
+    needs: ['catid'],
+    query: (v) => ({ id: v.catid }),
     take: (body) => ({ tid: id(get(first(body.playlists), 'tid')) }),
   },
   {

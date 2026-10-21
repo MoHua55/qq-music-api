@@ -1,16 +1,18 @@
 // 冒烟只记回包的结构，不记任何值：类型、对象的键、数组空不空和第一项的结构。
 // 键全是数字（按 id 索引的映射）或太多的对象只记成 map，免得每次跑出不同的键。
+// 有些回包拿请求里的编号当键（例如按 songmid 索引的播放链接）：等于 aliases 里某个值的键
+// 换成 <名字>，快照里不会出现真实编号。
 
 const MAX_DEPTH = 5;
 const MAX_KEYS = 60;
 
-const shapeOf = (value, depth = 0) => {
+const shapeOf = (value, depth = 0, aliases = {}) => {
   if (value === null) return 'null';
   if (Array.isArray(value)) {
     if (!value.length) return { type: 'array', empty: true };
     return depth >= MAX_DEPTH
       ? { type: 'array', empty: false }
-      : { type: 'array', empty: false, item: shapeOf(value[0], depth + 1) };
+      : { type: 'array', empty: false, item: shapeOf(value[0], depth + 1, aliases) };
   }
   if (typeof value === 'object') {
     const keys = Object.keys(value).sort();
@@ -19,7 +21,12 @@ const shapeOf = (value, depth = 0) => {
     if (depth >= MAX_DEPTH) return { type: 'object' };
     return {
       type: 'object',
-      keys: Object.fromEntries(keys.map((key) => [key, shapeOf(value[key], depth + 1)])),
+      keys: Object.fromEntries(
+        keys.map((key) => [
+          Object.hasOwn(aliases, key) ? `<${aliases[key]}>` : key,
+          shapeOf(value[key], depth + 1, aliases),
+        ]),
+      ),
     };
   }
   return typeof value;

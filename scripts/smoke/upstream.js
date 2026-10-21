@@ -74,7 +74,11 @@ const run = async () => {
       results[key] = {
         status: response.status,
         ...(typeof body?.code === 'number' ? { code: body.code } : {}),
-        shape: shapeOf(body),
+        shape: shapeOf(
+          body,
+          0,
+          Object.fromEntries(Object.entries(values).map(([name, value]) => [value, name])),
+        ),
       };
       // 限流、上游失败或拒绝：立刻停，不继续打。
       if (response.status === 429 || response.status >= 500) {

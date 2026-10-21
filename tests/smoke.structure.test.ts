@@ -43,6 +43,22 @@ describe('上游冒烟工具', () => {
     expect(JSON.stringify(shape)).not.toMatch(/fixture|90001/);
   });
 
+  it('拿请求里的编号当键时，快照里换成名字', () => {
+    const shape = shapeOf({ playUrl: { 'fixture-song-a': { url: '' } } }, 0, {
+      'fixture-song-a': 'songmid',
+    });
+
+    expect(shape).toEqual({
+      type: 'object',
+      keys: {
+        playUrl: {
+          type: 'object',
+          keys: { '<songmid>': { type: 'object', keys: { url: 'string' } } },
+        },
+      },
+    });
+  });
+
   it('少了键、类型变了、有内容的数组变空算变化；新键只列出来', () => {
     const before = shapeOf({ songs: [{ mid: 'a', id: 1 }], total: 3, list: [1] });
     const after = shapeOf({ songs: [{ id: '1', extra: true }], list: [], more: false });
@@ -65,7 +81,16 @@ describe('上游冒烟工具', () => {
     );
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toHaveLength(38);
-    const provided = new Set(['songmid', 'songid', 'singermid', 'albummid', 'tid', 'topid', 'vid']);
+    const provided = new Set([
+      'songmid',
+      'songid',
+      'singermid',
+      'albummid',
+      'catid',
+      'tid',
+      'topid',
+      'vid',
+    ]);
     for (const item of CASES as { needs?: string[] }[])
       for (const name of item.needs ?? []) expect(provided.has(name)).toBe(true);
   });
