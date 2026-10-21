@@ -1,0 +1,2577 @@
+{
+  "GET /search/hot": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "hotkeys": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "description": "string",
+              "keyword": "string",
+              "title": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /search": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "items": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "act": "number",
+              "action": {
+                "type": "object",
+                "keys": {
+                  "alert": "number",
+                  "icon2": "number",
+                  "icons": "number",
+                  "msgdown": "number",
+                  "msgfav": "number",
+                  "msgid": "number",
+                  "msgpay": "number",
+                  "msgshare": "number",
+                  "switch": "number",
+                  "switch2": "number"
+                }
+              },
+              "album": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string",
+                  "name": "string",
+                  "pmid": "string",
+                  "subtitle": "string",
+                  "time_public": "string",
+                  "title": "string"
+                }
+              },
+              "author": "string",
+              "bpm": "number",
+              "content": "string",
+              "custom_data": "string",
+              "data_type": "number",
+              "desc": "string",
+              "docid": "string",
+              "eq": "number",
+              "es": "string",
+              "file": {
+                "type": "object",
+                "keys": {
+                  "b_30s": "number",
+                  "e_30s": "number",
+                  "hires_bitdepth": "number",
+                  "hires_sample": "number",
+                  "media_mid": "string",
+                  "size_128mp3": "number",
+                  "size_192aac": "number",
+                  "size_192ogg": "number",
+                  "size_24aac": "number",
+                  "size_320mp3": "number",
+                  "size_360ra": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "size_48aac": "number",
+                  "size_96aac": "number",
+                  "size_96ogg": "number",
+                  "size_ape": "number",
+                  "size_dolby": "number",
+                  "size_dts": "number",
+                  "size_flac": "number",
+                  "size_hires": "number",
+                  "size_new": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "size_try": "number",
+                  "try_begin": "number",
+                  "try_end": "number",
+                  "url": "string"
+                }
+              },
+              "fnote": "number",
+              "genre": "number",
+              "grp": {
+                "type": "array",
+                "empty": true
+              },
+              "hotness_desc": "string",
+              "href3": "string",
+              "id": "number",
+              "index_album": "number",
+              "index_cd": "number",
+              "interval": "number",
+              "isonly": "number",
+              "ksong": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string"
+                }
+              },
+              "label": "string",
+              "language": "number",
+              "lyric": "string",
+              "mid": "string",
+              "mv": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string",
+                  "title": "string",
+                  "vid": "string",
+                  "vt": "number"
+                }
+              },
+              "name": "string",
+              "newStatus": "number",
+              "ov": "number",
+              "pay": {
+                "type": "object",
+                "keys": {
+                  "pay_down": "number",
+                  "pay_month": "number",
+                  "pay_play": "number",
+                  "pay_status": "number",
+                  "price_album": "number",
+                  "price_track": "number",
+                  "time_free": "number"
+                }
+              },
+              "protect": "number",
+              "sa": "number",
+              "search_title": "string",
+              "singer": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "mid": "string",
+                    "name": "string",
+                    "pmid": "string",
+                    "title": "string",
+                    "type": "number",
+                    "uin": "number"
+                  }
+                }
+              },
+              "status": "number",
+              "subtitle": "string",
+              "tag": "number",
+              "tid": "number",
+              "time_public": "string",
+              "title": "string",
+              "title_extra": "string",
+              "title_main": "string",
+              "type": "number",
+              "url": "string",
+              "vec_hotness": {
+                "type": "array",
+                "empty": true
+              },
+              "version": "number",
+              "volume": {
+                "type": "object",
+                "keys": {
+                  "gain": "number",
+                  "lra": "number",
+                  "peak": "number"
+                }
+              },
+              "vs": {
+                "type": "array",
+                "empty": true
+              }
+            }
+          }
+        },
+        "limit": "number",
+        "more": "boolean",
+        "page": "number",
+        "total": "number",
+        "type": "string"
+      }
+    }
+  },
+  "GET /search/suggest": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "keyword": "string",
+        "suggestions": {
+          "type": "array",
+          "empty": false,
+          "item": "string"
+        }
+      }
+    }
+  },
+  "GET /search/match": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "data": {
+          "type": "object",
+          "keys": {
+            "album": {
+              "type": "object",
+              "keys": {
+                "count": "number",
+                "itemlist": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "docid": "string",
+                      "id": "string",
+                      "mid": "string",
+                      "name": "string",
+                      "pic": "string",
+                      "singer": "string"
+                    }
+                  }
+                },
+                "name": "string",
+                "order": "number",
+                "type": "number"
+              }
+            },
+            "mv": {
+              "type": "object",
+              "keys": {
+                "count": "number",
+                "itemlist": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "docid": "string",
+                      "id": "string",
+                      "mid": "string",
+                      "name": "string",
+                      "singer": "string",
+                      "vid": "string"
+                    }
+                  }
+                },
+                "name": "string",
+                "order": "number",
+                "type": "number"
+              }
+            },
+            "singer": {
+              "type": "object",
+              "keys": {
+                "count": "number",
+                "itemlist": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "docid": "string",
+                      "id": "string",
+                      "mid": "string",
+                      "name": "string",
+                      "pic": "string",
+                      "singer": "string"
+                    }
+                  }
+                },
+                "name": "string",
+                "order": "number",
+                "type": "number"
+              }
+            },
+            "song": {
+              "type": "object",
+              "keys": {
+                "count": "number",
+                "itemlist": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "docid": "string",
+                      "id": "string",
+                      "mid": "string",
+                      "name": "string",
+                      "singer": "string"
+                    }
+                  }
+                },
+                "name": "string",
+                "order": "number",
+                "type": "number"
+              }
+            }
+          }
+        },
+        "keyword": "string"
+      }
+    }
+  },
+  "GET /recommend/categories": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "groups": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "categories": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "name": "string"
+                  }
+                }
+              },
+              "id": "number",
+              "name": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /recommend/categories/all": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "groups": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "categories": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "name": "string",
+                    "sorts": {
+                      "type": "array",
+                      "empty": false
+                    },
+                    "usable": "number"
+                  }
+                }
+              },
+              "name": "string",
+              "usable": "number"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /recommend/category-playlists/sorted": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "playlists": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "creator": {
+                "type": "object",
+                "keys": {
+                  "avatar": "string",
+                  "encrypt_uin": "string",
+                  "nick": "string"
+                }
+              },
+              "desc": "string",
+              "picurl": "string",
+              "play_cnt": "number",
+              "tid": "number",
+              "title": "string"
+            }
+          }
+        },
+        "total": "number"
+      }
+    }
+  },
+  "GET /recommend/playlists": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "playlists": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "creator": {
+                "type": "object",
+                "keys": {
+                  "avatar": "string",
+                  "encrypt_uin": "string",
+                  "nick": "string",
+                  "uin": "string"
+                }
+              },
+              "desc": "string",
+              "picurl": "string",
+              "play_cnt": "number",
+              "songnum": "number",
+              "tid": "number",
+              "title": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /recommend/new-songs": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "area": "number",
+        "areas": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "name": "string"
+            }
+          }
+        },
+        "code": "number",
+        "songs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "action": {
+                "type": "object",
+                "keys": {
+                  "alert": "number",
+                  "icon2": "number",
+                  "icons": "number",
+                  "msgdown": "number",
+                  "msgfav": "number",
+                  "msgid": "number",
+                  "msgpay": "number",
+                  "msgshare": "number",
+                  "switch": "number",
+                  "switch2": "number"
+                }
+              },
+              "aid": "number",
+              "album": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string",
+                  "name": "string",
+                  "pmid": "string",
+                  "subtitle": "string",
+                  "time_public": "string",
+                  "title": "string"
+                }
+              },
+              "bpm": "number",
+              "data_type": "number",
+              "es": "string",
+              "file": {
+                "type": "object",
+                "keys": {
+                  "b_30s": "number",
+                  "e_30s": "number",
+                  "hires_bitdepth": "number",
+                  "hires_sample": "number",
+                  "media_mid": "string",
+                  "size_128mp3": "number",
+                  "size_192aac": "number",
+                  "size_192ogg": "number",
+                  "size_24aac": "number",
+                  "size_320mp3": "number",
+                  "size_360ra": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "size_48aac": "number",
+                  "size_96aac": "number",
+                  "size_96ogg": "number",
+                  "size_ape": "number",
+                  "size_dolby": "number",
+                  "size_dts": "number",
+                  "size_flac": "number",
+                  "size_hires": "number",
+                  "size_new": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "size_try": "number",
+                  "try_begin": "number",
+                  "try_end": "number",
+                  "url": "string"
+                }
+              },
+              "fnote": "number",
+              "genre": "number",
+              "id": "number",
+              "index_album": "number",
+              "index_cd": "number",
+              "interval": "number",
+              "isonly": "number",
+              "ksong": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string"
+                }
+              },
+              "ktag": "string",
+              "label": "string",
+              "language": "number",
+              "mid": "string",
+              "modify_stamp": "number",
+              "mv": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string",
+                  "title": "string",
+                  "vid": "string",
+                  "vt": "number"
+                }
+              },
+              "name": "string",
+              "ov": "number",
+              "pay": {
+                "type": "object",
+                "keys": {
+                  "pay_down": "number",
+                  "pay_month": "number",
+                  "pay_play": "number",
+                  "pay_status": "number",
+                  "price_album": "number",
+                  "price_track": "number",
+                  "time_free": "number"
+                }
+              },
+              "pingpong": "string",
+              "ppurl": "string",
+              "sa": "number",
+              "singer": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "mid": "string",
+                    "name": "string",
+                    "pmid": "string",
+                    "title": "string",
+                    "type": "number",
+                    "uin": "number"
+                  }
+                }
+              },
+              "status": "number",
+              "subtitle": "string",
+              "tid": "number",
+              "time_public": "string",
+              "title": "string",
+              "trace": "string",
+              "type": "number",
+              "url": "string",
+              "version": "number",
+              "vf": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "vi": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "volume": {
+                "type": "object",
+                "keys": {
+                  "gain": "number",
+                  "lra": "number",
+                  "peak": "number"
+                }
+              },
+              "vs": {
+                "type": "array",
+                "empty": false,
+                "item": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /recommend/new-albums": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "albums": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "mid": "string",
+              "name": "string",
+              "publishDate": "string",
+              "singers": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "mid": "string",
+                    "name": "string"
+                  }
+                }
+              },
+              "trackCount": "number"
+            }
+          }
+        },
+        "area": "number",
+        "areas": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "name": "string"
+            }
+          }
+        },
+        "code": "number",
+        "more": "boolean",
+        "total": "number"
+      }
+    }
+  },
+  "GET /recommend/radar": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "page": "number",
+        "songs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "action": {
+                "type": "object",
+                "keys": {
+                  "alert": "number",
+                  "icon2": "number",
+                  "icons": "number",
+                  "msgdown": "number",
+                  "msgfav": "number",
+                  "msgid": "number",
+                  "msgpay": "number",
+                  "msgshare": "number",
+                  "switch": "number",
+                  "switch2": "number",
+                  "vb": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  }
+                }
+              },
+              "aid": "number",
+              "album": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string",
+                  "name": "string",
+                  "pmid": "string",
+                  "subtitle": "string",
+                  "time_public": "string",
+                  "title": "string"
+                }
+              },
+              "bpm": "number",
+              "data_type": "number",
+              "es": "string",
+              "file": {
+                "type": "object",
+                "keys": {
+                  "b_30s": "number",
+                  "df": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "e_30s": "number",
+                  "hires_bitdepth": "number",
+                  "hires_sample": "number",
+                  "media_mid": "string",
+                  "size_128mp3": "number",
+                  "size_192aac": "number",
+                  "size_192ogg": "number",
+                  "size_24aac": "number",
+                  "size_320mp3": "number",
+                  "size_360ra": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "size_48aac": "number",
+                  "size_96aac": "number",
+                  "size_96ogg": "number",
+                  "size_ape": "number",
+                  "size_dolby": "number",
+                  "size_dts": "number",
+                  "size_flac": "number",
+                  "size_hires": "number",
+                  "size_new": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "size_try": "number",
+                  "try_begin": "number",
+                  "try_end": "number",
+                  "url": "string",
+                  "vm": {
+                    "type": "array",
+                    "empty": true
+                  }
+                }
+              },
+              "fnote": "number",
+              "genre": "number",
+              "id": "number",
+              "index_album": "number",
+              "index_cd": "number",
+              "interval": "number",
+              "isonly": "number",
+              "ksong": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string"
+                }
+              },
+              "ktag": "string",
+              "label": "string",
+              "language": "number",
+              "mid": "string",
+              "modify_stamp": "number",
+              "mv": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string",
+                  "title": "string",
+                  "vid": "string",
+                  "vt": "number"
+                }
+              },
+              "name": "string",
+              "ov": "number",
+              "pay": {
+                "type": "object",
+                "keys": {
+                  "pay_down": "number",
+                  "pay_month": "number",
+                  "pay_play": "number",
+                  "pay_status": "number",
+                  "price_album": "number",
+                  "price_track": "number",
+                  "time_free": "number"
+                }
+              },
+              "pingpong": "string",
+              "ppurl": "string",
+              "sa": "number",
+              "singer": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "mid": "string",
+                    "name": "string",
+                    "pmid": "string",
+                    "title": "string",
+                    "type": "number",
+                    "uin": "number"
+                  }
+                }
+              },
+              "status": "number",
+              "subtitle": "string",
+              "tid": "number",
+              "time_public": "string",
+              "title": "string",
+              "trace": "string",
+              "type": "number",
+              "url": "string",
+              "va": {
+                "type": "array",
+                "empty": true
+              },
+              "version": "number",
+              "vf": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "vi": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "volume": {
+                "type": "object",
+                "keys": {
+                  "gain": "number",
+                  "lra": "number",
+                  "peak": "number"
+                }
+              },
+              "vs": {
+                "type": "array",
+                "empty": false,
+                "item": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /recommend/toplists": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "groups": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "name": "string",
+              "toplists": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "cover": "string",
+                    "id": "number",
+                    "intro": "string",
+                    "listenNum": "number",
+                    "period": "string",
+                    "preview": {
+                      "type": "array",
+                      "empty": false
+                    },
+                    "title": "string",
+                    "total": "number",
+                    "updateTime": "string",
+                    "updateType": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /recommend/toplist": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "history": {
+          "type": "object",
+          "keys": {
+            "subPeriod": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              }
+            },
+            "year": {
+              "type": "array",
+              "empty": false,
+              "item": "number"
+            }
+          }
+        },
+        "more": "boolean",
+        "ranks": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "rank": "number",
+              "rankType": "number",
+              "rankValue": "string",
+              "songId": "number"
+            }
+          }
+        },
+        "songs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "action": {
+                "type": "object",
+                "keys": {
+                  "alert": "number",
+                  "icon2": "number",
+                  "icons": "number",
+                  "msgdown": "number",
+                  "msgfav": "number",
+                  "msgid": "number",
+                  "msgpay": "number",
+                  "msgshare": "number",
+                  "switch": "number",
+                  "switch2": "number",
+                  "vb": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  }
+                }
+              },
+              "aid": "number",
+              "album": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string",
+                  "name": "string",
+                  "pmid": "string",
+                  "subtitle": "string",
+                  "time_public": "string",
+                  "title": "string"
+                }
+              },
+              "bpm": "number",
+              "data_type": "number",
+              "es": "string",
+              "file": {
+                "type": "object",
+                "keys": {
+                  "b_30s": "number",
+                  "df": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "e_30s": "number",
+                  "hires_bitdepth": "number",
+                  "hires_sample": "number",
+                  "media_mid": "string",
+                  "size_128mp3": "number",
+                  "size_192aac": "number",
+                  "size_192ogg": "number",
+                  "size_24aac": "number",
+                  "size_320mp3": "number",
+                  "size_360ra": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "size_48aac": "number",
+                  "size_96aac": "number",
+                  "size_96ogg": "number",
+                  "size_ape": "number",
+                  "size_dolby": "number",
+                  "size_dts": "number",
+                  "size_flac": "number",
+                  "size_hires": "number",
+                  "size_new": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "size_try": "number",
+                  "try_begin": "number",
+                  "try_end": "number",
+                  "url": "string",
+                  "vm": {
+                    "type": "array",
+                    "empty": true
+                  }
+                }
+              },
+              "fnote": "number",
+              "genre": "number",
+              "id": "number",
+              "index_album": "number",
+              "index_cd": "number",
+              "interval": "number",
+              "isonly": "number",
+              "ksong": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string"
+                }
+              },
+              "ktag": "string",
+              "label": "string",
+              "language": "number",
+              "mid": "string",
+              "modify_stamp": "number",
+              "mv": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string",
+                  "title": "string",
+                  "vid": "string",
+                  "vt": "number"
+                }
+              },
+              "name": "string",
+              "ov": "number",
+              "pay": {
+                "type": "object",
+                "keys": {
+                  "pay_down": "number",
+                  "pay_month": "number",
+                  "pay_play": "number",
+                  "pay_status": "number",
+                  "price_album": "number",
+                  "price_track": "number",
+                  "time_free": "number"
+                }
+              },
+              "pingpong": "string",
+              "ppurl": "string",
+              "sa": "number",
+              "singer": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "mid": "string",
+                    "name": "string",
+                    "pmid": "string",
+                    "title": "string",
+                    "type": "number",
+                    "uin": "number"
+                  }
+                }
+              },
+              "status": "number",
+              "subtitle": "string",
+              "tid": "number",
+              "time_public": "string",
+              "title": "string",
+              "trace": "string",
+              "type": "number",
+              "url": "string",
+              "va": {
+                "type": "array",
+                "empty": true
+              },
+              "version": "number",
+              "vf": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "vi": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "volume": {
+                "type": "object",
+                "keys": {
+                  "gain": "number",
+                  "lra": "number",
+                  "peak": "number"
+                }
+              },
+              "vs": {
+                "type": "array",
+                "empty": false,
+                "item": "string"
+              }
+            }
+          }
+        },
+        "toplist": {
+          "type": "object",
+          "keys": {
+            "cover": "string",
+            "id": "number",
+            "intro": "string",
+            "listenNum": "number",
+            "period": "string",
+            "title": "string",
+            "total": "number",
+            "updateTime": "string",
+            "updateType": "number"
+          }
+        },
+        "total": "number"
+      }
+    }
+  },
+  "GET /radio/categories": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "groups": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "radios": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "listenNum": "number",
+                    "picurl": "string",
+                    "title": "string"
+                  }
+                }
+              },
+              "title": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /singer/list": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "singers": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "mid": "string",
+              "name": "string",
+              "otherName": "string",
+              "pic": "string"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "keys": {
+            "area": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string"
+                }
+              }
+            },
+            "genre": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string"
+                }
+              }
+            },
+            "index": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string"
+                }
+              }
+            },
+            "sex": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string"
+                }
+              }
+            }
+          }
+        },
+        "total": "number"
+      }
+    }
+  },
+  "GET /singer/detail": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "singer": {
+          "type": "object",
+          "keys": {
+            "birthday": "string",
+            "desc": "string",
+            "foreignName": "string",
+            "id": "number",
+            "mid": "string",
+            "name": "string",
+            "pic": "string",
+            "wiki": "string"
+          }
+        }
+      }
+    }
+  },
+  "GET /singer/homepage": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "fansNum": "number",
+        "followNum": "number",
+        "mid": "string"
+      }
+    }
+  },
+  "GET /singer/similar": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "singers": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "id": "number",
+              "mid": "string",
+              "name": "string",
+              "pic": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /singer/songs": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "songs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "action": {
+                "type": "object",
+                "keys": {
+                  "alert": "number",
+                  "icon2": "number",
+                  "icons": "number",
+                  "msgdown": "number",
+                  "msgfav": "number",
+                  "msgid": "number",
+                  "msgpay": "number",
+                  "msgshare": "number",
+                  "switch": "number",
+                  "switch2": "number"
+                }
+              },
+              "aid": "number",
+              "album": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string",
+                  "name": "string",
+                  "pmid": "string",
+                  "subtitle": "string",
+                  "time_public": "string",
+                  "title": "string"
+                }
+              },
+              "bpm": "number",
+              "data_type": "number",
+              "es": "string",
+              "file": {
+                "type": "object",
+                "keys": {
+                  "b_30s": "number",
+                  "e_30s": "number",
+                  "hires_bitdepth": "number",
+                  "hires_sample": "number",
+                  "media_mid": "string",
+                  "size_128mp3": "number",
+                  "size_192aac": "number",
+                  "size_192ogg": "number",
+                  "size_24aac": "number",
+                  "size_320mp3": "number",
+                  "size_360ra": {
+                    "type": "array",
+                    "empty": true
+                  },
+                  "size_48aac": "number",
+                  "size_96aac": "number",
+                  "size_96ogg": "number",
+                  "size_ape": "number",
+                  "size_dolby": "number",
+                  "size_dts": "number",
+                  "size_flac": "number",
+                  "size_hires": "number",
+                  "size_new": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "size_try": "number",
+                  "try_begin": "number",
+                  "try_end": "number",
+                  "url": "string"
+                }
+              },
+              "fnote": "number",
+              "genre": "number",
+              "id": "number",
+              "index_album": "number",
+              "index_cd": "number",
+              "interval": "number",
+              "isonly": "number",
+              "ksong": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "mid": "string"
+                }
+              },
+              "ktag": "string",
+              "label": "string",
+              "language": "number",
+              "mid": "string",
+              "modify_stamp": "number",
+              "mv": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string",
+                  "title": "string",
+                  "vid": "string",
+                  "vt": "number"
+                }
+              },
+              "name": "string",
+              "ov": "number",
+              "pay": {
+                "type": "object",
+                "keys": {
+                  "pay_down": "number",
+                  "pay_month": "number",
+                  "pay_play": "number",
+                  "pay_status": "number",
+                  "price_album": "number",
+                  "price_track": "number",
+                  "time_free": "number"
+                }
+              },
+              "pingpong": "string",
+              "ppurl": "string",
+              "sa": "number",
+              "singer": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "id": "number",
+                    "mid": "string",
+                    "name": "string",
+                    "pmid": "string",
+                    "title": "string",
+                    "type": "number",
+                    "uin": "number"
+                  }
+                }
+              },
+              "status": "number",
+              "subtitle": "string",
+              "tid": "number",
+              "time_public": "string",
+              "title": "string",
+              "trace": "string",
+              "type": "number",
+              "url": "string",
+              "va": {
+                "type": "array",
+                "empty": true
+              },
+              "version": "number",
+              "vf": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "vi": {
+                "type": "array",
+                "empty": false,
+                "item": "number"
+              },
+              "volume": {
+                "type": "object",
+                "keys": {
+                  "gain": "number",
+                  "lra": "number",
+                  "peak": "number"
+                }
+              },
+              "vs": {
+                "type": "array",
+                "empty": false,
+                "item": "string"
+              }
+            }
+          }
+        },
+        "total": "number"
+      }
+    }
+  },
+  "GET /singer/mvs": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "mvs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "cover": "string",
+              "duration": "number",
+              "id": "number",
+              "playCount": "number",
+              "publishTime": "number",
+              "title": "string",
+              "vid": "string"
+            }
+          }
+        },
+        "total": "number"
+      }
+    }
+  },
+  "GET /getSingerAlbum": {
+    "status": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "response": {
+          "type": "object",
+          "keys": {
+            "code": "number",
+            "singer": {
+              "type": "object",
+              "keys": {
+                "code": "number",
+                "data": {
+                  "type": "object",
+                  "keys": {
+                    "albumList": {
+                      "type": "array",
+                      "empty": false,
+                      "item": {
+                        "type": "object"
+                      }
+                    },
+                    "singerMid": "string",
+                    "total": "number"
+                  }
+                }
+              }
+            },
+            "start_ts": "number",
+            "traceid": "string",
+            "ts": "number"
+          }
+        }
+      }
+    }
+  },
+  "GET /getSingerHotsong": {
+    "status": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "response": {
+          "type": "object",
+          "keys": {
+            "code": "number",
+            "singer": {
+              "type": "object",
+              "keys": {
+                "code": "number",
+                "data": {
+                  "type": "object",
+                  "keys": {
+                    "extras": {
+                      "type": "array",
+                      "empty": false,
+                      "item": {
+                        "type": "object"
+                      }
+                    },
+                    "music_grp": {
+                      "type": "array",
+                      "empty": true
+                    },
+                    "show_singer_desc": "boolean",
+                    "singer_brief": "string",
+                    "singer_info": {
+                      "type": "object",
+                      "keys": {
+                        "area": "number",
+                        "attribute4": "number",
+                        "fans": "number",
+                        "genre": "number",
+                        "id": "number",
+                        "mid": "string",
+                        "name": "string",
+                        "other_name": "string"
+                      }
+                    },
+                    "songlist": {
+                      "type": "array",
+                      "empty": false,
+                      "item": {
+                        "type": "object"
+                      }
+                    },
+                    "total_album": "number",
+                    "total_mv": "number",
+                    "total_song": "number",
+                    "yinyueren": "string"
+                  }
+                }
+              }
+            },
+            "start_ts": "number",
+            "traceid": "string",
+            "ts": "number"
+          }
+        }
+      }
+    }
+  },
+  "GET /getSongInfo": {
+    "status": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "response": {
+          "type": "object",
+          "keys": {
+            "code": "number",
+            "songinfo": {
+              "type": "object",
+              "keys": {
+                "code": "number",
+                "data": {
+                  "type": "object",
+                  "keys": {
+                    "extras": {
+                      "type": "object",
+                      "keys": {
+                        "from": "string",
+                        "name": "string",
+                        "subtitle": "string",
+                        "transname": "string",
+                        "wikiurl": "string"
+                      }
+                    },
+                    "info": {
+                      "type": "object",
+                      "keys": {
+                        "company": {
+                          "type": "object"
+                        },
+                        "genre": {
+                          "type": "object"
+                        },
+                        "intro": {
+                          "type": "object"
+                        },
+                        "lan": {
+                          "type": "object"
+                        },
+                        "pub_time": {
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "track_info": {
+                      "type": "object",
+                      "keys": {
+                        "action": {
+                          "type": "object"
+                        },
+                        "album": {
+                          "type": "object"
+                        },
+                        "bpm": "number",
+                        "data_type": "number",
+                        "es": "string",
+                        "file": {
+                          "type": "object"
+                        },
+                        "fnote": "number",
+                        "genre": "number",
+                        "id": "number",
+                        "index_album": "number",
+                        "index_cd": "number",
+                        "interval": "number",
+                        "isonly": "number",
+                        "ksong": {
+                          "type": "object"
+                        },
+                        "ktag": "string",
+                        "label": "string",
+                        "language": "number",
+                        "mid": "string",
+                        "modify_stamp": "number",
+                        "mv": {
+                          "type": "object"
+                        },
+                        "name": "string",
+                        "ov": "number",
+                        "pay": {
+                          "type": "object"
+                        },
+                        "pingpong": "string",
+                        "ppurl": "string",
+                        "sa": "number",
+                        "singer": {
+                          "type": "array",
+                          "empty": false
+                        },
+                        "status": "number",
+                        "subtitle": "string",
+                        "tid": "number",
+                        "time_public": "string",
+                        "title": "string",
+                        "trace": "string",
+                        "type": "number",
+                        "url": "string",
+                        "version": "number",
+                        "vf": {
+                          "type": "array",
+                          "empty": false
+                        },
+                        "vi": {
+                          "type": "array",
+                          "empty": false
+                        },
+                        "volume": {
+                          "type": "object"
+                        },
+                        "vs": {
+                          "type": "array",
+                          "empty": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "start_ts": "number",
+            "traceid": "string",
+            "ts": "number"
+          }
+        }
+      }
+    }
+  },
+  "GET /getLyric": {
+    "status": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "response": {
+          "type": "object",
+          "keys": {
+            "code": "number",
+            "lyric": "string",
+            "retcode": "number",
+            "subcode": "number",
+            "trans": "string"
+          }
+        }
+      }
+    }
+  },
+  "GET /getAlbumInfo": {
+    "status": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "response": {
+          "type": "object",
+          "keys": {
+            "code": "number",
+            "data": {
+              "type": "object",
+              "keys": {
+                "aDate": "string",
+                "albumTips": "string",
+                "color": "number",
+                "company": "string",
+                "company_new": {
+                  "type": "object",
+                  "keys": {
+                    "brief": "string",
+                    "headPic": "string",
+                    "id": "number",
+                    "is_show": "number",
+                    "name": "string"
+                  }
+                },
+                "cur_song_num": "number",
+                "desc": "string",
+                "genre": "string",
+                "id": "number",
+                "lan": "string",
+                "list": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "albumdesc": "string",
+                      "albumid": "number",
+                      "albummid": "string",
+                      "albumname": "string",
+                      "alertid": "number",
+                      "belongCD": "number",
+                      "cdIdx": "number",
+                      "interval": "number",
+                      "isonly": "number",
+                      "label": "string",
+                      "msgid": "number",
+                      "pay": {
+                        "type": "object"
+                      },
+                      "preview": {
+                        "type": "object"
+                      },
+                      "rate": "number",
+                      "singer": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "size128": "number",
+                      "size320": "number",
+                      "size5_1": "number",
+                      "sizeape": "number",
+                      "sizeflac": "number",
+                      "sizeogg": "number",
+                      "songid": "number",
+                      "songmid": "string",
+                      "songname": "string",
+                      "songorig": "string",
+                      "songtype": "number",
+                      "strMediaMid": "string",
+                      "stream": "number",
+                      "switch": "number",
+                      "type": "number",
+                      "vid": "string"
+                    }
+                  }
+                },
+                "mid": "string",
+                "name": "string",
+                "radio_anchor": "number",
+                "singerid": "number",
+                "singermblog": "string",
+                "singermid": "string",
+                "singername": "string",
+                "song_begin": "number",
+                "total": "number",
+                "total_song_num": "number"
+              }
+            },
+            "message": "string",
+            "subcode": "number"
+          }
+        }
+      }
+    }
+  },
+  "GET /song/labels": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "id": "number",
+        "labels": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "icon": "string",
+              "id": "number",
+              "text": "string",
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /song/mvs": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "mvs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "cover": "string",
+              "id": "number",
+              "playCount": "number",
+              "singers": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "mid": "string",
+                    "name": "string"
+                  }
+                }
+              },
+              "title": "string",
+              "vid": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /comment/hot": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "comments": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "avatar": "string",
+              "content": "string",
+              "id": "string",
+              "location": "string",
+              "nick": "string",
+              "praiseCount": "number",
+              "replyCount": "number",
+              "time": "number"
+            }
+          }
+        },
+        "more": "boolean",
+        "total": "number"
+      }
+    }
+  },
+  "GET /comment/new": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "comments": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "avatar": "string",
+              "content": "string",
+              "id": "string",
+              "location": "string",
+              "nick": "string",
+              "praiseCount": "number",
+              "replyCount": "number",
+              "time": "number"
+            }
+          }
+        },
+        "more": "boolean",
+        "total": "number"
+      }
+    }
+  },
+  "GET /comment/count": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "count": "number",
+        "id": "number"
+      }
+    }
+  },
+  "GET /comment/list": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "data": {
+          "type": "object",
+          "keys": {
+            "allow_comment": "number",
+            "allow_song": "number",
+            "comment": {
+              "type": "object",
+              "keys": {
+                "commentlist": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "avatarurl": "string",
+                      "commentid": "string",
+                      "identity_pic": "string",
+                      "identity_type": "number",
+                      "is_hot": "number",
+                      "is_hot_cmt": "number",
+                      "is_stick": "number",
+                      "middlecommentcontent": "null",
+                      "nick": "string",
+                      "praisenum": "number",
+                      "root_identity_pic": "string",
+                      "root_identity_type": "number",
+                      "rootcommentcontent": "string",
+                      "rootcommentid": "string",
+                      "rootcommentnick": "string",
+                      "score": "number",
+                      "time": "number",
+                      "user_type": "string",
+                      "vipicon": "string"
+                    }
+                  }
+                },
+                "commenttotal": "number"
+              }
+            },
+            "hot_comment": {
+              "type": "object",
+              "keys": {
+                "commentlist": {
+                  "type": "array",
+                  "empty": false,
+                  "item": {
+                    "type": "object",
+                    "keys": {
+                      "avatarurl": "string",
+                      "commentid": "string",
+                      "identity_pic": "string",
+                      "identity_type": "number",
+                      "is_hot": "number",
+                      "is_hot_cmt": "number",
+                      "is_stick": "number",
+                      "middlecommentcontent": "null",
+                      "nick": "string",
+                      "praisenum": "number",
+                      "root_identity_pic": "string",
+                      "root_identity_type": "number",
+                      "rootcommentcontent": "string",
+                      "rootcommentid": "string",
+                      "rootcommentnick": "string",
+                      "score": "number",
+                      "time": "number",
+                      "user_type": "string",
+                      "vipicon": "string"
+                    }
+                  }
+                },
+                "commenttotal": "number"
+              }
+            },
+            "morecomment": "number",
+            "no_copyright": "number",
+            "showYuerenTip": "number",
+            "topic_name": "string"
+          }
+        },
+        "nextCursor": "string"
+      }
+    }
+  },
+  "GET /mv/list": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "more": "boolean",
+        "mvs": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "cover": "string",
+              "duration": "number",
+              "id": "number",
+              "playCount": "number",
+              "publishTime": "number",
+              "singers": {
+                "type": "array",
+                "empty": false,
+                "item": {
+                  "type": "object",
+                  "keys": {
+                    "mid": "string",
+                    "name": "string"
+                  }
+                }
+              },
+              "title": "string",
+              "vid": "string"
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "keys": {
+            "area": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string"
+                }
+              }
+            },
+            "version": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "id": "number",
+                  "name": "string"
+                }
+              }
+            }
+          }
+        },
+        "total": "number"
+      }
+    }
+  },
+  "GET /mv/detail": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "mv": {
+          "type": "object",
+          "keys": {
+            "cover": "string",
+            "duration": "number",
+            "playCount": "number",
+            "publishTime": "number",
+            "singers": {
+              "type": "array",
+              "empty": false,
+              "item": {
+                "type": "object",
+                "keys": {
+                  "mid": "string",
+                  "name": "string"
+                }
+              }
+            },
+            "title": "string",
+            "vid": "string"
+          }
+        }
+      }
+    }
+  },
+  "GET /mv/url": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "files": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "quality": "number",
+              "size": "number",
+              "urls": {
+                "type": "array",
+                "empty": false,
+                "item": "string"
+              }
+            }
+          }
+        },
+        "vid": "string"
+      }
+    }
+  },
+  "POST /song/batch": {
+    "status": 200,
+    "code": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "code": "number",
+        "partial": "boolean",
+        "results": {
+          "type": "array",
+          "empty": false,
+          "item": {
+            "type": "object",
+            "keys": {
+              "code": "number",
+              "index": "number",
+              "info": {
+                "type": "object",
+                "keys": {
+                  "company": {
+                    "type": "object",
+                    "keys": {
+                      "content": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "more": "number",
+                      "pos": "number",
+                      "selected": "string",
+                      "title": "string",
+                      "type": "string",
+                      "use_platform": "number"
+                    }
+                  },
+                  "genre": {
+                    "type": "object",
+                    "keys": {
+                      "content": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "more": "number",
+                      "pos": "number",
+                      "selected": "string",
+                      "title": "string",
+                      "type": "string",
+                      "use_platform": "number"
+                    }
+                  },
+                  "intro": {
+                    "type": "object",
+                    "keys": {
+                      "content": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "more": "number",
+                      "pos": "number",
+                      "selected": "string",
+                      "title": "string",
+                      "type": "string",
+                      "use_platform": "number"
+                    }
+                  },
+                  "lan": {
+                    "type": "object",
+                    "keys": {
+                      "content": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "more": "number",
+                      "pos": "number",
+                      "selected": "string",
+                      "title": "string",
+                      "type": "string",
+                      "use_platform": "number"
+                    }
+                  },
+                  "pub_time": {
+                    "type": "object",
+                    "keys": {
+                      "content": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "more": "number",
+                      "pos": "number",
+                      "selected": "string",
+                      "title": "string",
+                      "type": "string",
+                      "use_platform": "number"
+                    }
+                  }
+                }
+              },
+              "song": {
+                "type": "object",
+                "keys": {
+                  "action": {
+                    "type": "object",
+                    "keys": {
+                      "alert": "number",
+                      "icon2": "number",
+                      "icons": "number",
+                      "msgdown": "number",
+                      "msgfav": "number",
+                      "msgid": "number",
+                      "msgpay": "number",
+                      "msgshare": "number",
+                      "switch": "number",
+                      "switch2": "number"
+                    }
+                  },
+                  "album": {
+                    "type": "object",
+                    "keys": {
+                      "id": "number",
+                      "mid": "string",
+                      "name": "string",
+                      "pmid": "string",
+                      "subtitle": "string",
+                      "time_public": "string",
+                      "title": "string"
+                    }
+                  },
+                  "bpm": "number",
+                  "data_type": "number",
+                  "es": "string",
+                  "file": {
+                    "type": "object",
+                    "keys": {
+                      "b_30s": "number",
+                      "e_30s": "number",
+                      "hires_bitdepth": "number",
+                      "hires_sample": "number",
+                      "media_mid": "string",
+                      "size_128mp3": "number",
+                      "size_192aac": "number",
+                      "size_192ogg": "number",
+                      "size_24aac": "number",
+                      "size_320mp3": "number",
+                      "size_360ra": {
+                        "type": "array",
+                        "empty": true
+                      },
+                      "size_48aac": "number",
+                      "size_96aac": "number",
+                      "size_96ogg": "number",
+                      "size_ape": "number",
+                      "size_dolby": "number",
+                      "size_dts": "number",
+                      "size_flac": "number",
+                      "size_hires": "number",
+                      "size_new": {
+                        "type": "array",
+                        "empty": false
+                      },
+                      "size_try": "number",
+                      "try_begin": "number",
+                      "try_end": "number",
+                      "url": "string"
+                    }
+                  },
+                  "fnote": "number",
+                  "genre": "number",
+                  "id": "number",
+                  "index_album": "number",
+                  "index_cd": "number",
+                  "interval": "number",
+                  "isonly": "number",
+                  "ksong": {
+                    "type": "object",
+                    "keys": {
+                      "id": "number",
+                      "mid": "string"
+                    }
+                  },
+                  "ktag": "string",
+                  "label": "string",
+                  "language": "number",
+                  "mid": "string",
+                  "modify_stamp": "number",
+                  "mv": {
+                    "type": "object",
+                    "keys": {
+                      "id": "number",
+                      "name": "string",
+                      "title": "string",
+                      "vid": "string",
+                      "vt": "number"
+                    }
+                  },
+                  "name": "string",
+                  "ov": "number",
+                  "pay": {
+                    "type": "object",
+                    "keys": {
+                      "pay_down": "number",
+                      "pay_month": "number",
+                      "pay_play": "number",
+                      "pay_status": "number",
+                      "price_album": "number",
+                      "price_track": "number",
+                      "time_free": "number"
+                    }
+                  },
+                  "pingpong": "string",
+                  "ppurl": "string",
+                  "sa": "number",
+                  "singer": {
+                    "type": "array",
+                    "empty": false,
+                    "item": {
+                      "type": "object"
+                    }
+                  },
+                  "status": "number",
+                  "subtitle": "string",
+                  "tid": "number",
+                  "time_public": "string",
+                  "title": "string",
+                  "trace": "string",
+                  "type": "number",
+                  "url": "string",
+                  "version": "number",
+                  "vf": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "vi": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "number"
+                  },
+                  "volume": {
+                    "type": "object",
+                    "keys": {
+                      "gain": "number",
+                      "lra": "number",
+                      "peak": "number"
+                    }
+                  },
+                  "vs": {
+                    "type": "array",
+                    "empty": false,
+                    "item": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "GET /getMusicPlay": {
+    "status": 200,
+    "shape": {
+      "type": "object",
+      "keys": {
+        "data": {
+          "type": "object",
+          "keys": {
+            "playUrl": {
+              "type": "object",
+              "keys": {
+                "<songmid>": {
+                  "type": "object",
+                  "keys": {
+                    "error": "string",
+                    "restriction": {
+                      "type": "object",
+                      "keys": {
+                        "codes": {
+                          "type": "object"
+                        },
+                        "evidence": "string",
+                        "hint": {
+                          "type": "object"
+                        },
+                        "key": "string"
+                      }
+                    },
+                    "url": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
