@@ -233,6 +233,8 @@ Serverless 请求由部署平台的网络出口发送，可能与用户本地网
 
 需要取消二维码时，调用 `GET /login/qr/cancel`。
 
+取消、退出登录和过期是三件分开的事：`/login/qr/cancel?key=` 只取消这一个二维码；`/logout` 只退出当前带的会话，不会取消别的正在进行的扫码。手机上已经确认、还在换凭证时被取消的，换完不会发会话。已确认的二维码在有效期过后还会保留 60 秒，轮询照样拿得到 `803`；这段时间里一直没有被轮询领走的登录会被撤销。轮询时遇到意外错误回 `800`、`QR login failed`，并带 `failureStage: qr-poll`、`failureReason: unexpected-error`；只有找不到这个二维码才回 `QR code expired`。
+
 ### 登录会话
 
 成功后可以使用以下方式携带会话：
