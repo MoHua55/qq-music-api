@@ -1,4 +1,6 @@
-## 未发布
+## [3.3.5](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.4...v3.3.5) (2026-10-21)
+
+这一版修好扫码登录在几种时序下「手机上显示成功、客户端仍未登录」的问题，补上四条读取接口，并移除 3.3.4 预告过的 17 条 Node 旧路由。其余已有接口的调用方式和回包不变，Folia 这类使用保留接口的下游不用修改接入代码。
 
 ### 新功能
 
@@ -37,6 +39,12 @@
 
 - 匿名旧 CGI 接口（`/search/match`、`/recommend/categories/all`、`/recommend/category-playlists/sorted`、`/comment/list`）和其他新接口共用同一个进程内的请求限流，等待的时间算在原来的 25 秒内。回包和错误都没有变。
 - 启动和请求日志不再带终端颜色码，文字内容不变。运行依赖少了 `chalk`、`colors`、`moment`；载入本包也不会再往 `String.prototype` 上加属性，嵌入 Electron 时不影响主进程里的其他代码。
+
+### 给下游的通知
+
+- 扫码登录的修复在后端：Folia 等嵌入方要升级依赖和锁文件、重新打包，才会到用户手上。客户端如果自己在「已扫码」后很快放弃并取消，手机上晚确认的那次登录仍然会丢，需要客户端放宽等待时间。
+- `/logout` 现在只退出当前带的会话，不再顺带取消别的正在进行的扫码；要取消扫码请用 `/login/qr/cancel?key=`。
+- 已移除的 17 条旧路由见上表。精确锁版的应用要更新依赖和锁文件；Electron 要重新打包，Docker 要重建镜像，Vercel 和 Cloudflare 要重新部署，详见[相容与版本政策](./docs/compatibility.md)。
 
 ## [3.3.4](https://github.com/yakult-green-tea/qq-music-api/compare/v3.3.3...v3.3.4) (2026-10-21)
 
